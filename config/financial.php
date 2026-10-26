@@ -8,7 +8,7 @@ return [
     */
     'accelerated' => [
         'enabled' => (bool) env('FINANCIAL_ACCELERATED_TESTING', false),
-        'interval_minutes' => max(1, (int) env('FINANCIAL_ACCELERATED_INTERVAL_MINUTES', 2)),
+        'interval_minutes' => 10,
         // First simulated business date; defaults to the day after the earliest investment.
         'start_date' => env('FINANCIAL_ACCELERATED_START_DATE'),
         // Every member must carry this id prefix, otherwise the cycle refuses to run.

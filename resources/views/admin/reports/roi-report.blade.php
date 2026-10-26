@@ -29,7 +29,6 @@
                        placeholder="Enter Member ID">
             </div>
 
-
             <!-- FROM DATE -->
             <div class="col-md-3 mb-3">
                 <label>From Date</label>
@@ -98,7 +97,7 @@
 
                     <span>Total Amount (USDT)</span>
 
-                    <strong>{{ $totalAmount }}</strong>
+                    <strong>{{ rtrim(rtrim(number_format((float) $totalAmount, 4, '.', ''), '0'), '.') ?: '0' }}</strong>
 
                 </div>
 
@@ -130,12 +129,12 @@
 
                     @forelse ($transactions as $transaction)
                         <tr>
-                            <td>{{ $transactions->firstItem() + $loop->index }}</td>
+                            <td>{{ $loop->iteration }}</td>
                             <td>{{ $transaction->member_id }}</td>
                             <td>{{ $transaction->member_name }}</td>
                             <td>{{ $transaction->investment_id }}</td>
-                            <td>{{ rtrim(rtrim((string) $transaction->income_amount, '0'), '.') ?: '0' }}</td>
-                            <td>{{ rtrim(rtrim((string) $transaction->on_amount, '0'), '.') ?: '0' }}</td>
+                            <td>{{ rtrim(rtrim(number_format((float) $transaction->income_amount, 4, '.', ''), '0'), '.') ?: '0' }}</td>
+                            <td>{{ rtrim(rtrim(number_format((float) $transaction->on_amount, 4, '.', ''), '0'), '.') ?: '0' }}</td>
                             <td>{{ $transaction->created_at?->format('d-M-Y') }}</td>
                         </tr>
                     @empty
@@ -156,7 +155,7 @@
 
             <nav>
 
-                {{ $transactions->links('pagination::bootstrap-5') }}
+                {{ $transactions->links('pagination::simple-bootstrap-5') }}
 
             </nav>
 

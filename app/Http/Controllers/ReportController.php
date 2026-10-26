@@ -8,26 +8,69 @@ use App\Models\RankAchievement;
 use App\Models\RoiTransaction;
 use App\Services\RankService;
 use App\Services\ReportSummaryService;
+use App\Services\ReportTransactionCursorPaginator;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
-    public function roiReport(Request $request, ReportSummaryService $summaryService)
+    public function roiReport(
+        Request $request,
+        ReportTransactionCursorPaginator $paginator,
+        ReportSummaryService $summaryService,
+    )
     {
         $query = $this->roiQuery($request);
+        $transactions = $paginator->paginate(
+            $query->select(['id', 'member_id', 'member_name', 'investment_id', 'income_amount', 'on_amount', 'created_at']),
+            $request,
+            30
+        );
         $totalAmount = $summaryService->roiReportTotal(
             $this->memberSearch($request),
             $this->dateKey($request, 'from_date'),
             $this->dateKey($request, 'to_date'),
         ) ?? (string) (clone $query)->sum('income_amount');
-        $totalAmount = $this->formatDecimalAmount($totalAmount);
-        $transactions = $query->latest()->paginate(10)->withQueryString();
 
         return view('admin.reports.roi-report', [
             'transactions' => $transactions,
             'totalAmount' => $totalAmount,
         ]);
+    }
+
+    public function roiReportTotal(Request $request, ReportSummaryService $summaryService): JsonResponse
+    {
+        $request->validate([
+            'member_id' => ['nullable', 'string', 'max:255'],
+            'from_date' => ['nullable', 'date_format:Y-m-d'],
+            'to_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from_date'],
+        ]);
+
+        $totalAmount = $summaryService->roiReportTotal(
+            $this->memberSearch($request),
+            $this->dateKey($request, 'from_date'),
+            $this->dateKey($request, 'to_date'),
+        ) ?? (string) $this->roiQuery($request)->sum('income_amount');
+
+        return response()->json(['total_amount' => $this->formatDecimalAmount($totalAmount)]);
+    }
+
+    public function roiReportEntries(Request $request, ReportSummaryService $summaryService): JsonResponse
+    {
+        $request->validate([
+            'member_id' => ['nullable', 'string', 'max:255'],
+            'from_date' => ['nullable', 'date_format:Y-m-d'],
+            'to_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from_date'],
+        ]);
+
+        $totalEntries = $summaryService->roiReportTransactionCount(
+            $this->memberSearch($request),
+            $this->dateKey($request, 'from_date'),
+            $this->dateKey($request, 'to_date'),
+        ) ?? (string) $this->roiQuery($request)->count();
+
+        return response()->json(['total_entries' => $totalEntries]);
     }
 
     public function exportRoiReport(Request $request)
@@ -56,35 +99,70 @@ class ReportController extends Controller
         ]);
     }
 
-    public function levelIncomeReport(Request $request, ReportSummaryService $summaryService)
+    public function levelIncomeReport(Request $request, ReportTransactionCursorPaginator $paginator, ReportSummaryService $summaryService)
     {
         $query = $this->levelIncomeQuery($request);
-        $level = $request->filled('level') ? (int) $request->query('level') : null;
-        $totalAmount = $summaryService->levelCommissionReportTotal(
-            $this->memberSearch($request),
-            $level,
-            $this->dateKey($request, 'from_date'),
-            $this->dateKey($request, 'to_date'),
-        ) ?? (string) (clone $query)->sum('income_amount');
-        $totalAmount = $this->formatDecimalAmount($totalAmount);
-        $perPage = max(1, min(100, (int) $request->query('per_page', 50)));
-        $transactions = $query
-            ->select(['id', 'member_id', 'member_name', 'from_member_id', 'level', 'income_amount', 'on_amount', 'created_at'])
-            ->latest('created_at')
-            ->orderByDesc('id')
-            ->paginate($perPage)
-            ->withQueryString();
+        $perPage = max(1, min(100, (int) $request->query('per_page', 30)));
+        $transactions = $paginator->paginate(
+            $query->select(['id', 'member_id', 'member_name', 'from_member_id', 'level', 'income_amount', 'on_amount', 'created_at']),
+            $request,
+            $perPage
+        );
         $levels = LevelCommissionTransaction::query()
             ->whereNotNull('level')
             ->distinct()
             ->orderBy('level')
             ->pluck('level');
+        $totalAmount = $summaryService->levelCommissionReportTotal(
+            $this->memberSearch($request),
+            $request->filled('level') ? (int) $request->query('level') : null,
+            $this->dateKey($request, 'from_date'),
+            $this->dateKey($request, 'to_date'),
+        ) ?? (string) $this->levelIncomeQuery($request)->sum('income_amount');
 
         return view('admin.reports.level-income', [
             'transactions' => $transactions,
-            'totalAmount' => $totalAmount,
             'levels' => $levels,
+            'totalAmount' => $this->formatDecimalAmount($totalAmount),
         ]);
+    }
+
+    public function levelIncomeReportTotal(Request $request, ReportSummaryService $summaryService): JsonResponse
+    {
+        $request->validate([
+            'member_id' => ['nullable', 'string', 'max:255'],
+            'level' => ['nullable', 'integer', 'min:1', 'max:255'],
+            'from_date' => ['nullable', 'date_format:Y-m-d'],
+            'to_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from_date'],
+        ]);
+
+        $totalAmount = $summaryService->levelCommissionReportTotal(
+            $this->memberSearch($request),
+            $request->filled('level') ? (int) $request->query('level') : null,
+            $this->dateKey($request, 'from_date'),
+            $this->dateKey($request, 'to_date'),
+        ) ?? (string) $this->levelIncomeQuery($request)->sum('income_amount');
+
+        return response()->json(['total_amount' => $this->formatDecimalAmount($totalAmount)]);
+    }
+
+    public function levelIncomeReportEntries(Request $request, ReportSummaryService $summaryService): JsonResponse
+    {
+        $request->validate([
+            'member_id' => ['nullable', 'string', 'max:255'],
+            'level' => ['nullable', 'integer', 'min:1', 'max:255'],
+            'from_date' => ['nullable', 'date_format:Y-m-d'],
+            'to_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from_date'],
+        ]);
+
+        $totalEntries = $summaryService->levelCommissionReportTransactionCount(
+            $this->memberSearch($request),
+            $request->filled('level') ? (int) $request->query('level') : null,
+            $this->dateKey($request, 'from_date'),
+            $this->dateKey($request, 'to_date'),
+        ) ?? (string) $this->levelIncomeQuery($request)->count();
+
+        return response()->json(['total_entries' => $totalEntries]);
     }
 
     public function exportLevelIncomeReport(Request $request)

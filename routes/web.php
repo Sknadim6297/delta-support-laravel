@@ -38,8 +38,25 @@
             return redirect()->route('member.dashboard');
         }
 
-        return redirect('/admin/login');
-    });
+        return view('public.home');
+    })->name('home');
+
+    Route::view('/about', 'public.about')->name('public.about');
+    Route::view('/packages', 'public.packages')->name('public.packages');
+    Route::view('/business-plan', 'public.business-plan')->name('public.business-plan');
+    Route::view('/contact', 'public.contact')->name('public.contact');
+
+    Route::get('/login', function () {
+        if (Auth::check()) {
+            return redirect('/dashboard');
+        }
+
+        if (session()->has('member_context_id')) {
+            return redirect()->route('member.dashboard');
+        }
+
+        return view('public.auth.login');
+    })->name('public.login');
 
 
     /*
@@ -57,7 +74,7 @@
             return redirect()->route('member.dashboard');
         }
 
-        return view('admin.login.login');
+        return view('public.auth.login');
     })->name('login');
 
     Route::get('/register', [PublicMemberAuthController::class, 'register'])
@@ -192,6 +209,9 @@
                 'activationWalletTotal' => (float) \App\Models\Member::sum('activation_wallet_amount'),
                 'workingWalletTotal' => (float) \App\Models\Member::sum('working_wallet_amount'),
                 'roiWalletTotal' => (float) \App\Models\Member::sum('roi_wallet_amount'),
+                'memberCount' => \App\Models\Member::count(),
+                'activeMembers' => \App\Models\Member::where('status', 'active')->count(),
+                'inactiveMembers' => \App\Models\Member::where('status', 'inactive')->count(),
             ]);
         })->name('dashboard');
 
@@ -494,6 +514,14 @@
                     'roiReport'
                 )->name('roi-report');
                 Route::get(
+                    '/roi-report/total',
+                    'roiReportTotal'
+                )->name('roi-report.total');
+                Route::get(
+                    '/roi-report/total-entries',
+                    'roiReportEntries'
+                )->name('roi-report.total-entries');
+                Route::get(
                     '/roi-report/export',
                     'exportRoiReport'
                 )->name('roi-report.export');
@@ -501,6 +529,14 @@
                     '/level-income',
                     'levelIncomeReport'
                 )->name('level-income');
+                Route::get(
+                    '/level-income/total',
+                    'levelIncomeReportTotal'
+                )->name('level-income.total');
+                Route::get(
+                    '/level-income/total-entries',
+                    'levelIncomeReportEntries'
+                )->name('level-income.total-entries');
                 Route::get(
                     '/level-income/export',
                     'exportLevelIncomeReport'

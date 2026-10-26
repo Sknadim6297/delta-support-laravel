@@ -14,6 +14,7 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertRedirect();
+        $response->assertOk();
+        $response->assertSee('Delta Support');
     }
 }

@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'DevEngine')</title>
+    <title>@yield('title', 'Delta Support')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center; font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #ff4f9a, #ff79b5, #ffb6d5); }
-        .login-wrapper { width: 100%; max-width: 950px; min-height: 570px; display: flex; overflow: hidden; background: rgba(255,255,255,.96); border-radius: 28px; box-shadow: 0 25px 60px rgba(160,20,80,.3); }
-        .login-left { position: relative; width: 50%; padding: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; background: linear-gradient(145deg, #d70e66, #580b2c, #992b58); }
+        body { margin: 0; min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center; font-family: 'DM Sans', sans-serif; background: #f3f6fc; color: #172033; }
+        .login-wrapper { width: 100%; max-width: 950px; min-height: 570px; display: flex; overflow: hidden; background: #fff; border-radius: 24px; box-shadow: 0 25px 70px rgba(30,55,100,.12); }
+        .login-left { position: relative; width: 50%; padding: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; background: linear-gradient(145deg, #092747, #0752a0 65%, #0878d1); }
         .login-left::before, .login-left::after { content: ''; position: absolute; border-radius: 50%; background: rgba(255,255,255,.1); }
         .login-left::before { width: 220px; height: 220px; top: -80px; left: -80px; }
         .login-left::after { width: 280px; height: 280px; right: -100px; bottom: -130px; background: rgba(255,255,255,.08); }
@@ -27,14 +27,14 @@
         .input-group { margin-bottom: 16px; }
         .input-group label { display: block; margin-bottom: 8px; color: #444; font-size: 14px; font-weight: 600; }
         .input-box { position: relative; }
-        .input-box span { position: absolute; top: 50%; left: 16px; transform: translateY(-50%); color: #e83e8c; font-size: 18px; }
-        .input-box input { width: 100%; height: 52px; padding: 0 15px 0 46px; border: 1px solid #e5e5e5; border-radius: 12px; outline: none; font-size: 15px; transition: .3s; }
-        .input-box input:focus { border-color: #ed3f91; box-shadow: 0 0 0 4px rgba(237,63,145,.1); }
+        .input-box span { position: absolute; top: 50%; left: 16px; transform: translateY(-50%); color: #0878d1; font-size: 18px; }
+        .input-box input { width: 100%; height: 52px; padding: 0 15px 0 46px; border: 1px solid #e2e8f0; border-radius: 12px; outline: none; font-size: 15px; transition: .3s; }
+        .input-box input:focus { border-color: #0878d1; box-shadow: 0 0 0 4px rgba(8,120,209,.12); }
         .input-box input[readonly] { background: #fafafa; color: #666; }
-        .login-btn { width: 100%; height: 52px; border: 0; border-radius: 12px; color: white; background: linear-gradient(135deg, #d41468, #f2297d); font-size: 16px; font-weight: 700; box-shadow: 0 8px 20px rgba(212,20,104,.25); cursor: pointer; transition: .3s; }
-        .login-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(212,20,104,.35); }
-        .login-footer { margin-top: 22px; color: #888; font-size: 13px; text-align: center; }
-        .login-footer a, .forgot { color: #e83e8c; text-decoration: none; font-weight: 700; }
+        .login-btn { width: 100%; height: 52px; border: 0; border-radius: 12px; color: white; background: linear-gradient(100deg, #0878d1, #0752a0); font-size: 16px; font-weight: 700; box-shadow: 0 8px 18px rgba(8,120,209,.2); cursor: pointer; transition: .3s; }
+        .login-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(8,120,209,.28); }
+        .login-footer { margin-top: 22px; color: #758096; font-size: 13px; text-align: center; }
+        .login-footer a, .forgot { color: #0878d1; text-decoration: none; font-weight: 700; }
         .login-footer a:hover, .forgot:hover { text-decoration: underline; }
         .auth-links { display: flex; justify-content: space-between; margin-top: 18px; font-size: 13px; }
         .validation-message { min-height: 18px; color: #dc3545; font-size: 12px; }
@@ -46,9 +46,9 @@
 <body>
     <div class="login-wrapper">
         <div class="login-left">
-            <div class="brand"><img src="{{ asset('assets/img/logo.png') }}" alt="DevEngine Logo"></div>
-            <h2>Welcome Back!</h2>
-            <p>Login to your account and manage your dashboard, members and business activities easily.</p>
+            <div class="brand"><img src="{{ asset('site/img/logo.png') }}" alt="Delta Support"></div>
+            <h2>Delta Support</h2>
+            <p>Reset your member password and return to your account.</p>
         </div>
         <div class="login-right">
             @yield('content')

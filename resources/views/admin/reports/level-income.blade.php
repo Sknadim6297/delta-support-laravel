@@ -29,7 +29,6 @@
                        placeholder="Enter Member ID">
             </div>
 
-
             <!-- FROM DATE -->
             <div class="col-md-3 mb-3">
                 <label>From Date</label>
@@ -101,13 +100,31 @@
         </div>
         </form>
 
+        @isset($levelAccess)
+        <div class="rank-access-panel mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <strong>Level Commission Access</strong>
+                <span class="small text-muted">{{ $rankData['current_rank']?->name ?? 'Unranked' }} · {{ $rankData['unlocked_levels'] ?? 0 }} / 32 levels unlocked</span>
+            </div>
+            <div class="rank-level-grid">
+                @foreach ($levelAccess as $access)
+                    <span class="rank-level-badge {{ $access['unlocked'] ? 'level-unlocked' : 'level-locked' }}">
+                        <i class="bi {{ $access['unlocked'] ? 'bi-check-lg' : 'bi-lock' }}"></i>
+                        L{{ $access['level'] }}
+                    </span>
+                @endforeach
+            </div>
+            <p class="small text-muted mb-0 mt-2">Locked levels are not eligible for Level Commission.</p>
+        </div>
+        @endisset
+
           <div class="col-md-2 mb-3">
 
                 <div class="total-amount-box">
 
                     <span>Total Amount (USDT)</span>
 
-                    <strong>{{ $totalAmount }}</strong>
+                    <strong>{{ isset($totalAmount) ? (rtrim(rtrim(number_format((float) $totalAmount, 4, '.', ''), '0'), '.') ?: '0') : '0' }}</strong>
 
                 </div>
 
@@ -139,11 +156,11 @@
 
                     @forelse ($transactions as $transaction)
                         <tr>
-                            <td>{{ $transactions->firstItem() + $loop->index }}</td>
+                            <td>{{ $loop->iteration }}</td>
                             <td>{{ $transaction->member_id }}</td>
                             <td>{{ $transaction->member_name }}</td>
-                            <td>{{ rtrim(rtrim((string) $transaction->income_amount, '0'), '.') ?: '0' }}</td>
-                            <td>{{ rtrim(rtrim((string) $transaction->on_amount, '0'), '.') ?: '0' }}</td>
+                            <td>{{ rtrim(rtrim(number_format((float) $transaction->income_amount, 4, '.', ''), '0'), '.') ?: '0' }}</td>
+                            <td>{{ rtrim(rtrim(number_format((float) $transaction->on_amount, 4, '.', ''), '0'), '.') ?: '0' }}</td>
                             <td>{{ $transaction->from_member_id }}</td>
                             <td>{{ $transaction->level }}</td>
                             <td>{{ $transaction->created_at?->format('d-M-Y') }}</td>
@@ -166,7 +183,7 @@
 
             <nav>
 
-                {{ $transactions->links('pagination::bootstrap-5') }}
+                {{ $transactions->links('pagination::simple-bootstrap-5') }}
 
             </nav>
 

@@ -1,0 +1,25 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "../views/admin/**/*.blade.php";
+@source "../views/member/**/*.blade.php";
+@source "../views/components/**/*.blade.php";
+@source "../js/panel.js";
+
+@theme {
+    --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --color-brand-50: #eef6fd;
+    --color-brand-100: #d7ebfa;
+    --color-brand-500: #0878d1;
+    --color-brand-600: #0664b0;
+    --color-brand-700: #0752a0;
+    --color-navy-900: #092747;
+    --color-accent-500: #ff9c24;
+    --color-ink-500: #526174;
+}
+
+@layer components {
+    .ds-menu-panel {
+        @apply absolute right-0 z-50 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 text-sm shadow-lg;
+    }
+}

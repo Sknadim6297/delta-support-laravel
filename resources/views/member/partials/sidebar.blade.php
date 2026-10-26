@@ -1,6 +1,6 @@
 <aside id="desktopSidebar" class="sidebar desktop-sidebar">
     <div class="sidebar-logo">
-        <img src="{{ asset('assets/img/logo.png') }}" class="sidebar-logo-image" alt="Bright Stars">
+        <img src="{{ asset('site/img/logo.png') }}" class="sidebar-logo-image" alt="Delta Support">
     </div>
     <!-- give some alignment best visibility for the welcome message -->
      <div class="mb-2 fw-semibold text-center">Welcome</div>

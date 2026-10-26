@@ -1,6 +1,6 @@
 <aside id="desktopSidebar" class="sidebar desktop-sidebar">
     <div class="sidebar-logo">
-        <img src="{{ asset('assets/img/logo.png') }}" class="sidebar-logo-image" alt="DevEngine Logo">
+        <img src="{{ asset('site/img/logo.png') }}" class="sidebar-logo-image" alt="Delta Support">
     </div>
 
     <div class="sidebar-menu">

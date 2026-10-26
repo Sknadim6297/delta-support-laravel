@@ -31,6 +31,27 @@ class ReportSummaryService
         return bcadd((string) $query->sum('total_income_amount'), '0', 4);
     }
 
+    public function roiReportTransactionCount(?string $memberSearch = null, ?int $fromDateKey = null, ?int $toDateKey = null): ?string
+    {
+        $generationId = $this->activeGenerationId();
+        if ($generationId === null) {
+            return null;
+        }
+
+        $table = $memberSearch !== null && $memberSearch !== ''
+            ? 'roi_report_member_daily_summaries'
+            : 'roi_report_global_daily_summaries';
+        $query = DB::table($table)->where('generation_id', $generationId);
+
+        if ($memberSearch !== null && $memberSearch !== '') {
+            $query->where('member_id', 'like', '%' . $memberSearch . '%');
+        }
+
+        $this->applyDateKeys($query, $fromDateKey, $toDateKey);
+
+        return (string) $query->sum('transaction_count');
+    }
+
     public function levelCommissionReportTotal(
         ?string $memberSearch = null,
         ?int $level = null,
@@ -62,6 +83,39 @@ class ReportSummaryService
         $this->applyDateKeys($query, $fromDateKey, $toDateKey);
 
         return bcadd((string) $query->sum('total_income_amount'), '0', 4);
+    }
+
+    public function levelCommissionReportTransactionCount(
+        ?string $memberSearch = null,
+        ?int $level = null,
+        ?int $fromDateKey = null,
+        ?int $toDateKey = null,
+    ): ?string {
+        $generationId = $this->activeGenerationId();
+        if ($generationId === null) {
+            return null;
+        }
+
+        if ($memberSearch !== null && $memberSearch !== '') {
+            $table = 'level_commission_report_member_level_daily_summaries';
+        } elseif ($level !== null) {
+            $table = 'level_commission_report_level_daily_summaries';
+        } else {
+            $table = 'level_commission_report_global_daily_summaries';
+        }
+
+        $query = DB::table($table)->where('generation_id', $generationId);
+
+        if ($memberSearch !== null && $memberSearch !== '') {
+            $query->where('member_id', 'like', '%' . $memberSearch . '%');
+        }
+        if ($level !== null) {
+            $query->where('level', $level);
+        }
+
+        $this->applyDateKeys($query, $fromDateKey, $toDateKey);
+
+        return (string) $query->sum('transaction_count');
     }
 
     public function addRoiTransaction(RoiTransaction $transaction): void
@@ -303,11 +357,39 @@ class ReportSummaryService
 
     public function activeGenerationId(): ?int
     {
-        $generationId = DB::table('report_summary_state')
+        $state = DB::table('report_summary_state')
             ->where('id', 1)
-            ->value('active_generation_id');
+            ->first(['active_generation_id', 'writes_enabled', 'rebuild_in_progress']);
 
-        return $generationId === null ? null : (int) $generationId;
+        if (
+            ! $state
+            || $state->active_generation_id === null
+            || ! $state->writes_enabled
+            || $state->rebuild_in_progress
+        ) {
+            return null;
+        }
+
+        $generation = DB::table('report_summary_generations')
+            ->where('id', $state->active_generation_id)
+            ->where('status', 'active')
+            ->whereNotNull('validated_at')
+            ->first(['source_timezone']);
+
+        if (! $generation) {
+            return null;
+        }
+
+        if (DB::connection()->getDriverName() === 'mysql') {
+            $timezone = DB::selectOne('SELECT @@session.time_zone AS session_timezone, @@system_time_zone AS system_timezone');
+            $currentTimezone = ($timezone->session_timezone ?? 'UNKNOWN') . '/' . ($timezone->system_timezone ?? 'UNKNOWN');
+
+            if ($generation->source_timezone !== $currentTimezone) {
+                return null;
+            }
+        }
+
+        return (int) $state->active_generation_id;
     }
 
     private function writableGenerationId(): ?int

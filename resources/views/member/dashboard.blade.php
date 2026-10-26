@@ -9,7 +9,7 @@
                 <div class="card-body-custom">
                     <h2 class="dashboard-title">Welcome back, {{ $member->member_name }}!</h2>
                     <div class="dashboard-subtitle">{{ $member->member_id }} · Member Dashboard</div>
-                    <p class="mb-0 mt-3">Invest any amount from 25 USDT to unlimited and start earning daily ROI.</p>
+                    <p class="mb-0 mt-3">Sponsor ID: {{ $member->sponsor_id }}</p>
                 </div>
             </div>
         </div>
@@ -126,6 +126,6 @@
             </div>
         </div>
 
-        <div class="col-12 text-center small text-muted">© {{ date('Y') }} Bright Stars. All rights reserved.</div>
+        <div class="col-12 text-center small text-muted">© {{ date('Y') }} Delta Support. All rights reserved.</div>
     </div>
 @endsection

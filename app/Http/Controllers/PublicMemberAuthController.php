@@ -21,7 +21,7 @@ class PublicMemberAuthController extends Controller
 
     public function register(): View
     {
-        return view('auth.register', [
+        return view('public.auth.register', [
             'generatedMemberId' => $this->generateMemberId(),
         ]);
     }
