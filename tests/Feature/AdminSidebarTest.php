@@ -16,6 +16,8 @@ class AdminSidebarTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSeeText('All Members')
+            ->assertSeeText('Add Member')
+            ->assertSee(route('admin.members.registration'), false)
             ->assertSeeText('Package Purchases')
             ->assertSeeText('Pending Payments')
             ->assertSeeText('All Invoices')

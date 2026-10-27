@@ -9,7 +9,7 @@ use App\Models\RankAchievement;
 use App\Models\RoiTransaction;
 use App\Services\RankService;
 use App\Services\ReportSummaryService;
-use Carbon\CarbonImmutable;
+use App\Support\QueryDate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -326,12 +326,12 @@ class ReportController extends Controller
             }
         }
 
-        if ($request->filled('from_date')) {
-            $query->where('achieved_at', '>=', CarbonImmutable::parse($request->query('from_date'))->startOfDay());
+        if ($from = QueryDate::day($request->query('from_date'))) {
+            $query->where('achieved_at', '>=', $from);
         }
 
-        if ($request->filled('to_date')) {
-            $query->where('achieved_at', '<', CarbonImmutable::parse($request->query('to_date'))->addDay()->startOfDay());
+        if ($to = QueryDate::day($request->query('to_date'))) {
+            $query->where('achieved_at', '<', $to->addDay());
         }
 
         return $query;
@@ -344,12 +344,12 @@ class ReportController extends Controller
             $query->where('member_id', 'like', '%' . $memberId . '%');
         }
 
-        if ($request->filled('from_date')) {
-            $query->where('created_at', '>=', CarbonImmutable::parse($request->query('from_date'))->startOfDay());
+        if ($from = QueryDate::day($request->query('from_date'))) {
+            $query->where('created_at', '>=', $from);
         }
 
-        if ($request->filled('to_date')) {
-            $query->where('created_at', '<', CarbonImmutable::parse($request->query('to_date'))->addDay()->startOfDay());
+        if ($to = QueryDate::day($request->query('to_date'))) {
+            $query->where('created_at', '<', $to->addDay());
         }
     }
 
@@ -360,9 +360,7 @@ class ReportController extends Controller
 
     protected function dateKey(Request $request, string $field): ?int
     {
-        return $request->filled($field)
-            ? (int) CarbonImmutable::parse($request->query($field))->format('Ymd')
-            : null;
+        return QueryDate::key($request->query($field));
     }
 
     protected function formatDecimalAmount($amount): string

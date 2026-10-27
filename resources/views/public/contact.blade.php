@@ -193,7 +193,7 @@
                   </div>
 
                   <div class="md:col-span-2">
-                    <button type="submit" class="btn-main w-100 py-3">
+                    <button type="submit" class="btn-main w-full py-3">
                       Send Enquiry <i class="bi bi-send"></i>
                     </button>
 

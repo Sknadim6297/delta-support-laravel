@@ -11,7 +11,7 @@
 
             <div class="row g-4">
                 <div class="col-12 col-xl-6">
-                    <div class="dashboard-card h-100">
+                    <div class="dashboard-card h-full">
                         <div class="card-body-custom">
                             <span class="stat-label">Current Rank</span>
                             <h2 class="dashboard-title mt-2">{{ $rankData['current_rank']?->name ?? 'Unranked' }}</h2>
@@ -26,7 +26,7 @@
                 </div>
 
                 <div class="col-12 col-xl-6">
-                    <div class="dashboard-card h-100">
+                    <div class="dashboard-card h-full">
                         <div class="card-body-custom">
                             <span class="stat-label">Next Rank</span>
                             <h2 class="dashboard-title mt-2">{{ $rankData['next_rank']?->name ?? 'Maximum Rank Achieved' }}</h2>

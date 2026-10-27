@@ -42,6 +42,7 @@
                 src="img/business-1.jpg"
                 alt="Travel and tourism"
                 loading="lazy"
+                onerror="this.remove()"
               />
               <div class="business-image-content">
                 <i class="bi bi-airplane-engines"></i>
@@ -58,6 +59,7 @@
                 src="img/business-2.jpg"
                 alt="Hotel management"
                 loading="lazy"
+                onerror="this.remove()"
               />
               <div class="business-image-content">
                 <i class="bi bi-building"></i>
@@ -74,6 +76,7 @@
                 src="img/business-3.jpg"
                 alt="Transport services"
                 loading="lazy"
+                onerror="this.remove()"
               />
               <div class="business-image-content">
                 <i class="bi bi-car-front"></i>
@@ -90,6 +93,7 @@
                 src="img/business-4.jpg"
                 alt="Business and technology"
                 loading="lazy"
+                onerror="this.remove()"
               />
               <div class="business-image-content">
                 <i class="bi bi-graph-up-arrow"></i>
@@ -106,6 +110,7 @@
                 src="img/business-5.jpg"
                 alt="Travel destinations"
                 loading="lazy"
+                onerror="this.remove()"
               />
               <div class="business-image-content">
                 <i class="bi bi-globe-asia-australia"></i>
@@ -122,6 +127,7 @@
                 src="img/business-6.jpg"
                 alt="Customer support"
                 loading="lazy"
+                onerror="this.remove()"
               />
               <div class="business-image-content">
                 <i class="bi bi-headset"></i>
@@ -138,6 +144,7 @@
                 src="img/business-7.jpg"
                 alt="Business networking"
                 loading="lazy"
+                onerror="this.remove()"
               />
               <div class="business-image-content">
                 <i class="bi bi-people"></i>
@@ -154,6 +161,7 @@
                 src="img/business-8.jpg"
                 alt="Business opportunities"
                 loading="lazy"
+                onerror="this.remove()"
               />
               <div class="business-image-content">
                 <i class="bi bi-lightbulb"></i>

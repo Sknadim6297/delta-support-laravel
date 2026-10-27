@@ -10,7 +10,7 @@ use App\Models\RankAchievement;
 use App\Models\RoiTransaction;
 use App\Services\RankService;
 use App\Services\ReportSummaryService;
-use Carbon\CarbonImmutable;
+use App\Support\QueryDate;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
@@ -171,12 +171,12 @@ class ReportController extends Controller
             }
         }
 
-        if ($request->filled('from_date')) {
-            $query->whereDate('achieved_at', '>=', $request->query('from_date'));
+        if ($from = QueryDate::day($request->query('from_date'))) {
+            $query->whereDate('achieved_at', '>=', $from->toDateString());
         }
 
-        if ($request->filled('to_date')) {
-            $query->whereDate('achieved_at', '<=', $request->query('to_date'));
+        if ($to = QueryDate::day($request->query('to_date'))) {
+            $query->whereDate('achieved_at', '<=', $to->toDateString());
         }
 
         return $query;
@@ -184,20 +184,18 @@ class ReportController extends Controller
 
     private function applyDateFilters($query, Request $request): void
     {
-        if ($request->filled('from_date')) {
-            $query->whereDate('created_at', '>=', $request->query('from_date'));
+        if ($from = QueryDate::day($request->query('from_date'))) {
+            $query->whereDate('created_at', '>=', $from->toDateString());
         }
 
-        if ($request->filled('to_date')) {
-            $query->whereDate('created_at', '<=', $request->query('to_date'));
+        if ($to = QueryDate::day($request->query('to_date'))) {
+            $query->whereDate('created_at', '<=', $to->toDateString());
         }
     }
 
     private function dateKey(Request $request, string $field): ?int
     {
-        return $request->filled($field)
-            ? (int) CarbonImmutable::parse($request->query($field))->format('Ymd')
-            : null;
+        return QueryDate::key($request->query($field));
     }
 
     private function currentMember(Request $request): Member

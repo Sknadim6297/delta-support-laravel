@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Support\QueryDate;
 use App\Support\SimplePdf;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -66,8 +67,6 @@ class InvoiceController extends Controller
 
     private function queryDate(Request $request, string $key): ?string
     {
-        $value = trim((string) $request->query($key, ''));
-
-        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 ? $value : null;
+        return QueryDate::day($request->query($key))?->toDateString();
     }
 }

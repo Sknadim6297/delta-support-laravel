@@ -34,14 +34,14 @@
                 </div>
 
                 <div class="col-md-2 mb-3 mb-md-0">
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-primary w-full">
                         <i class="bi bi-search"></i>
                         Search
                     </button>
                 </div>
 
                 <div class="col-md-2">
-                    <button type="button" class="btn btn-success w-100" onclick="window.location.href='{{ route('admin.members.export', ['status' => 'active']) }}?' + new URLSearchParams(new FormData(this.form)).toString()">
+                    <button type="button" class="btn btn-success w-full" onclick="window.location.href='{{ route('admin.members.export', ['status' => 'active']) }}?' + new URLSearchParams(new FormData(this.form)).toString()">
                         <i class="bi bi-file-earmark-excel"></i>
                         Export Excel
                     </button>

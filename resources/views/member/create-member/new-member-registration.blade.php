@@ -11,7 +11,7 @@
                 @csrf
 
                 <div class="form-title">
-                    <h4> New Member Registration</h4>
+                    <h4>Register New Member</h4>
                 </div>
 
                 <div class="row">
@@ -30,7 +30,7 @@
 
                     <div class="col-md-6 mb-3">
                         <label>Sponsor ID <span class="text-danger">*</span></label>
-                        <input type="text" name="sponsor_id" class="form-control" placeholder="Enter Sponsor ID" value="{{ old('sponsor_id', $default_sponsor_id ?? 'ST666666') }}" required data-member-autocomplete autocomplete="off">
+                        <input type="text" name="sponsor_id" class="form-control" value="{{ $default_sponsor_id }}" readonly required>
                         <div class="text-danger mt-1 small validation-message" data-error-for="sponsor_id">
                             @error('sponsor_id'){{ $message }}@enderror
                         </div>
@@ -38,7 +38,7 @@
 
                     <div class="col-md-6 mb-3">
                         <label>Sponsor Name</label>
-                        <input type="text" name="sponsor_name" class="form-control" placeholder="Sponsor Name will auto-fill" value="{{ old('sponsor_name', $default_sponsor_name ?? '') }}" readonly>
+                        <input type="text" name="sponsor_name" class="form-control" value="{{ $default_sponsor_name }}" readonly>
                         <div class="text-danger mt-1 small validation-message" data-error-for="sponsor_name">
                             @error('sponsor_name'){{ $message }}@enderror
                         </div>
@@ -81,8 +81,8 @@
         const registrationForm = document.querySelector('form');
         let sponsorValidationTimer = null;
         const touchedFields = new Set();
-        let sponsorIdValid = false;
-        let validatedSponsorId = '';
+        let sponsorIdValid = true;
+        let validatedSponsorId = (sponsorIdInput?.value || '').trim().toUpperCase();
 
         function setError(fieldName, message = '') {
             const target = document.querySelector('[data-error-for="' + fieldName + '"]');

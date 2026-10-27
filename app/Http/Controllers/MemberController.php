@@ -7,6 +7,7 @@ use App\Models\Investment;
 use App\Models\InvestmentWithdrawal;
 use App\Models\LevelCommissionTransaction;
 use App\Models\RoiTransaction;
+use App\Services\MemberRegistrationService;
 use App\Services\RankService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -408,7 +409,9 @@ class MemberController extends Controller
             'email' => $member
                 ? ['required', 'email', Rule::unique('members', 'email')->ignore($member->id)]
                 : ['required', 'email', 'unique:members,email'],
-            'password' => ['nullable', 'string', 'min:6'],
+            'password' => $member
+                ? ['nullable', 'string', 'min:6']
+                : ['nullable', 'string', 'min:6', 'confirmed'],
         ];
     }
 
@@ -428,6 +431,10 @@ class MemberController extends Controller
             ], 404);
         }
 
+        $approvedPackage = $member->packagePurchases()
+            ->where('status', \App\Models\PackagePurchase::APPROVED)
+            ->exists();
+
         return response()->json([
             'member_id' => $member->member_id,
             'sponsor_id' => $member->sponsor_id,
@@ -437,6 +444,10 @@ class MemberController extends Controller
             'mobile' => $member->mobile_no,
             'pan_card_no' => $member->pan_card_no,
             'email' => $member->email,
+            'account_status' => $member->status,
+            'registered_at' => $member->created_at?->format('d M Y'),
+            'direct_referrals' => $member->sponsoredMembers()->count(),
+            'package_status' => $approvedPackage ? 'Approved package' : 'Unpaid',
         ]);
     }
 
@@ -511,57 +522,18 @@ class MemberController extends Controller
 
     public function store(Request $request)
     {
-        $generatedMemberId = trim((string) $request->input('generated_member_id', ''));
-
-        if ($generatedMemberId === '') {
-            $generatedMemberId = $this->generateMemberId();
-        }
-
         $validated = $request->validate($this->memberValidationRules());
 
-        if (mb_strlen(trim((string) $validated['pan_card_no'])) !== 10) {
-            return back()->withErrors(['pan_card_no' => 'PAN Card Number must be exactly 10 characters.'])->withInput();
-        }
-
-        $validated['pan_card_no'] = strtoupper(trim((string) $validated['pan_card_no']));
-
-        $panCount = Member::whereRaw('UPPER(pan_card_no) = ?', [$validated['pan_card_no']])->count();
-
-        if ($panCount >= 3) {
-            return back()->withErrors(['pan_card_no' => 'This PAN card number has already been used 3 times.'])->withInput();
-        }
-
-        $mobileNoValue = trim((string) $validated['mobile_no']);
-        $mobileCount = Member::where('mobile_no', $mobileNoValue)->count();
-
-        if ($mobileCount >= 3) {
-            return back()->withErrors(['mobile_no' => 'This mobile number has already been used 3 times.'])->withInput();
-        }
-
-        $sponsorDetails = $this->resolveSponsorDetails($request);
-
-        $memberData = [
-            'member_id' => $generatedMemberId,
-            'sponsor_id' => $sponsorDetails['sponsor_id'],
-            'sponsor_name' => $sponsorDetails['sponsor_name'],
-            'member_name' => $validated['member_name'],
-            'wallet_address' => $validated['wallet_address'] ?? null,
-            'mobile_no' => $validated['mobile_no'],
-            'pan_card_no' => $validated['pan_card_no'],
-            'email' => $validated['email'],
-            'status' => 'inactive',
-        ];
-
-        if (! empty($validated['password'])) {
-            $memberData['password'] = bcrypt($validated['password']);
-        }
-
-        $member = Member::create($memberData);
+        $result = app(MemberRegistrationService::class)->register($validated, [
+            'require_pan' => true,
+            'allow_admin_sponsor' => true,
+            'blank_sponsor_uses_admin' => true,
+        ]);
 
         $request->session()->forget('generated_member_id');
 
         return redirect()->route('admin.members.registration')
-            ->with('success', 'Member registration submitted successfully. Member ID: ' . $member->member_id);
+            ->with('success', 'Member registration submitted successfully. Member ID: ' . $result['member']->member_id);
     }
 
     public function updateMember(Request $request)

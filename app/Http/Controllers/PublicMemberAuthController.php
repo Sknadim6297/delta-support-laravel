@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use App\Mail\MemberPasswordOtpMail;
 use App\Mail\MemberWelcomeMail;
 use App\Models\Member;
+use App\Services\MemberRegistrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class PublicMemberAuthController extends Controller
@@ -22,7 +22,7 @@ class PublicMemberAuthController extends Controller
     public function register(): View
     {
         return view('public.auth.register', [
-            'generatedMemberId' => $this->generateMemberId(),
+            'generatedMemberId' => app(MemberRegistrationService::class)->previewMemberId(),
         ]);
     }
 
@@ -63,37 +63,12 @@ class PublicMemberAuthController extends Controller
             'email' => ['required', 'email', 'unique:members,email'],
         ]);
 
-        if (Member::where('mobile_no', $validated['mobile_no'])->count() >= 3) {
-            return back()->withErrors([
-                'mobile_no' => 'This mobile number has already been used 3 times.',
-            ])->withInput();
-        }
-
-        $sponsor = $validated['sponsor_id'] === 'ST666666'
-            ? null
-            : Member::where('member_id', $validated['sponsor_id'])->first();
-
-        if ($validated['sponsor_id'] !== 'ST666666' && ! $sponsor) {
-            return back()->withErrors([
-                'sponsor_id' => 'Invalid Sponsor ID.',
-            ])->withInput();
-        }
-
-        $sponsorName = $sponsor?->member_name ?? 'Admin';
-        $temporaryPassword = $this->temporaryPassword();
-
-        $member = DB::transaction(function () use ($validated, $sponsorName, $temporaryPassword) {
-            return Member::create([
-                'member_id' => $this->generateMemberId(),
-                'sponsor_id' => $validated['sponsor_id'],
-                'sponsor_name' => $sponsorName,
-                'member_name' => $validated['member_name'],
-                'mobile_no' => $validated['mobile_no'],
-                'email' => $validated['email'],
-                'password' => Hash::make($temporaryPassword),
-                'status' => 'inactive',
-            ]);
-        });
+        $result = app(MemberRegistrationService::class)->register($validated, [
+            'allow_admin_sponsor' => true,
+            'generate_password' => true,
+        ]);
+        $member = $result['member'];
+        $temporaryPassword = $result['temporary_password'];
 
         Mail::to($member->email)->send(new MemberWelcomeMail(
             $member->member_id,
@@ -224,24 +199,6 @@ class PublicMemberAuthController extends Controller
         ]);
 
         return redirect()->route('login')->with('success', 'Password reset successfully.');
-    }
-
-    private function generateMemberId(): string
-    {
-        for ($counter = 100000; $counter <= 999999; $counter++) {
-            $candidate = 'ST' . $counter;
-
-            if (! Member::where('member_id', $candidate)->exists()) {
-                return $candidate;
-            }
-        }
-
-        throw new \RuntimeException('No available Member ID found.');
-    }
-
-    private function temporaryPassword(): string
-    {
-        return Str::random(12);
     }
 
     private function issueOtp(Request $request, Member $member): void

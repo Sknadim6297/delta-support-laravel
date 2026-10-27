@@ -27,6 +27,8 @@ class MemberSidebarTest extends TestCase
             ->get(route('member.dashboard'))
             ->assertOk()
             ->assertSeeText('My Referral Link')
+            ->assertSeeText('Register New Member')
+            ->assertSee(route('member.registration'), false)
             ->assertSeeText('Referral Tree')
             ->assertSee('member/genealogy/tree-view', false)
             ->assertSee('member/coming-soon/my-rewards', false)

@@ -23,8 +23,9 @@
                 <x-nav.link :href="route('member.change-password')" :active="request()->routeIs('member.change-password*')">Account Security</x-nav.link>
             </x-nav.group>
 
-            <x-nav.group label="My Network" icon="network" :open="request()->routeIs('member.referral', 'member.team.*', 'member.genealogy.*')">
+            <x-nav.group label="My Network" icon="network" :open="request()->routeIs('member.referral', 'member.registration*', 'member.team.*', 'member.genealogy.*')">
                 <x-nav.link :href="route('member.referral')" :active="request()->routeIs('member.referral')">My Referral Link</x-nav.link>
+                <x-nav.link :href="route('member.registration')" :active="request()->routeIs('member.registration*')">Register New Member</x-nav.link>
                 <x-nav.link :href="route('member.team.direct')" :active="request()->routeIs('member.team.direct')">Direct Members</x-nav.link>
                 <x-nav.link :href="route('member.team.whole')" :active="request()->routeIs('member.team.whole')">Team Overview</x-nav.link>
                 <x-nav.link :href="route('member.genealogy.tree-view')" :active="request()->routeIs('member.genealogy.tree-view')">Referral Tree</x-nav.link>

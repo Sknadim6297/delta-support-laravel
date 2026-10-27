@@ -5,7 +5,7 @@
                 <button class="header-toggle border-0" id="sidebarToggle" type="button" aria-label="Toggle navigation" aria-controls="dsSidebar" aria-expanded="false">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <div class="header-searchbar w-100">
+                <div class="header-searchbar w-full">
                     <form class="mx-sm-3 app-form app-icon-form" action="#" onsubmit="return false;">
                         <div class="position-relative">
                             <input aria-label="Search menu" class="form-control" data-menu-search placeholder="Search menu..." type="search">

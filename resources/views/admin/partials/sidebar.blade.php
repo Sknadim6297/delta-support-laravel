@@ -20,6 +20,7 @@
 
             <x-nav.group label="Member Management" icon="users" :open="request()->routeIs('admin.members.*', 'admin.genealogy.tree-view')">
                 <x-nav.link :href="route('admin.members.directory')" :active="request()->routeIs('admin.members.directory')">All Members</x-nav.link>
+                <x-nav.link :href="route('admin.members.registration')" :active="request()->routeIs('admin.members.registration')">Add Member</x-nav.link>
                 <x-nav.link :href="route('admin.members.update')" :active="request()->routeIs('admin.members.update')">Member Details</x-nav.link>
                 <x-nav.link :href="route('admin.genealogy.tree-view')" :active="request()->routeIs('admin.genealogy.tree-view')">Referral Tree</x-nav.link>
             </x-nav.group>

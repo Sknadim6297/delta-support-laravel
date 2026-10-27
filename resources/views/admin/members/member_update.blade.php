@@ -15,6 +15,13 @@
                 <div class="alert alert-success">{{ session('success') }}</div>
             @endif
 
+            <div id="memberSummary" class="row mb-4" hidden>
+                <div class="col-md-3 mb-2"><label>Account status</label><div id="summaryStatus" class="fw-semibold"></div></div>
+                <div class="col-md-3 mb-2"><label>Registration date</label><div id="summaryRegistered" class="fw-semibold"></div></div>
+                <div class="col-md-3 mb-2"><label>Package status</label><div id="summaryPackage" class="fw-semibold"></div></div>
+                <div class="col-md-3 mb-2"><label>Direct referrals</label><div id="summaryReferrals" class="fw-semibold"></div></div>
+            </div>
+
             <!-- MEMBER ID SEARCH -->
             <div class="row align-items-end mb-4">
 
@@ -24,7 +31,7 @@
                         id="memberId"
                         name="member_id"
                         form="memberUpdateForm"
-                        value="{{ old('member_id') }}"
+                        value="{{ old('member_id', request('member_id')) }}"
                         class="form-control"
                         placeholder="Enter Member ID">
                 </div>
@@ -380,6 +387,10 @@
             setError('email');
             setError('pan_card_no');
             setError('password');
+            const summary = document.getElementById('memberSummary');
+            if (summary) {
+                summary.hidden = true;
+            }
         }
 
         function showMemberError(message) {
@@ -503,6 +514,14 @@
                     fields.password.value = '';
                     fetchedMemberId = member.member_id;
                     sponsorIdValid = true;
+                    const summary = document.getElementById('memberSummary');
+                    if (summary) {
+                        summary.hidden = false;
+                        document.getElementById('summaryStatus').textContent = member.account_status || '';
+                        document.getElementById('summaryRegistered').textContent = member.registered_at || '';
+                        document.getElementById('summaryPackage').textContent = member.package_status || '';
+                        document.getElementById('summaryReferrals').textContent = String(member.direct_referrals ?? 0);
+                    }
                 })
                 .catch(function (error) {
                     fetchedMemberId = null;
@@ -541,5 +560,9 @@
                 }
             }
         });
+
+        if ((memberIdInput?.value || '').trim() !== '') {
+            fetchMemberDetailsButton.click();
+        }
     </script>
 @endsection

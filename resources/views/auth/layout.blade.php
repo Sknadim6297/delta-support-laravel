@@ -6,10 +6,10 @@
     <title>@yield('title', 'Delta Support')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center; font-family: 'DM Sans', sans-serif; background: #f3f6fc; color: #172033; }
+        body { margin: 0; min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center; font-family: Inter, sans-serif; background: #f3f6fc; color: #172033; }
         .login-wrapper { width: 100%; max-width: 950px; min-height: 570px; display: flex; overflow: hidden; background: #fff; border-radius: 24px; box-shadow: 0 25px 70px rgba(30,55,100,.12); }
         .login-left { position: relative; width: 50%; padding: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; background: linear-gradient(145deg, #092747, #0752a0 65%, #0878d1); }
         .login-left::before, .login-left::after { content: ''; position: absolute; border-radius: 50%; background: rgba(255,255,255,.1); }

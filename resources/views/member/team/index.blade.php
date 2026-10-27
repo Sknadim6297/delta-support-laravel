@@ -30,12 +30,12 @@
                     <input type="text" name="member_name" value="{{ $memberName }}" class="form-control" placeholder="Enter Member Name">
                 </div>
                 <div class="col-md-2 mb-3 mb-md-0">
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-primary w-full">
                         <i class="bi bi-search"></i> Search
                     </button>
                 </div>
                 <div class="col-md-2">
-                    <a href="{{ $view === 'direct' ? route('member.team.direct') : route('member.team.whole') }}" class="btn btn-outline-secondary w-100">Clear</a>
+                    <a href="{{ $view === 'direct' ? route('member.team.direct') : route('member.team.whole') }}" class="btn btn-outline-secondary w-full">Clear</a>
                 </div>
             </form>
 

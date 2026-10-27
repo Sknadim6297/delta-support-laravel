@@ -18,7 +18,10 @@ class MemberDirectoryController extends Controller
                 $query->where(function ($inner) use ($term): void {
                     $inner->where('member_id', 'like', $term)
                         ->orWhere('member_name', 'like', $term)
-                        ->orWhere('email', 'like', $term);
+                        ->orWhere('email', 'like', $term)
+                        ->orWhere('mobile_no', 'like', $term)
+                        ->orWhere('sponsor_id', 'like', $term)
+                        ->orWhere('sponsor_name', 'like', $term);
                 });
             })
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->query('status')))

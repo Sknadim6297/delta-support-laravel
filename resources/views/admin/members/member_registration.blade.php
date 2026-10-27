@@ -11,7 +11,7 @@
                 @csrf
 
                 <div class="form-title">
-                    <h4>Member Registration</h4>
+                    <h4>Add Member</h4>
                 </div>
 
                 <div class="row">
@@ -68,12 +68,30 @@
                             @error('pan_card_no'){{ $message }}@enderror
                         </div>
                     </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label>Wallet Address</label>
+                        <input type="text" name="wallet_address" class="form-control" placeholder="Optional wallet address" value="{{ old('wallet_address') }}">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label>Password</label>
+                        <input type="password" name="password" class="form-control" placeholder="Optional password" autocomplete="new-password">
+                        <div class="text-danger mt-1 small validation-message" data-error-for="password">
+                            @error('password'){{ $message }}@enderror
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label>Confirm Password</label>
+                        <input type="password" name="password_confirmation" class="form-control" placeholder="Confirm password" autocomplete="new-password">
+                    </div>
                 </div>
 
                 <div class="text-end mt-3">
                     <button type="submit" class="btn btn-primary px-4">
-                        <i class="bi bi-search"></i>
-                        Submit
+                        <i class="bi bi-person-plus"></i>
+                        Add Member
                     </button>
                 </div>
             </form>
