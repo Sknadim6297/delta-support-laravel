@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\EnsureLegacyFinancialActionsEnabled;
 use App\Http\Middleware\EnsureMemberContext;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\SecurityHeaders;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
             'member.context' => EnsureMemberContext::class,
+            'legacy.financial' => EnsureLegacyFinancialActionsEnabled::class,
         ]);
         $middleware->append(SecurityHeaders::class);
     })

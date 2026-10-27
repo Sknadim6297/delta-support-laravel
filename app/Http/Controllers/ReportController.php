@@ -2,36 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Responses\ReadableStreamedResponse;
 use App\Models\LevelCommissionTransaction;
 use App\Models\Member;
 use App\Models\RankAchievement;
 use App\Models\RoiTransaction;
 use App\Services\RankService;
 use App\Services\ReportSummaryService;
-use App\Services\ReportTransactionCursorPaginator;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
-    public function roiReport(
-        Request $request,
-        ReportTransactionCursorPaginator $paginator,
-        ReportSummaryService $summaryService,
-    )
+    public function roiReport(Request $request, ReportSummaryService $summaryService)
     {
         $query = $this->roiQuery($request);
-        $transactions = $paginator->paginate(
-            $query->select(['id', 'member_id', 'member_name', 'investment_id', 'income_amount', 'on_amount', 'created_at']),
-            $request,
-            30
-        );
         $totalAmount = $summaryService->roiReportTotal(
             $this->memberSearch($request),
             $this->dateKey($request, 'from_date'),
             $this->dateKey($request, 'to_date'),
         ) ?? (string) (clone $query)->sum('income_amount');
+        $totalAmount = $this->formatDecimalAmount($totalAmount);
+        $transactions = $query->latest()->paginate(10)->withQueryString();
 
         return view('admin.reports.roi-report', [
             'transactions' => $transactions,
@@ -99,31 +92,34 @@ class ReportController extends Controller
         ]);
     }
 
-    public function levelIncomeReport(Request $request, ReportTransactionCursorPaginator $paginator, ReportSummaryService $summaryService)
+    public function levelIncomeReport(Request $request, ReportSummaryService $summaryService)
     {
         $query = $this->levelIncomeQuery($request);
-        $perPage = max(1, min(100, (int) $request->query('per_page', 30)));
-        $transactions = $paginator->paginate(
-            $query->select(['id', 'member_id', 'member_name', 'from_member_id', 'level', 'income_amount', 'on_amount', 'created_at']),
-            $request,
-            $perPage
-        );
+        $level = $request->filled('level') ? (int) $request->query('level') : null;
+        $totalAmount = $summaryService->levelCommissionReportTotal(
+            $this->memberSearch($request),
+            $level,
+            $this->dateKey($request, 'from_date'),
+            $this->dateKey($request, 'to_date'),
+        ) ?? (string) (clone $query)->sum('income_amount');
+        $totalAmount = $this->formatDecimalAmount($totalAmount);
+        $perPage = max(1, min(100, (int) $request->query('per_page', 50)));
+        $transactions = $query
+            ->select(['id', 'reference', 'member_id', 'member_name', 'from_member_id', 'level', 'income_amount', 'on_amount', 'created_at'])
+            ->latest('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
         $levels = LevelCommissionTransaction::query()
             ->whereNotNull('level')
             ->distinct()
             ->orderBy('level')
             ->pluck('level');
-        $totalAmount = $summaryService->levelCommissionReportTotal(
-            $this->memberSearch($request),
-            $request->filled('level') ? (int) $request->query('level') : null,
-            $this->dateKey($request, 'from_date'),
-            $this->dateKey($request, 'to_date'),
-        ) ?? (string) $this->levelIncomeQuery($request)->sum('income_amount');
 
         return view('admin.reports.level-income', [
             'transactions' => $transactions,
+            'totalAmount' => $totalAmount,
             'levels' => $levels,
-            'totalAmount' => $this->formatDecimalAmount($totalAmount),
         ]);
     }
 
@@ -168,13 +164,13 @@ class ReportController extends Controller
     public function exportLevelIncomeReport(Request $request)
     {
         $transactions = $this->levelIncomeQuery($request)
-            ->select(['id', 'member_id', 'member_name', 'from_member_id', 'level', 'income_amount', 'on_amount', 'created_at'])
+            ->select(['id', 'reference', 'member_id', 'member_name', 'from_member_id', 'level', 'income_amount', 'on_amount', 'created_at'])
             ->latest('created_at')
             ->orderByDesc('id');
 
-        return response()->streamDownload(function () use ($transactions) {
-            $output = fopen('php://output', 'w');
-            fputcsv($output, ['Serial No', 'Member ID', 'Name', 'Income Amount (USDT)', 'On Amount (USDT)', 'From Member ID', 'From Level', 'Date']);
+        return new ReadableStreamedResponse(function () use ($transactions) {
+            $output = fopen('php://temp', 'r+');
+            fputcsv($output, ['Serial No', 'Reference', 'Member ID', 'Name', 'Income Amount (USDT)', 'On Amount (USDT)', 'From Member ID', 'From Level', 'Date']);
 
             $serial = 0;
             $lastCreatedAt = null;
@@ -197,6 +193,7 @@ class ReportController extends Controller
                 foreach ($batch as $transaction) {
                     fputcsv($output, [
                         ++$serial,
+                        $transaction->reference,
                         $transaction->member_id,
                         $transaction->member_name,
                         $this->formatUsdt($transaction->income_amount),
@@ -211,10 +208,12 @@ class ReportController extends Controller
                 }
             } while ($batch->count() === 1000);
 
+            rewind($output);
+            $csv = stream_get_contents($output);
             fclose($output);
-        }, 'level-commission-report-' . now()->format('Y-m-d') . '.csv', [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+
+            return $csv === false ? '' : $csv;
+        }, 'level-commission-report-' . now()->format('Y-m-d') . '.csv');
     }
 
     public function salaryReport(Request $request)

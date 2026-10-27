@@ -7,10 +7,10 @@
     <div class="login-subtitle">Please enter your account details</div>
 
     @if ($errors->any())
-        <div class="alert alert-danger mb-3">{{ $errors->first() }}</div>
+        <div class="auth-alert auth-alert-danger">{{ $errors->first() }}</div>
     @endif
     @if (session('success'))
-        <div class="alert alert-success mb-3">
+        <div class="auth-alert auth-alert-success">
             {{ session('success') }}
             @if (session('temporary_password'))
                 <br><strong>Temporary password:</strong> {{ session('temporary_password') }}

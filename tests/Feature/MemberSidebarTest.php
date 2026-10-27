@@ -26,10 +26,14 @@ class MemberSidebarTest extends TestCase
         $this->withSession(['member_context_id' => $member->member_id])
             ->get(route('member.dashboard'))
             ->assertOk()
-            ->assertSee('Entry to Activation Wallet by Gateway')
-            ->assertSee('Transfer to Other Member ROI Wallet List')
-            ->assertSee('Transfer to My Salary Wallet from Other Member List')
-            ->assertSee('Replied Ticket List')
+            ->assertSeeText('My Referral Link')
+            ->assertSeeText('Explore Packages')
+            ->assertSeeText('My Payments')
+            ->assertSeeText('My Invoices')
+            ->assertSeeText('My Tour Benefits')
+            ->assertSeeText('Help & Support', false)
+            ->assertDontSeeText('Entry to Activation Wallet by Gateway')
+            ->assertDontSeeText('Replied Ticket List')
             ->assertDontSee('admin.report.salary');
     }
 

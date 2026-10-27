@@ -40,7 +40,7 @@
     <!-- CONTACT DETAILS + FORM -->
     <section class="contact-section">
       <div class="container">
-        <div class="text-center mx-auto mb-5" style="max-width: 650px">
+        <div class="mx-auto mb-12 text-center" style="max-width: 650px">
           <span class="section-tag">We Are Here For You</span>
           <h2 class="section-title">Let's Start A Conversation</h2>
           <p class="section-desc">
@@ -49,9 +49,9 @@
           </p>
         </div>
 
-        <div class="row g-4 align-items-stretch">
+        <div class="grid items-stretch gap-6 lg:grid-cols-12">
           <!-- CONTACT INFORMATION -->
-          <div class="col-lg-5">
+          <div class="lg:col-span-5">
             <div class="contact-info-card">
               <h3>Contact Information</h3>
               <p class="intro">
@@ -94,7 +94,7 @@
 
               <hr class="border-light opacity-25 my-4" />
 
-              <h6 class="fw-bold mb-3">Follow Us</h6>
+              <h6 class="mb-4 font-bold">Follow Us</h6>
               <div class="contact-social">
                 <a href="#" aria-label="Facebook"
                   ><i class="bi bi-facebook"></i
@@ -110,7 +110,7 @@
           </div>
 
           <!-- ENQUIRY FORM -->
-          <div class="col-lg-7">
+          <div class="lg:col-span-7">
             <div class="contact-form-card">
               <h3>Send Us An Enquiry</h3>
               <p class="form-intro">
@@ -118,8 +118,8 @@
               </p>
 
               <form id="contactForm">
-                <div class="row g-3">
-                  <div class="col-md-6">
+                <div class="grid gap-4 md:grid-cols-2">
+                  <div>
                     <label for="fullName" class="form-label">Full Name *</label>
                     <input
                       type="text"
@@ -131,7 +131,7 @@
                     />
                   </div>
 
-                  <div class="col-md-6">
+                  <div>
                     <label for="email" class="form-label"
                       >Email Address *</label
                     >
@@ -145,7 +145,7 @@
                     />
                   </div>
 
-                  <div class="col-md-6">
+                  <div>
                     <label for="phone" class="form-label">Phone Number *</label>
                     <input
                       type="tel"
@@ -158,7 +158,7 @@
                     />
                   </div>
 
-                  <div class="col-md-6">
+                  <div>
                     <label for="subject" class="form-label"
                       >Enquiry Type *</label
                     >
@@ -178,7 +178,7 @@
                     </select>
                   </div>
 
-                  <div class="col-12">
+                  <div class="md:col-span-2">
                     <label for="message" class="form-label"
                       >Your Message *</label
                     >
@@ -192,12 +192,12 @@
                     ></textarea>
                   </div>
 
-                  <div class="col-12">
+                  <div class="md:col-span-2">
                     <button type="submit" class="btn-main w-100 py-3">
                       Send Enquiry <i class="bi bi-send"></i>
                     </button>
 
-                    <p class="privacy-note mt-3 mb-0">
+                    <p class="privacy-note mb-0 mt-4">
                       <i class="bi bi-shield-check me-1"></i>
                       Please provide accurate contact details so we can respond
                       to your enquiry.
@@ -205,7 +205,7 @@
 
                     <div
                       id="formMessage"
-                      class="small mt-3"
+                      class="mt-4 text-sm"
                       role="status"
                       aria-live="polite"
                     ></div>
@@ -226,13 +226,13 @@
             <h3>Looking For More Information?</h3>
             <p>Explore our packages or learn more about our business plan.</p>
           </div>
-          <div class="d-flex gap-2 flex-wrap">
+          <div class="flex flex-wrap gap-2">
             <a href="{{ route('public.packages') }}" class="btn-main"
               >View Packages <i class="bi bi-arrow-right"></i
             ></a>
             <a
               href="{{ route('public.business-plan') }}"
-              class="btn btn-outline-primary fw-bold px-3 py-2"
+              class="rounded-lg border border-brand-500 px-4 py-2 font-bold text-brand-500"
             >
               Business Plan
             </a>

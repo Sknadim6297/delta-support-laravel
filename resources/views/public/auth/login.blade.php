@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login | Delta Support</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('site/css/login.css') }}">
+    @vite(['resources/css/auth-portal.css'])
 </head>
 <body>
     <div class="login-wrapper">
@@ -26,15 +25,15 @@
                 </div>
 
                 @if (session('success'))
-                    <div class="form-message mb-3" role="status">{{ session('success') }}</div>
+                    <div class="form-message mb-4" role="status">{{ session('success') }}</div>
                 @endif
                 @if ($errors->any())
-                    <div class="form-message mb-3 text-danger" role="alert">{{ $errors->first() }}</div>
+                    <div class="form-message mb-4 text-red-600" role="alert">{{ $errors->first() }}</div>
                 @endif
 
                 <form method="POST" action="{{ route('login.submit') }}" id="loginForm">
                     @csrf
-                    <div class="mb-4">
+                    <div class="mb-6">
                         <label for="username" class="form-label">Email Address / Member ID</label>
                         <div class="input-wrap">
                             <i class="bi bi-person input-icon"></i>
@@ -42,7 +41,7 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="password" class="form-label">Password</label>
                         <div class="input-wrap">
                             <i class="bi bi-lock input-icon"></i>

@@ -24,9 +24,9 @@
     </section>
 
     <!-- BUSINESS IMAGES -->
-    <section class="business-gallery py-5">
+    <section class="business-gallery py-12">
       <div class="container">
-        <div class="text-center mb-5">
+        <div class="mb-12 text-center">
           <span class="section-tag">OUR BUSINESS</span>
           <h2 class="section-title">Explore Our Business Areas</h2>
           <p class="section-desc">
@@ -34,9 +34,9 @@
           </p>
         </div>
 
-        <div class="row g-4">
+        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <!-- IMAGE 1 -->
-          <div class="col-12 col-sm-6 col-lg-3">
+          <div>
             <div class="business-image-card">
               <img
                 src="img/business-1.jpg"
@@ -52,7 +52,7 @@
           </div>
 
           <!-- IMAGE 2 -->
-          <div class="col-12 col-sm-6 col-lg-3">
+          <div>
             <div class="business-image-card">
               <img
                 src="img/business-2.jpg"
@@ -68,7 +68,7 @@
           </div>
 
           <!-- IMAGE 3 -->
-          <div class="col-12 col-sm-6 col-lg-3">
+          <div>
             <div class="business-image-card">
               <img
                 src="img/business-3.jpg"
@@ -84,7 +84,7 @@
           </div>
 
           <!-- IMAGE 4 -->
-          <div class="col-12 col-sm-6 col-lg-3">
+          <div>
             <div class="business-image-card">
               <img
                 src="img/business-4.jpg"
@@ -100,7 +100,7 @@
           </div>
 
           <!-- IMAGE 5 -->
-          <div class="col-12 col-sm-6 col-lg-3">
+          <div>
             <div class="business-image-card">
               <img
                 src="img/business-5.jpg"
@@ -116,7 +116,7 @@
           </div>
 
           <!-- IMAGE 6 -->
-          <div class="col-12 col-sm-6 col-lg-3">
+          <div>
             <div class="business-image-card">
               <img
                 src="img/business-6.jpg"
@@ -132,7 +132,7 @@
           </div>
 
           <!-- IMAGE 7 -->
-          <div class="col-12 col-sm-6 col-lg-3">
+          <div>
             <div class="business-image-card">
               <img
                 src="img/business-7.jpg"
@@ -148,7 +148,7 @@
           </div>
 
           <!-- IMAGE 8 -->
-          <div class="col-12 col-sm-6 col-lg-3">
+          <div>
             <div class="business-image-card">
               <img
                 src="img/business-8.jpg"

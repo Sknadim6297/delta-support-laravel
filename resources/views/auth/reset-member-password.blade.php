@@ -7,7 +7,7 @@
     <div class="login-subtitle">Choose a new password for your member account.</div>
 
     @if ($errors->any())
-        <div class="alert alert-danger mb-3">{{ $errors->first() }}</div>
+        <div class="auth-alert auth-alert-danger">{{ $errors->first() }}</div>
     @endif
 
     <form method="POST" action="{{ route('member.forgot.reset.store') }}">

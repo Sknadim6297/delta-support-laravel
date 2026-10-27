@@ -15,6 +15,13 @@
     use App\Http\Controllers\LevelCommissionController;
     use App\Http\Controllers\RankController;
     use App\Http\Controllers\AdminComingSoonController;
+    use App\Http\Controllers\Admin\CompanySettingController;
+    use App\Http\Controllers\Admin\InvoiceController;
+    use App\Http\Controllers\Admin\MemberDirectoryController;
+    use App\Http\Controllers\Admin\OperationsController;
+    use App\Http\Controllers\Admin\PackageController;
+    use App\Http\Controllers\Admin\PaymentReviewController;
+    use App\Http\Controllers\Member\CatalogController;
     use App\Http\Controllers\Member\NewMemberRegistrationController;
     use App\Http\Controllers\Member\ProfileController;
     use App\Http\Controllers\Member\TeamController;
@@ -196,6 +203,49 @@
             ->where('feature', '[a-z0-9-]+')
             ->name('admin.coming-soon');
 
+        Route::get('/admin/members', [MemberDirectoryController::class, 'index'])->name('admin.members.directory');
+        Route::patch('/admin/members/{memberId}/status', [MemberDirectoryController::class, 'updateStatus'])->name('admin.members.status');
+
+        Route::controller(PackageController::class)->prefix('admin/packages')->name('admin.packages.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{package}/image', 'image')->name('image');
+            Route::get('/{package}/edit', 'edit')->name('edit');
+            Route::put('/{package}', 'update')->name('update');
+        });
+
+        Route::get('/admin/purchases', [PaymentReviewController::class, 'purchases'])->name('admin.purchases.index');
+        Route::controller(PaymentReviewController::class)->prefix('admin/payments')->name('admin.payments.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/settings', 'settings')->name('settings');
+            Route::put('/settings', 'updateSettings')->name('settings.update');
+            Route::get('/qr', 'qr')->name('qr');
+            Route::post('/{purchase}/approve', 'approve')->name('approve');
+            Route::post('/{purchase}/reject', 'reject')->name('reject');
+        });
+
+        Route::controller(InvoiceController::class)->prefix('admin/invoices')->name('admin.invoices.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/{invoice}', 'show')->name('show');
+            Route::get('/{invoice}/pdf', 'pdf')->name('pdf');
+        });
+
+        Route::controller(CompanySettingController::class)->prefix('admin/settings')->name('admin.settings.')->group(function () {
+            Route::get('/general', 'edit')->name('general');
+            Route::put('/general', 'update')->name('general.update');
+            Route::get('/branding', 'branding')->name('branding');
+            Route::get('/security', 'security')->name('security');
+            Route::get('/profile', 'profile')->name('profile');
+        });
+
+        Route::controller(OperationsController::class)->group(function () {
+            Route::get('/admin/wallets/transactions', 'walletTransactions')->name('admin.wallets.transactions');
+            Route::get('/admin/wallets/{wallet}', 'wallet')->where('wallet', 'roi|working')->name('admin.wallets.show');
+            Route::get('/admin/tours', 'tours')->name('admin.tours.index');
+            Route::get('/admin/catalog-reports/{report}', 'reports')->where('report', 'members|packages|payments|earnings')->name('admin.catalog-reports.show');
+        });
+
         /*
         |--------------------------------------------------------------------------
         | Dashboard
@@ -295,6 +345,7 @@
                     ->name('member-lookup');
 
                 Route::post('/store', 'storeInvestment')
+                    ->middleware('legacy.financial')
                     ->name('store');
 
                 Route::get(
@@ -315,7 +366,7 @@
                 Route::post(
                     '/investment-withdrawal-entry',
                     'storeInvestmentWithdrawal'
-                )->name('investment-withdrawal-store');
+                )->middleware('legacy.financial')->name('investment-withdrawal-store');
             
                 Route::get(
                     '/investment-withdrawal-list',
@@ -369,7 +420,7 @@
                 Route::post(
                     '/credit-entry',
                     'storeCreditEntry'
-                )->name('store-credit-entry');
+                )->middleware('legacy.financial')->name('store-credit-entry');
 
                 Route::get(
                     '/credit-entry/export',
@@ -389,7 +440,7 @@
                 Route::post(
                     '/debit-entry',
                     'storeDebitEntry'
-                )->name('store-debit-entry');
+                )->middleware('legacy.financial')->name('store-debit-entry');
 
                 Route::get(
                     '/debit-entry/list',
@@ -496,7 +547,7 @@
         Route::post(
             '/admin/level-commission/statement/{levelCommission}',
             [LevelCommissionController::class, 'update']
-        )->name('admin.level-commission.statement.update');
+        )->middleware('legacy.financial')->name('admin.level-commission.statement.update');
 
             /* 
         |--------------------------------------------------------------------------
@@ -574,6 +625,23 @@
         Route::get('/member/rank', [MemberRankController::class, 'show'])
             ->name('member.rank');
 
+        Route::controller(CatalogController::class)->group(function () {
+            Route::get('/member/packages', 'explore')->name('member.packages.explore');
+            Route::get('/member/packages/mine', 'mine')->name('member.packages.mine');
+            Route::get('/member/packages/{package}', 'show')->name('member.packages.show');
+            Route::post('/member/packages/{package}/purchase', 'purchase')->name('member.packages.purchase');
+            Route::get('/member/packages/{package}/image', 'packageImage')->name('member.packages.image');
+            Route::get('/member/payments', 'payments')->name('member.payments.index');
+            Route::get('/member/payments/qr', 'qr')->name('member.payments.qr');
+            Route::get('/member/payments/{purchase}', 'payment')->name('member.payments.show');
+            Route::get('/member/invoices', 'invoices')->name('member.invoices.index');
+            Route::get('/member/invoices/{invoice}', 'invoice')->name('member.invoices.show');
+            Route::get('/member/invoices/{invoice}/pdf', 'invoicePdf')->name('member.invoices.pdf');
+            Route::get('/member/referral', 'referral')->name('member.referral');
+            Route::get('/member/tours', 'tours')->name('member.tours');
+            Route::get('/member/support', 'support')->name('member.support');
+        });
+
         Route::get('/member/coming-soon/{feature}', [ComingSoonController::class, 'show'])
             ->where('feature', '[a-z0-9-]+')
             ->name('member.coming-soon');
@@ -594,7 +662,7 @@
             ->name('member.investments.')
             ->group(function () {
                 Route::get('/entry', 'entry')->name('entry');
-                Route::post('/entry', 'store')->name('store');
+                Route::post('/entry', 'store')->middleware('legacy.financial')->name('store');
                 Route::get('/active', 'active')->name('active');
                 Route::get('/closed', 'closed')->name('closed');
             });

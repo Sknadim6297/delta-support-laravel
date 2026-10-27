@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@import "../../public/site/css/style.css";
+
+@source "../views/public/**/*.blade.php";
+
+@theme {
+    --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+    --color-brand-500: #0878d1;
+    --color-brand-700: #0752a0;
+    --color-navy-900: #092747;
+    --color-accent-500: #ff9c24;
+    --color-ink-500: #526174;
+    --color-canvas: #f4f8fc;
+}
+
+.container {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 12px;
+}
+
+@media (min-width: 576px) {
+    .container { max-width: 540px; }
+}
+
+@media (min-width: 768px) {
+    .container { max-width: 720px; }
+}
+
+@media (min-width: 992px) {
+    .container { max-width: 960px; }
+}
+
+@media (min-width: 1200px) {
+    .container { max-width: 1140px; }
+}
+
+@media (min-width: 1400px) {
+    .container { max-width: 1320px; }
+}
+
+.nav-panel {
+    display: none;
+}
+
+.nav-panel.is-open {
+    display: block;
+}
+
+@media (min-width: 992px) {
+    .nav-panel {
+        display: block;
+    }
+}
+
+.contact-cta-box .cta-grid,
+.cta-box > .cta-grid {
+    position: relative;
+    z-index: 2;
+}

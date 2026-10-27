@@ -1,22 +1,22 @@
 <!-- FOOTER -->
     <footer class="footer">
       <div class="container">
-        <div class="row g-4">
-          <div class="col-lg-4 col-md-6">
+        <div class="grid grid-cols-2 gap-6 md:grid-cols-12">
+          <div class="col-span-2 md:col-span-6 lg:col-span-4">
             <a
               href="{{ route('home') }}"
-              class="navbar-brand text-white d-inline-flex align-items-center mb-3"
+              class="navbar-brand mb-4 inline-flex items-center text-white"
             >
               <span class="brand-icon"
                 ><i class="bi bi-airplane-engines"></i
               ></span>
-              DELTA <span class="text-info ms-2">SUPPORT</span>
+              DELTA <span class="ms-2 text-sky-300">SUPPORT</span>
             </a>
             <p>
               Explore destinations, discover new experiences and connect with
               Delta Support for service and business enquiries.
             </p>
-            <div class="mt-3">
+            <div class="mt-4">
               <a href="#" class="social-link" aria-label="Facebook"
                 ><i class="bi bi-facebook"></i
               ></a>
@@ -29,7 +29,7 @@
             </div>
           </div>
 
-          <div class="col-6 col-lg-2 col-md-3">
+          <div class="col-span-1 md:col-span-3 lg:col-span-2">
             <h5>Quick Links</h5>
             <ul class="footer-links">
               <li><a href="{{ route('home') }}">Home</a></li>
@@ -40,7 +40,7 @@
             </ul>
           </div>
 
-          <div class="col-6 col-lg-2 col-md-3">
+          <div class="col-span-1 md:col-span-3 lg:col-span-2">
             <h5>Explore</h5>
             <ul class="footer-links">
               <li><a href="{{ route('public.packages') }}">Beach Getaways</a></li>
@@ -50,7 +50,7 @@
             </ul>
           </div>
 
-          <div class="col-lg-4 col-md-6">
+          <div class="col-span-2 md:col-span-6 lg:col-span-4">
             <h5>Stay Connected</h5>
             <p>
               Contact us to learn more about our services and available
@@ -63,7 +63,7 @@
         </div>
 
         <div
-          class="copyright d-flex flex-column flex-md-row justify-content-between gap-2"
+          class="copyright flex flex-col justify-between gap-2 md:flex-row"
         >
           <span
             >© <span id="year"></span> Delta Support. All Rights Reserved.</span

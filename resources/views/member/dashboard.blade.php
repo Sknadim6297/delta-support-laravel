@@ -3,129 +3,73 @@
 @section('title', 'Member Dashboard')
 
 @section('content')
-    <div class="row g-4">
-        <div class="col-12" id="profile">
-            <div class="dashboard-card">
-                <div class="card-body-custom">
-                    <h2 class="dashboard-title">Welcome back, {{ $member->member_name }}!</h2>
-                    <div class="dashboard-subtitle">{{ $member->member_id }} · Member Dashboard</div>
-                    <p class="mb-0 mt-3">Sponsor ID: {{ $member->sponsor_id }}</p>
-                </div>
-            </div>
-        </div>
+<div class="mx-auto max-w-6xl">
+    <header class="mb-5">
+        <h1 class="ds-page-title">Welcome back, {{ $member->member_name }}!</h1>
+        <p class="ds-page-copy">{{ $member->member_id }} · Member Dashboard · Sponsor ID: {{ $member->sponsor_id }}</p>
+        <p class="mt-2 text-sm text-ink-500">Package purchases use the USD price saved by the administrator. ROI, level income, and withdrawals are not being credited.</p>
+    </header>
 
-        <div class="col-12">
-            <div class="row g-4">
-                <div class="col-12 col-sm-6 col-xl-4">
-                    <div class="summary-card card-pink h-100">
-                        <div class="summary-icon"><i class="bi bi-bar-chart-fill"></i></div>
-                        <div class="summary-number">{{ number_format($metrics['totalInvestment'], 4) }} USDT</div>
-                        <div class="summary-name">Total Investment</div>
-                    </div>
-                </div>
-                <div class="col-12 col-sm-6 col-xl-4">
-                    <div class="summary-card card-purple h-100">
-                        <div class="summary-icon"><i class="bi bi-activity"></i></div>
-                        <div class="summary-number">{{ number_format($metrics['activeInvestment'], 4) }} USDT</div>
-                        <div class="summary-name">Active Investment</div>
-                    </div>
-                </div>
-                <div class="col-12 col-sm-6 col-xl-4">
-                    <div class="summary-card card-blue h-100">
-                        <div class="summary-icon"><i class="bi bi-wallet2"></i></div>
-                        <div class="summary-number">{{ number_format($metrics['remainingBalance'], 4) }} USDT</div>
-                        <div class="summary-name">Remaining Balance</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12">
-            <div class="dashboard-card rank-summary-card">
-                <div class="card-body-custom">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <h4 class="dashboard-title mb-0">Rank Summary</h4>
-                        <a href="{{ route('member.rank') }}" class="btn btn-primary btn-sm"><i class="bi bi-award me-1"></i>View Rank</a>
-                    </div>
-                    <div class="rank-summary-grid mt-3">
-                        <div><span class="stat-label">Current Rank</span><strong>{{ $metrics['rankSummary']['current_rank']?->name ?? 'Unranked' }}</strong></div>
-                        <div><span class="stat-label">Full Team Business</span><strong>{{ number_format((float) $metrics['rankSummary']['full_team_business'], 2) }} USDT</strong></div>
-                        <div><span class="stat-label">Levels Unlocked</span><strong>{{ $metrics['rankSummary']['unlocked_levels'] }} / 32</strong></div>
-                        <div><span class="stat-label">Next Rank</span><strong>{{ $metrics['rankSummary']['next_rank']?->name ?? 'Maximum Rank Achieved' }}</strong></div>
-                        <div><span class="stat-label">Remaining Business</span><strong>{{ number_format(max(0, (float) $metrics['rankSummary']['remaining_business']), 2) }} USDT</strong></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-xl-6" id="activation-wallet">
-            <div class="dashboard-card h-100">
-                <div class="card-body-custom">
-                    <h4 class="dashboard-title">Wallets</h4>
-                    <div class="stat-row">
-                        <div class="stat-box" id="roi-wallet"><div class="stat-icon icon-pink"><i class="bi bi-pie-chart"></i></div><div class="stat-content"><span class="stat-label">ROI Wallet</span><span class="stat-value">{{ number_format($metrics['roiWallet'], 4) }} USDT</span></div></div>
-                        <div class="stat-box" id="working-wallet"><div class="stat-icon icon-blue"><i class="bi bi-wallet"></i></div><div class="stat-content"><span class="stat-label">Working Wallet</span><span class="stat-value">{{ number_format($metrics['workingWallet'], 4) }} USDT</span></div></div>
-                        <div class="stat-box" id="salary-wallet"><div class="stat-icon icon-yellow"><i class="bi bi-cash-stack"></i></div><div class="stat-content"><span class="stat-label">Salary Wallet</span><span class="stat-value">{{ number_format($metrics['salaryWallet'], 4) }} USDT</span></div></div>
-                        <div class="stat-box"><div class="stat-icon icon-purple"><i class="bi bi-wallet2"></i></div><div class="stat-content"><span class="stat-label">Activation Wallet</span><span class="stat-value">{{ number_format($metrics['activationWallet'], 4) }} USDT</span></div></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-xl-6" id="reports">
-            <div class="dashboard-card h-100">
-                <div class="card-body-custom">
-                    <h4 class="dashboard-title">Income</h4>
-                    <div class="stat-row">
-                        <div class="stat-box"><div class="stat-icon icon-pink"><i class="bi bi-graph-up"></i></div><div class="stat-content"><span class="stat-label">Total ROI Income</span><span class="stat-value">{{ number_format($metrics['roiIncome'], 4) }} USDT</span></div></div>
-                        <div class="stat-box"><div class="stat-icon icon-purple"><i class="bi bi-diagram-3"></i></div><div class="stat-content"><span class="stat-label">Total Level Income</span><span class="stat-value">{{ number_format($metrics['levelIncome'], 4) }} USDT</span></div></div>
-                        <div class="stat-box"><div class="stat-icon icon-yellow"><i class="bi bi-cash"></i></div><div class="stat-content"><span class="stat-label">Total Salary</span><span class="stat-value">{{ number_format($metrics['salaryIncome'], 4) }} USDT</span></div></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-xl-6" id="genealogy">
-            <div class="dashboard-card h-100">
-                <div class="card-body-custom">
-                    <h4 class="dashboard-title">Network</h4>
-                    <div class="stat-row">
-                        <div class="stat-box"><div class="stat-icon icon-blue"><i class="bi bi-people-fill"></i></div><div class="stat-content"><span class="stat-label">Active Members</span><span class="stat-value">{{ $metrics['activeMembers'] }}</span></div></div>
-                        <div class="stat-box"><div class="stat-icon icon-orange"><i class="bi bi-people"></i></div><div class="stat-content"><span class="stat-label">Inactive Members</span><span class="stat-value">{{ $metrics['inactiveMembers'] }}</span></div></div>
-                        <div class="stat-box"><div class="stat-icon icon-purple"><i class="bi bi-award"></i></div><div class="stat-content"><span class="stat-label">Rank</span><span class="stat-value">{{ $metrics['rank'] }}</span></div></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-xl-6" id="investment">
-            <div class="dashboard-card h-100">
-                <div class="card-body-custom">
-                    <h4 class="dashboard-title">Team & Withdrawals</h4>
-                    <p class="mb-2"><strong>Team Active Inv. (USDT):</strong> {{ number_format($metrics['teamActiveInvestment'], 4) }}</p>
-                    <p class="mb-2"><strong>Team Active Inv. Ratio (USDT):</strong> {{ number_format($metrics['teamActiveInvestment'], 4) }}:{{ number_format($metrics['teamInactiveInvestment'], 4) }}</p>
-                    <p class="mb-0"><strong>Total Withdrawal (USDT):</strong> {{ number_format($metrics['totalWithdrawal'], 4) }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12" id="support">
-            <div class="dashboard-card">
-                <div class="card-body-custom">
-                    <h4 class="dashboard-title">Referral Program</h4>
-                    <div class="input-group">
-                        <input type="text" class="form-control" value="{{ $metrics['referralUrl'] }}" readonly>
-                        <button type="button" class="btn btn-primary" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)"><i class="bi bi-copy me-1"></i>Copy</button>
-                    </div>
-                    <div class="d-flex gap-2 mt-3 flex-wrap">
-                        <button type="button" class="btn btn-outline-primary"><i class="bi bi-share me-1"></i>Share</button>
-                        <button type="button" class="btn btn-outline-secondary"><i class="bi bi-pin-angle me-1"></i>Post Pin</button>
-                        <button type="button" class="btn btn-outline-danger"><i class="bi bi-envelope me-1"></i>Email</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 text-center small text-muted">© {{ date('Y') }} Delta Support. All rights reserved.</div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Total Investment</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ number_format($metrics['totalInvestment'], 4) }} USDT</p></article>
+        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Active Investment</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ number_format($metrics['activeInvestment'], 4) }} USDT</p></article>
+        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Remaining Balance</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ number_format($metrics['remainingBalance'], 4) }} USDT</p></article>
     </div>
+
+    <section class="ds-card mt-4">
+        <div class="mb-3 flex items-center justify-between gap-3">
+            <h2 class="text-base font-semibold text-navy-900">Rank Summary</h2>
+            <a href="{{ route('member.rank') }}" class="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white">View Rank</a>
+        </div>
+        <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div><dt class="text-ink-500">Current Rank</dt><dd class="font-semibold text-navy-900">{{ $metrics['rankSummary']['current_rank']?->name ?? 'Unranked' }}</dd></div>
+            <div><dt class="text-ink-500">Full Team Business</dt><dd class="font-semibold text-navy-900">{{ number_format((float) $metrics['rankSummary']['full_team_business'], 2) }} USDT</dd></div>
+            <div><dt class="text-ink-500">Levels Unlocked</dt><dd class="font-semibold text-navy-900">{{ $metrics['rankSummary']['unlocked_levels'] }} / 32</dd></div>
+            <div><dt class="text-ink-500">Next Rank</dt><dd class="font-semibold text-navy-900">{{ $metrics['rankSummary']['next_rank']?->name ?? 'Maximum Rank Achieved' }}</dd></div>
+            <div><dt class="text-ink-500">Remaining Business</dt><dd class="font-semibold text-navy-900">{{ number_format(max(0, (float) $metrics['rankSummary']['remaining_business']), 2) }} USDT</dd></div>
+        </dl>
+    </section>
+
+    <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <section class="ds-card" id="activation-wallet">
+            <h2 class="mb-3 text-base font-semibold text-navy-900">Wallets</h2>
+            <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                <div id="roi-wallet"><dt class="text-ink-500">ROI Wallet</dt><dd class="font-semibold">{{ number_format($metrics['roiWallet'], 4) }} USDT</dd></div>
+                <div id="working-wallet"><dt class="text-ink-500">Working Wallet</dt><dd class="font-semibold">{{ number_format($metrics['workingWallet'], 4) }} USDT</dd></div>
+                <div id="salary-wallet"><dt class="text-ink-500">Salary Wallet</dt><dd class="font-semibold">{{ number_format($metrics['salaryWallet'], 4) }} USDT</dd></div>
+                <div><dt class="text-ink-500">Activation Wallet</dt><dd class="font-semibold">{{ number_format($metrics['activationWallet'], 4) }} USDT</dd></div>
+            </dl>
+        </section>
+        <section class="ds-card" id="reports">
+            <h2 class="mb-3 text-base font-semibold text-navy-900">Income</h2>
+            <dl class="grid gap-3 text-sm">
+                <div><dt class="text-ink-500">Total ROI Income</dt><dd class="font-semibold">{{ number_format($metrics['roiIncome'], 4) }} USDT</dd></div>
+                <div><dt class="text-ink-500">Total Level Income</dt><dd class="font-semibold">{{ number_format($metrics['levelIncome'], 4) }} USDT</dd></div>
+                <div><dt class="text-ink-500">Total Salary</dt><dd class="font-semibold">{{ number_format($metrics['salaryIncome'], 4) }} USDT</dd></div>
+            </dl>
+        </section>
+        <section class="ds-card" id="genealogy">
+            <h2 class="mb-3 text-base font-semibold text-navy-900">Network</h2>
+            <dl class="grid gap-3 text-sm sm:grid-cols-3">
+                <div><dt class="text-ink-500">Active Members</dt><dd class="font-semibold">{{ $metrics['activeMembers'] }}</dd></div>
+                <div><dt class="text-ink-500">Inactive Members</dt><dd class="font-semibold">{{ $metrics['inactiveMembers'] }}</dd></div>
+                <div><dt class="text-ink-500">Rank</dt><dd class="font-semibold">{{ $metrics['rank'] }}</dd></div>
+            </dl>
+        </section>
+        <section class="ds-card" id="investment">
+            <h2 class="mb-3 text-base font-semibold text-navy-900">Team & Withdrawals</h2>
+            <p class="mb-2 text-sm"><strong>Team Active Inv. (USDT):</strong> {{ number_format($metrics['teamActiveInvestment'], 4) }}</p>
+            <p class="mb-2 text-sm"><strong>Team Active Inv. Ratio (USDT):</strong> {{ number_format($metrics['teamActiveInvestment'], 4) }}:{{ number_format($metrics['teamInactiveInvestment'], 4) }}</p>
+            <p class="mb-0 text-sm"><strong>Total Withdrawal (USDT):</strong> {{ number_format($metrics['totalWithdrawal'], 4) }}</p>
+        </section>
+    </div>
+
+    <section class="ds-card mt-4" id="support">
+        <h2 class="mb-3 text-base font-semibold text-navy-900">Referral Program</h2>
+        <div class="flex flex-col gap-2 sm:flex-row">
+            <input type="text" class="ds-control" value="{{ $metrics['referralUrl'] }}" readonly>
+            <button type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">Copy</button>
+        </div>
+    </section>
+</div>
 @endsection

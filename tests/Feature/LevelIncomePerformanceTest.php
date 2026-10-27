@@ -74,18 +74,25 @@ class LevelIncomePerformanceTest extends TestCase
             $id = str_pad((string) $number, 5, '0', STR_PAD_LEFT);
             $memberNumber = str_pad((string) (($number % 10) + 1), 4, '0', STR_PAD_LEFT);
             $createdAt = sprintf('2026-01-%02d 12:00:00', (($number - 1) % 6) + 1);
+            // Row 2 is the filtered sample (STBENCH0002, level 2, 2 Jan 2026, amount 2).
+            // Row 1 offsets that extra unit so 125 rows still total 125.
+            $incomeAmount = match ($number) {
+                1 => '0.0000',
+                2 => '2.0000',
+                default => '1.0000',
+            };
             $rows[] = [
                 'reference' => 'LC-BENCH-' . $id,
                 'investment_id' => 'INV-BENCH-' . $id,
-                'member_id' => 'STBENCH' . $memberNumber,
+                'member_id' => $number === 2 ? 'STBENCH0002' : 'STBENCH' . $memberNumber,
                 'member_name' => 'Benchmark Member ' . $memberNumber,
                 'from_member_id' => 'STSOURCE' . $id,
                 'from_member_name' => 'Source Member ' . $id,
-                'level' => ($number % 3) + 1,
+                'level' => $number === 2 ? 2 : ($number % 3) + 1,
                 'business_date' => substr($createdAt, 0, 10),
                 'on_amount' => '100.0000',
                 'rate_percentage' => '2.000',
-                'income_amount' => '1.0000',
+                'income_amount' => $incomeAmount,
                 'created_at' => $createdAt,
                 'updated_at' => $createdAt,
             ];

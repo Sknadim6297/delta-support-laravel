@@ -1,51 +1,25 @@
 @extends('member.layouts.app')
-
 @section('title', 'Edit Member Profile')
-
 @section('content')
-    <main class="member-content">
-        <div class="form-card">
-            @if ($errors->any())
-                <div class="alert alert-danger">{{ $errors->first() }}</div>
-            @endif
-
-            <div class="form-title">
-                <h4>Personal Details</h4>
-            </div>
-
-            <form method="POST" action="{{ route('member.profile.update') }}">
-                @csrf
-                @method('PUT')
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label>Member Name <span class="text-danger">*</span></label>
-                        <input type="text" name="member_name" class="form-control" value="{{ old('member_name', $member->member_name) }}" required>
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label>Email ID <span class="text-danger">*</span></label>
-                        <input type="email" name="email" class="form-control" value="{{ old('email', $member->email) }}" required>
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label>Mobile No <span class="text-danger">*</span></label>
-                        <input type="text" name="mobile_no" class="form-control" value="{{ old('mobile_no', $member->mobile_no) }}" maxlength="15" required>
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label>BEP20 Wallet Address</label>
-                        <input type="text" name="wallet_address" class="form-control" value="{{ old('wallet_address', $member->wallet_address) }}" placeholder="Enter your BEP20 wallet address" maxlength="255">
-                    </div>
-                </div>
-
-                <div class="text-end mt-3 d-flex justify-content-end gap-2">
-                    <a href="{{ route('member.profile') }}" class="btn btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle me-1"></i>Update Profile
-                    </button>
-                </div>
-            </form>
+<div class="mx-auto max-w-3xl">
+    <header class="mb-5">
+        <h1 class="ds-page-title">Edit Profile</h1>
+        <p class="ds-page-copy">Update the contact details on your account.</p>
+    </header>
+    <form method="POST" action="{{ route('member.profile.update') }}" class="ds-card">
+        @csrf
+        @method('PUT')
+        <div class="ds-form ds-form-grid">
+            @if($errors->any())<div class="ds-error ds-span-2">{{ $errors->first() }}</div>@endif
+            <label class="ds-field"><span>Member Name</span><input type="text" name="member_name" value="{{ old('member_name', $member->member_name) }}" required></label>
+            <label class="ds-field"><span>Email ID</span><input type="email" name="email" value="{{ old('email', $member->email) }}" required></label>
+            <label class="ds-field"><span>Mobile No</span><input type="text" name="mobile_no" value="{{ old('mobile_no', $member->mobile_no) }}" maxlength="15" required></label>
+            <label class="ds-field"><span>BEP20 Wallet Address</span><input type="text" name="wallet_address" value="{{ old('wallet_address', $member->wallet_address) }}" maxlength="255" placeholder="Enter your BEP20 wallet address"></label>
         </div>
-    </main>
+        <div class="ds-actions">
+            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white">Update Profile</button>
+            <a href="{{ route('member.profile') }}" class="text-sm font-semibold text-navy-900">Cancel</a>
+        </div>
+    </form>
+</div>
 @endsection

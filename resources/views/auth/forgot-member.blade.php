@@ -7,10 +7,10 @@
     <div class="login-subtitle">Enter your Member ID to receive a password reset OTP.</div>
 
     @if ($errors->any())
-        <div class="alert alert-danger mb-3">{{ $errors->first() }}</div>
+        <div class="auth-alert auth-alert-danger">{{ $errors->first() }}</div>
     @endif
     @if (session('success'))
-        <div class="alert alert-success mb-3">{{ session('success') }}</div>
+        <div class="auth-alert auth-alert-success">{{ session('success') }}</div>
     @endif
 
     <form method="POST" action="{{ route('member.forgot.send') }}">

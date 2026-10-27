@@ -43,7 +43,7 @@ class RankAdvance extends Command
             ]);
             $this->error("Rank advancement failed: 1 error after {$duration} seconds. " . $exception->getMessage());
 
-            return self::FAILURE;
+            throw $exception;
         }
     }
 

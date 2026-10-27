@@ -15,11 +15,15 @@ class AdminSidebarTest extends TestCase
         $this->actingAs(User::factory()->create(['is_admin' => true]))
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSeeText('Transfer to Activation Wallet from Admin List')
-            ->assertSeeText('Force Credit to ROI Wallet Entry')
-            ->assertSeeText('Leaderwise Working Wallet List')
-            ->assertSeeText('Member Salary Wallet to Salary Wallet Transfer List')
-            ->assertSeeText('Replied Ticket List')
+            ->assertSeeText('All Members')
+            ->assertSeeText('Package Purchases')
+            ->assertSeeText('Pending Payments')
+            ->assertSeeText('All Invoices')
+            ->assertSeeText('ROI Plans')
+            ->assertSeeText('Tour Packages')
+            ->assertDontSeeText('Transfer to Activation Wallet from Admin List')
+            ->assertDontSeeText('Force Credit to ROI Wallet Entry')
+            ->assertDontSeeText('Replied Ticket List')
             ->assertDontSee('admin2/', false);
     }
 

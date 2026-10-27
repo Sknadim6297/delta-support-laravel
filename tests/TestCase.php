@@ -18,6 +18,7 @@ abstract class TestCase extends BaseTestCase
         $config->set('app.env', 'testing');
         $config->set('app.key', 'base64:' . base64_encode(str_repeat('x', 32)));
         $config->set('database.default', 'sqlite');
+        $config->set('deltasupport.legacy_financial_actions', true);
 
         $sqlite = $config->get('database.connections.sqlite');
         $sqlite['database'] = ':memory:';

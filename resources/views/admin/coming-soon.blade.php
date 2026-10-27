@@ -1,12 +1,11 @@
 @extends('admin.layouts.app')
-
 @section('title', $feature . ' - Coming Soon')
-
 @section('content')
-    <div class="form-card">
-        <div class="form-title">
-            <h4>{{ $feature }}</h4>
-        </div>
-        <div class="alert alert-info mb-0">{{ $feature }} - Coming Soon</div>
-    </div>
+<div class="mx-auto max-w-3xl">
+    <header class="mb-5">
+        <h1 class="ds-page-title">{{ $feature }}</h1>
+        <p class="ds-page-copy">Coming Soon</p>
+    </header>
+    <div class="ds-card text-sm text-ink-500">This module is reserved for a later phase. No balances are credited from this page.</div>
+</div>
 @endsection

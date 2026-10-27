@@ -238,7 +238,7 @@ class MemberController extends Controller
                 'teamInactiveInvestment' => $teamInactiveInvestment,
                 'teamActiveInvestmentRatio' => $teamActiveInvestment . ':'. $teamInactiveInvestment,
                 'totalWithdrawal' => $withdrawnAmount,
-                'referralUrl' => url('/admin/login?ref=' . urlencode($member->member_id)),
+                'referralUrl' => route('member.register', ['sponsor_id' => $member->member_id]),
             ],
         ]);
     }

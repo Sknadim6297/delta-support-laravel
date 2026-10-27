@@ -43,18 +43,18 @@
     <!-- ABOUT -->
     <section class="section-space">
       <div class="container">
-        <div class="row g-5 align-items-center">
-          <div class="col-lg-6">
+        <div class="grid items-center gap-12 lg:grid-cols-2">
+          <div>
             <div class="about-image">
               <div class="image-note">
-                <h5 class="fw-bold mb-1">Discover Something New</h5>
-                <p class="small mb-0">
+                <h5 class="mb-1 font-bold">Discover Something New</h5>
+                <p class="mb-0 text-sm">
                   Every destination has a story waiting to be explored.
                 </p>
               </div>
             </div>
           </div>
-          <div class="col-lg-6">
+          <div>
             <span class="section-tag">About Delta Support</span>
             <h2 class="section-title">Your Journey Begins With Us</h2>
             <p class="section-desc">
@@ -64,7 +64,7 @@
             </p>
             <a
               href="{{ route('public.about') }}"
-              class="btn-main mt-3 d-inline-flex align-items-center gap-2"
+              class="btn-main mt-4 inline-flex items-center gap-2"
             >
               Read More
               <i class="bi bi-arrow-right"></i>
@@ -110,7 +110,7 @@
     <!-- PACKAGES -->
     <section class="section-space packages">
       <div class="container">
-        <div class="text-center mx-auto mb-5" style="max-width: 650px">
+        <div class="mx-auto mb-12 text-center" style="max-width: 650px">
           <span class="section-tag">Explore Our World</span>
           <h2 class="section-title">Discover Our Packages</h2>
           <p class="section-desc">
@@ -119,8 +119,8 @@
           </p>
         </div>
 
-        <div class="row g-4">
-          <div class="col-md-6 col-lg-4">
+        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div>
             <div class="package-card">
               <img
                 class="package-img"
@@ -144,7 +144,7 @@
             </div>
           </div>
 
-          <div class="col-md-6 col-lg-4">
+          <div>
             <div class="package-card">
               <img
                 class="package-img"
@@ -168,7 +168,7 @@
             </div>
           </div>
 
-          <div class="col-md-6 col-lg-4">
+          <div>
             <div class="package-card">
               <img
                 class="package-img"
@@ -198,10 +198,10 @@
     <!-- BUSINESS PLAN -->
     <section class="section-space business-section" id="business">
       <div class="container">
-        <div class="row align-items-center mb-5">
-          <div class="col-lg-8">
+        <div class="mb-12 grid items-center gap-6 lg:grid-cols-12">
+          <div class="lg:col-span-8">
             <span class="eyebrow">Business Plan</span>
-            <h2 class="section-title mt-3">
+            <h2 class="section-title mt-4">
               Discover Opportunities With Delta Support
             </h2>
             <p class="section-desc mb-0">
@@ -210,15 +210,15 @@
               plan and eligibility details.
             </p>
           </div>
-          <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+          <div class="mt-6 text-left lg:col-span-4 lg:mt-0 lg:text-right">
             <a href="{{ route('public.contact') }}" class="btn-main"
               >Request Information <i class="bi bi-arrow-right ms-2"></i
             ></a>
           </div>
         </div>
 
-        <div class="row g-4">
-          <div class="col-sm-6 col-lg-4">
+        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
             <div class="business-card">
               <div class="icon"><i class="bi bi-briefcase"></i></div>
               <h5>Business Overview</h5>
@@ -228,7 +228,7 @@
               </p>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-4">
+          <div>
             <div class="business-card">
               <div class="icon"><i class="bi bi-diagram-3"></i></div>
               <h5>Business Structure</h5>
@@ -238,7 +238,7 @@
               </p>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-4">
+          <div>
             <div class="business-card">
               <div class="icon"><i class="bi bi-chat-dots"></i></div>
               <h5>Personal Assistance</h5>
@@ -250,7 +250,7 @@
           </div>
         </div>
 
-        <div class="business-note mt-4">
+        <div class="business-note mt-6">
           <i class="bi bi-info-circle me-2"></i>
           Official business terms, fees, eligibility and any financial
           commitments should be disclosed clearly before participation. No
@@ -263,8 +263,8 @@
     <section class="contact-cta-section section-space">
       <div class="container">
         <div class="contact-cta-box">
-          <div class="row align-items-center g-4">
-            <div class="col-lg-8">
+          <div class="cta-grid grid items-center gap-6 lg:grid-cols-12">
+            <div class="lg:col-span-8">
               <span class="cta-label">
                 <i class="bi bi-headset me-2"></i>
                 WE'RE HERE TO HELP
@@ -287,7 +287,7 @@
               </a>
             </div>
 
-            <div class="col-lg-4 text-center d-none d-lg-block">
+            <div class="hidden text-center lg:col-span-4 lg:block">
               <div class="cta-icon-wrap">
                 <i class="bi bi-chat-dots"></i>
                 <div class="cta-small-icon">

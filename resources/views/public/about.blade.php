@@ -36,8 +36,8 @@
     <!-- COMPANY INTRODUCTION -->
     <section class="section-space">
       <div class="container">
-        <div class="row g-5 align-items-center">
-          <div class="col-lg-6">
+        <div class="grid items-center gap-12 lg:grid-cols-2">
+          <div>
             <div class="about-visual">
               <div class="about-image-label">
                 <h5>Discover More With Delta Support</h5>
@@ -49,7 +49,7 @@
             </div>
           </div>
 
-          <div class="col-lg-6">
+          <div>
             <span class="section-tag">Who We Are</span>
             <h2 class="section-title">
               A Company Focused On Experiences And Opportunities
@@ -99,7 +99,7 @@
               </div>
             </div>
 
-            <a href="{{ route('public.contact') }}" class="btn-main mt-3">
+            <a href="{{ route('public.contact') }}" class="btn-main mt-4">
               Connect With Us <i class="bi bi-arrow-right"></i>
             </a>
           </div>
@@ -110,7 +110,7 @@
     <!-- VISION & MISSION -->
     <section class="section-space section-light">
       <div class="container">
-        <div class="text-center mx-auto mb-5" style="max-width: 650px">
+        <div class="mx-auto mb-12 text-center" style="max-width: 650px">
           <span class="section-tag">Our Direction</span>
           <h2 class="section-title">Vision & Mission</h2>
           <p class="section-desc">
@@ -119,8 +119,8 @@
           </p>
         </div>
 
-        <div class="row g-4">
-          <div class="col-md-6">
+        <div class="grid gap-6 md:grid-cols-2">
+          <div>
             <div class="vm-card">
               <div class="vm-icon"><i class="bi bi-eye"></i></div>
               <h3>Our Vision</h3>
@@ -132,7 +132,7 @@
             </div>
           </div>
 
-          <div class="col-md-6">
+          <div>
             <div class="vm-card">
               <div class="vm-icon"><i class="bi bi-bullseye"></i></div>
               <h3>Our Mission</h3>
@@ -150,7 +150,7 @@
     <!-- CORE VALUES -->
     <section class="section-space">
       <div class="container">
-        <div class="text-center mx-auto mb-5" style="max-width: 650px">
+        <div class="mx-auto mb-12 text-center" style="max-width: 650px">
           <span class="section-tag">What Matters To Us</span>
           <h2 class="section-title">Our Core Values</h2>
           <p class="section-desc">
@@ -158,8 +158,8 @@
           </p>
         </div>
 
-        <div class="row g-4">
-          <div class="col-sm-6 col-lg-3">
+        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
             <div class="value-card">
               <div class="value-icon"><i class="bi bi-shield-check"></i></div>
               <h5>Integrity</h5>
@@ -170,7 +170,7 @@
             </div>
           </div>
 
-          <div class="col-sm-6 col-lg-3">
+          <div>
             <div class="value-card">
               <div class="value-icon"><i class="bi bi-people"></i></div>
               <h5>Customer Focus</h5>
@@ -181,7 +181,7 @@
             </div>
           </div>
 
-          <div class="col-sm-6 col-lg-3">
+          <div>
             <div class="value-card">
               <div class="value-icon"><i class="bi bi-lightbulb"></i></div>
               <h5>Innovation</h5>
@@ -192,7 +192,7 @@
             </div>
           </div>
 
-          <div class="col-sm-6 col-lg-3">
+          <div>
             <div class="value-card">
               <div class="value-icon"><i class="bi bi-award"></i></div>
               <h5>Quality</h5>
@@ -210,8 +210,8 @@
     <section class="cta-section">
       <div class="container">
         <div class="cta-box">
-          <div class="row align-items-center g-4">
-            <div class="col-lg-8">
+          <div class="cta-grid grid items-center gap-6 lg:grid-cols-12">
+            <div class="lg:col-span-8">
               <span class="cta-label">LET'S CONNECT</span>
               <h2>Ready To Discover More With Us?</h2>
               <p>
@@ -219,7 +219,7 @@
                 plan? Connect with our team to learn more.
               </p>
             </div>
-            <div class="col-lg-4 text-lg-end">
+            <div class="lg:col-span-4 lg:text-right">
               <a href="{{ route('public.contact') }}" class="btn-orange">
                 Contact Our Team <i class="bi bi-arrow-up-right"></i>
               </a>

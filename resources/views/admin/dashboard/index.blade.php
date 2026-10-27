@@ -6,8 +6,8 @@
     <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
             <p class="text-sm font-semibold text-brand-600">Delta Support</p>
-            <h1 class="mt-1 text-2xl font-semibold tracking-tight text-navy-900">Dashboard</h1>
-            <p class="mt-1 text-sm text-ink-500">Live counts from this development database. No sample earnings are shown.</p>
+            <h1 class="ds-page-title mt-1">Dashboard</h1>
+            <p class="mt-1 text-sm text-ink-500">Live member counts from this database. Package sales are priced in USD. ROI, level income, and withdrawals are not being credited.</p>
         </div>
         <x-ui.badge>Development</x-ui.badge>
     </div>
@@ -27,9 +27,9 @@
         @else
             <x-ui.card title="Workspace" subtitle="Existing modules stay on their current routes.">
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.button :href="route('admin.members.active')" variant="secondary">Active members</x-ui.button>
-                    <x-ui.button :href="route('admin.members.inactive')" variant="secondary">Inactive members</x-ui.button>
-                    <x-ui.button :href="route('admin.ranks.index')" variant="secondary">Ranks</x-ui.button>
+                    <x-ui.button :href="route('admin.members.directory')" variant="secondary">All members</x-ui.button>
+                    <x-ui.button :href="route('admin.packages.index')" variant="secondary">Packages</x-ui.button>
+                    <x-ui.button :href="route('admin.payments.index', ['status' => 'pending'])" variant="secondary">Pending payments</x-ui.button>
                 </div>
             </x-ui.card>
         @endif

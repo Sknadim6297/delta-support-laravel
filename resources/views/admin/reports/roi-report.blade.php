@@ -155,7 +155,7 @@
 
             <nav>
 
-                {{ $transactions->links('pagination::simple-bootstrap-5') }}
+                {{ $transactions->links('pagination::bootstrap-5') }}
 
             </nav>
 

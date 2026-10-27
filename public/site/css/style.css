@@ -1928,9 +1928,7 @@ textarea.form-control {
 .business-banner {
   padding: 85px 0;
   color: #fff;
-  background:
-    linear-gradient(90deg, rgba(4, 25, 48, .93), rgba(4, 36, 68, .68)),
-    url("img/business-banner.jpg") center/cover no-repeat;
+  background: linear-gradient(90deg, #041930, #092747 58%, #0b5ea8);
 }
 
 .business-banner .banner-tag {

@@ -139,6 +139,7 @@
                     <tr>
 
                         <th>Serial No</th>
+                        <th>Reference</th>
                         <th>Member ID</th>
                         <th>Name</th>
                         <th>Income Amount (USDT)</th>
@@ -157,6 +158,7 @@
                     @forelse ($transactions as $transaction)
                         <tr>
                             <td>{{ $loop->iteration }}</td>
+                            <td>{{ $transaction->reference }}</td>
                             <td>{{ $transaction->member_id }}</td>
                             <td>{{ $transaction->member_name }}</td>
                             <td>{{ rtrim(rtrim(number_format((float) $transaction->income_amount, 4, '.', ''), '0'), '.') ?: '0' }}</td>
@@ -167,7 +169,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center">No level commission transactions found.</td>
+                            <td colspan="9" class="text-center">No level commission transactions found.</td>
                         </tr>
                     @endforelse
 
@@ -183,7 +185,7 @@
 
             <nav>
 
-                {{ $transactions->links('pagination::simple-bootstrap-5') }}
+                {{ $transactions->links('pagination::bootstrap-5') }}
 
             </nav>
 

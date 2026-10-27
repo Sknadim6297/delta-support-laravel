@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+class PackagePurchase extends Model
+{
+    public const PENDING = 'pending';
+
+    public const APPROVED = 'approved';
+
+    public const REJECTED = 'rejected';
+
+    protected $fillable = [
+        'reference',
+        'idempotency_key',
+        'member_id',
+        'package_id',
+        'package_code',
+        'package_name',
+        'price_usd',
+        'tour_title',
+        'tour_details',
+        'duration',
+        'benefits',
+        'currency_label',
+        'network',
+        'payment_reference',
+        'status',
+        'rejection_reason',
+        'submitted_at',
+        'reviewed_at',
+        'reviewed_by',
+    ];
+
+    protected $casts = [
+        'price_usd' => 'decimal:4',
+        'submitted_at' => 'datetime',
+        'reviewed_at' => 'datetime',
+    ];
+
+    public function package(): BelongsTo
+    {
+        return $this->belongsTo(Package::class);
+    }
+
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(Member::class, 'member_id', 'member_id');
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
+    }
+
+    public function decisions(): HasMany
+    {
+        return $this->hasMany(PaymentDecision::class);
+    }
+}

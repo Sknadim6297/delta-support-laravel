@@ -3,101 +3,83 @@
         <img src="{{ asset('site/img/logo.png') }}" class="sidebar-logo-image" alt="Delta Support">
     </div>
 
-    <div class="sidebar-menu">
-        <a href="{{ route('dashboard') }}" class="active"><i class="bi bi-house-door-fill"></i><span>Dashboard</span></a>
+    <nav class="sidebar-menu ds-nav" aria-label="Admin">
+        <x-nav.link :href="route('dashboard')" :active="request()->routeIs('dashboard')">Dashboard</x-nav.link>
 
-        <a href="#memberMenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="memberMenu"><i class="bi bi-grid"></i><span>Member</span><i class="bi bi-chevron-down ms-auto submenu-arrow"></i></a>
-        <div class="collapse submenu" id="memberMenu">
-            <a href="{{ route('admin.members.registration') }}"><i class="bi bi-person"></i><span>Member Registration</span></a>
-            <a href="{{ route('admin.members.update') }}"><i class="bi bi-person-plus"></i><span>View/Update Member Profile</span></a>
-            <a href="{{ route('admin.members.inactive') }}"><i class="bi bi-card-list"></i><span>Inactive Member List</span></a>
-            <a href="{{ route('admin.members.active') }}"><i class="bi bi-person-check"></i><span>Active Member List</span></a>
-        </div>
+        <x-nav.group label="Member Management" icon="bi-people" :open="request()->routeIs('admin.members.*', 'admin.genealogy.tree-view')">
+            <x-nav.link :href="route('admin.members.directory')" :active="request()->routeIs('admin.members.directory')">All Members</x-nav.link>
+            <x-nav.link :href="route('admin.members.update')" :active="request()->routeIs('admin.members.update')">Member Details</x-nav.link>
+            <x-nav.link :href="route('admin.genealogy.tree-view')" :active="request()->routeIs('admin.genealogy.tree-view')">Referral Tree</x-nav.link>
+        </x-nav.group>
 
-        <a href="{{ route('admin.ranks.index') }}"><i class="bi bi-award"></i><span>Rank Management</span></a>
+        <x-nav.group label="Package Management" icon="bi-box-seam" :open="request()->routeIs('admin.packages.*', 'admin.purchases.*')">
+            <x-nav.link :href="route('admin.packages.index')" :active="request()->routeIs('admin.packages.index')">All Packages</x-nav.link>
+            <x-nav.link :href="route('admin.packages.create')" :active="request()->routeIs('admin.packages.create')">Add Package</x-nav.link>
+            <x-nav.link :href="route('admin.purchases.index')" :active="request()->routeIs('admin.purchases.*')">Package Purchases</x-nav.link>
+        </x-nav.group>
 
-        <a href="#genealogyMenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="genealogyMenu"><i class="bi bi-layers"></i><span>Genealogy</span><i class="bi bi-chevron-down ms-auto submenu-arrow"></i></a>
-        <div class="collapse submenu" id="genealogyMenu">
-            <a href="{{ route('admin.genealogy.tree-view') }}"><i class="bi bi-diagram-3"></i><span>Tree View</span></a>
-            <a href="{{ route('admin.genealogy.level-view') }}"><i class="bi bi-people"></i><span>Level View</span></a>
-        </div>
+        <x-nav.group label="Payment Management" icon="bi-qr-code" :open="request()->routeIs('admin.payments.*')">
+            <x-nav.link :href="route('admin.payments.index', ['status' => 'pending'])" :active="request()->routeIs('admin.payments.index') && request()->query('status', 'pending') === 'pending'">Pending Payments</x-nav.link>
+            <x-nav.link :href="route('admin.payments.index', ['status' => 'approved'])" :active="request()->query('status') === 'approved'">Approved Payments</x-nav.link>
+            <x-nav.link :href="route('admin.payments.index', ['status' => 'rejected'])" :active="request()->query('status') === 'rejected'">Rejected Payments</x-nav.link>
+            <x-nav.link :href="route('admin.payments.settings')" :active="request()->routeIs('admin.payments.settings', 'admin.payments.qr')">Payment Settings</x-nav.link>
+        </x-nav.group>
 
-        <a href="#activationWalletMenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="activationWalletMenu"><i class="bi bi-bar-chart"></i><span>Activation Wallet</span><i class="bi bi-chevron-down ms-auto submenu-arrow"></i></a>
-        <div class="collapse submenu" id="activationWalletMenu">
-            <a href="{{ route('admin.activation-wallet.credit-entry') }}"><i class="bi bi-wallet2"></i><span>Transfer to Activation Wallet Entry</span></a>
-            <a href="{{ route('admin.activation-wallet.credit-entry.list') }}"><i class="bi bi-arrow-right-circle"></i><span>Transfer to Activation Wallet from Admin List</span></a>
-            <a href="{{ route('admin.activation-wallet.debit-entry') }}"><i class="bi bi-person-lines-fill"></i><span>Force Debit from Activation Wallet Entry</span></a>
-            <a href="{{ route('admin.activation-wallet.debit-entry.list') }}"><i class="bi bi-list-ul"></i><span>Force Debit from Activation Wallet List</span></a>
-            <a href="{{ route('admin.activation-wallet.summary') }}"><i class="bi bi-clock-history"></i><span>Activation Wallet Summary</span></a>
-        </div>
+        <x-nav.group label="Invoices" icon="bi-receipt" :open="request()->routeIs('admin.invoices.*')">
+            <x-nav.link :href="route('admin.invoices.index')" :active="request()->routeIs('admin.invoices.*')">All Invoices</x-nav.link>
+        </x-nav.group>
 
-        <a href="#investmentMenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="investmentMenu"><i class="bi bi-pencil-square"></i><span>Investment</span><i class="bi bi-chevron-down ms-auto submenu-arrow"></i></a>
-        <div class="collapse submenu" id="investmentMenu">
-            <a href="{{ route('admin.investments.entry') }}"><i class="bi bi-plus-circle"></i><span>Investment Entry</span></a>
-            <a href="{{ route('admin.investments.active-investments') }}"><i class="bi bi-list-ul"></i><span>Active Investment List</span></a>
-            <a href="{{ route('admin.investments.closed-investments') }}"><i class="bi bi-cash-stack"></i><span>Closed Investment List</span></a>
-            <a href="{{ route('admin.investments.investment-withdrawal-entry') }}"><i class="bi bi-arrow-repeat"></i><span>Investment Withdrawal Entry</span></a>
-            <a href="{{ route('admin.investments.investment-withdrawal-list') }}"><i class="bi bi-clock-history"></i><span>Investment Withdrawal List</span></a>
-        </div>
+        <x-nav.group label="ROI Management" icon="bi-calendar2-check">
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'roi-plans'])" soon>ROI Plans</x-nav.link>
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'roi-schedule'])" soon>ROI Schedule</x-nav.link>
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'roi-history'])" soon>ROI History</x-nav.link>
+        </x-nav.group>
 
-        <a href="#roiWalletMenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="roiWalletMenu"><i class="bi bi-pencil"></i><span>ROI Wallet</span><i class="bi bi-chevron-down ms-auto submenu-arrow"></i></a>
-        <div class="collapse submenu" id="roiWalletMenu">
-            <a href="{{ route('admin.coming-soon', ['feature' => 'roi-wallet-pending-list']) }}"><i class="bi bi-wallet2"></i><span>Pending List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'roi-wallet-paid-list']) }}"><i class="bi bi-arrow-down-circle"></i><span>Paid List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'roi-wallet-rejected-list']) }}"><i class="bi bi-arrow-up-circle"></i><span>Rejected List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-credit-to-roi-wallet-entry']) }}"><i class="bi bi-arrow-left-right"></i><span>Force Credit to ROI Wallet Entry</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-credit-to-roi-wallet-list']) }}"><i class="bi bi-list-ul"></i><span>Force Credit to ROI Wallet List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-debit-from-roi-wallet-entry']) }}"><i class="bi bi-clock-history"></i><span>Force Debit from ROI Wallet Entry</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-debit-from-roi-wallet-list']) }}"><i class="bi bi-exclamation-circle"></i><span>Force Debit from ROI Wallet List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'member-roi-wallet-to-roi-wallet-transfer-list']) }}"><i class="bi bi-file-earmark-text"></i><span>Member ROI Wallet to ROI Wallet Transfer List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'leaderwise-roi-wallet-list']) }}"><i class="bi bi-file-earmark-text"></i><span>Leaderwise ROI Wallet List</span></a>
-        </div>
+        <x-nav.group label="Level Income" icon="bi-diagram-3">
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'commission-settings'])" soon>Commission Settings</x-nav.link>
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'level-unlock-rules'])" soon>Level Unlock Rules</x-nav.link>
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'income-history'])" soon>Income History</x-nav.link>
+        </x-nav.group>
 
-        <a href="#workingWalletMenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="workingWalletMenu"><i class="bi bi-pie-chart"></i><span>Working Wallet</span><i class="bi bi-chevron-down ms-auto submenu-arrow"></i></a>
-        <div class="collapse submenu" id="workingWalletMenu">
-            <a href="{{ route('admin.coming-soon', ['feature' => 'working-wallet-pending-list']) }}"><i class="bi bi-wallet2"></i><span>Pending List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'working-wallet-paid-list']) }}"><i class="bi bi-arrow-down-circle"></i><span>Paid List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'working-wallet-rejected-list']) }}"><i class="bi bi-arrow-up-circle"></i><span>Rejected List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-credit-to-working-wallet-entry']) }}"><i class="bi bi-arrow-left-right"></i><span>Force Credit to Working Wallet Entry</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-credit-to-working-wallet-list']) }}"><i class="bi bi-person-lines-fill"></i><span>Force Credit to Working Wallet List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-debit-from-working-wallet-entry']) }}"><i class="bi bi-list-ul"></i><span>Force Debit from Working Wallet Entry</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-debit-from-working-wallet-list']) }}"><i class="bi bi-exclamation-circle"></i><span>Force Debit from Working Wallet List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'member-working-wallet-to-working-wallet-transfer-list']) }}"><i class="bi bi-clock-history"></i><span>Member Working Wallet to Working Wallet Transfer List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'leaderwise-working-wallet-list']) }}"><i class="bi bi-file-earmark-text"></i><span>Leaderwise Working Wallet List</span></a>
-        </div>
+        <x-nav.group label="Wallet Management" icon="bi-wallet2" :open="request()->routeIs('admin.wallets.*')">
+            <x-nav.link :href="route('admin.wallets.show', ['wallet' => 'roi'])" :active="request()->routeIs('admin.wallets.show') && request()->route('wallet') === 'roi'">ROI Wallet</x-nav.link>
+            <x-nav.link :href="route('admin.wallets.show', ['wallet' => 'working'])" :active="request()->route('wallet') === 'working'">Working Wallet</x-nav.link>
+            <x-nav.link :href="route('admin.wallets.transactions')" :active="request()->routeIs('admin.wallets.transactions')">Wallet Transactions</x-nav.link>
+        </x-nav.group>
 
-        <a href="#salaryWalletMenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="salaryWalletMenu"><i class="bi bi-table"></i><span>Salary Wallet</span><i class="bi bi-chevron-down ms-auto submenu-arrow"></i></a>
-        <div class="collapse submenu" id="salaryWalletMenu">
-            <a href="{{ route('admin.coming-soon', ['feature' => 'salary-wallet-pending-list']) }}"><i class="bi bi-wallet2"></i><span>Pending List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'salary-wallet-paid-list']) }}"><i class="bi bi-arrow-down-circle"></i><span>Paid List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'salary-wallet-rejected-list']) }}"><i class="bi bi-arrow-up-circle"></i><span>Rejected List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-credit-to-salary-wallet-entry']) }}"><i class="bi bi-arrow-left-right"></i><span>Force Credit to Salary Wallet Entry</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-credit-to-salary-wallet-list']) }}"><i class="bi bi-person-lines-fill"></i><span>Force Credit to Salary Wallet List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-debit-from-salary-wallet-entry']) }}"><i class="bi bi-list-ul"></i><span>Force Debit from Salary Wallet Entry</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'force-debit-from-salary-wallet-list']) }}"><i class="bi bi-exclamation-circle"></i><span>Force Debit from Salary Wallet List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'member-salary-wallet-to-salary-wallet-transfer-list']) }}"><i class="bi bi-clock-history"></i><span>Member Salary Wallet to Salary Wallet Transfer List</span></a>
-            <a href="{{ route('admin.coming-soon', ['feature' => 'leaderwise-salary-wallet-list']) }}"><i class="bi bi-file-earmark-text"></i><span>Leaderwise Salary Wallet List</span></a>
-        </div>
+        <x-nav.group label="Withdrawals" icon="bi-cash-coin">
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'withdrawal-requests'])" soon>Withdrawal Requests</x-nav.link>
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'withdrawal-charges'])" soon>Withdrawal Charges</x-nav.link>
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'payout-history'])" soon>Payout History</x-nav.link>
+        </x-nav.group>
 
-        <a href="#reportsMenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="reportsMenu"><i class="bi bi-search"></i><span>Reports</span><i class="bi bi-chevron-down ms-auto submenu-arrow"></i></a>
-        <div class="collapse submenu" id="reportsMenu">
-            <a href="{{ route('admin.report.roi-report') }}"><i class="bi bi-person-lines-fill"></i><span>ROI</span></a>
-            <a href="{{ route('admin.report.level-income') }}"><i class="bi bi-wallet2"></i><span>Level Income</span></a>
-            <a href="{{ route('admin.report.salary') }}"><i class="bi bi-cash-stack"></i><span>Salary</span></a>
-            <a href="{{ route('admin.report.rank-achievement') }}"><i class="bi bi-bar-chart"></i><span>Rank Achievement Report</span></a>
-        </div>
+        <x-nav.group label="Tour Management" icon="bi-airplane" :open="request()->routeIs('admin.tours.*')">
+            <x-nav.link :href="route('admin.tours.index')" :active="request()->routeIs('admin.tours.index')">Tour Packages</x-nav.link>
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'booking-requests'])" soon>Booking Requests</x-nav.link>
+        </x-nav.group>
 
-        <a href="#notificationMenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="notificationMenu"><i class="bi bi-bell"></i><span>Support</span><i class="bi bi-chevron-down ms-auto submenu-arrow"></i></a>
-        <div class="collapse submenu" id="notificationMenu">
-            <a href="{{ route('admin.support.pending-tickets') }}"><i class="bi bi-headset"></i><span>Pending Ticket List</span></a>
-            <a href="{{ route('admin.support.applied-tickets') }}"><i class="bi bi-bell"></i><span>Replied Ticket List</span></a>
-        </div>
+        <x-nav.group label="Rewards" icon="bi-award">
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'reward-plans'])" soon>Reward Plans</x-nav.link>
+            <x-nav.link :href="route('admin.coming-soon', ['feature' => 'reward-achievements'])" soon>Achievements</x-nav.link>
+        </x-nav.group>
 
-        <a href="{{ route('admin.change-password.index') }}"><i class="bi bi-exclamation-circle"></i><span>Change Password</span></a>
+        <x-nav.group label="Reports" icon="bi-bar-chart" :open="request()->routeIs('admin.catalog-reports.*')">
+            <x-nav.link :href="route('admin.catalog-reports.show', ['report' => 'members'])">Member Reports</x-nav.link>
+            <x-nav.link :href="route('admin.catalog-reports.show', ['report' => 'packages'])">Package Reports</x-nav.link>
+            <x-nav.link :href="route('admin.catalog-reports.show', ['report' => 'payments'])">Payment Reports</x-nav.link>
+            <x-nav.link :href="route('admin.catalog-reports.show', ['report' => 'earnings'])" soon>Earnings Reports</x-nav.link>
+        </x-nav.group>
 
-        <form action="{{ route('admin.logout') }}" method="POST" class="d-inline">
+        <x-nav.group label="Settings" icon="bi-gear" :open="request()->routeIs('admin.settings.*', 'admin.change-password.*')">
+            <x-nav.link :href="route('admin.settings.general')" :active="request()->routeIs('admin.settings.general')">General Settings</x-nav.link>
+            <x-nav.link :href="route('admin.settings.branding')" :active="request()->routeIs('admin.settings.branding')">Branding</x-nav.link>
+            <x-nav.link :href="route('admin.settings.security')" :active="request()->routeIs('admin.settings.security', 'admin.change-password.*')">Security</x-nav.link>
+            <x-nav.link :href="route('admin.settings.profile')" :active="request()->routeIs('admin.settings.profile')">Admin Profile</x-nav.link>
+        </x-nav.group>
+
+        <form action="{{ route('admin.logout') }}" method="POST">
             @csrf
-            <button type="submit" class="btn btn-link text-decoration-none p-0 d-flex align-items-center gap-2 w-100 text-start" style="color: #606770; font-size: 13px; padding: 11px 15px !important; border-radius: 5px;"><i class="bi bi-box-arrow-right"></i><span>Log Out</span></button>
+            <button type="submit"><i class="bi bi-box-arrow-right"></i><span>Log out</span></button>
         </form>
-    </div>
+    </nav>
 </aside>

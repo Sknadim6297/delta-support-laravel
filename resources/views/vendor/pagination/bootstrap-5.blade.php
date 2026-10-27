@@ -1,9 +1,10 @@
-@if ($paginator->hasPages())
+@if ($paginator->total() > 0)
     <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
         <div class="table-info">
             Showing {{ $paginator->firstItem() }} to {{ $paginator->lastItem() }} of {{ $paginator->total() }} entries
         </div>
 
+        @if ($paginator->hasPages())
         <nav>
             <ul class="pagination pagination-sm mb-0">
                 @if ($paginator->onFirstPage())
@@ -43,5 +44,6 @@
                 @endif
             </ul>
         </nav>
+        @endif
     </div>
 @endif

@@ -7,10 +7,10 @@
     <div class="login-subtitle">We will send an OTP to your registered email address.</div>
 
     @if ($errors->any())
-        <div class="alert alert-danger mb-3">{{ $errors->first() }}</div>
+        <div class="auth-alert auth-alert-danger">{{ $errors->first() }}</div>
     @endif
     @if ($maskedEmail)
-        <div class="alert alert-info mb-3">OTP sent to {{ $maskedEmail }}. It expires in 10 minutes.</div>
+        <div class="auth-alert auth-alert-info">OTP sent to {{ $maskedEmail }}. It expires in 10 minutes.</div>
     @endif
 
     <form method="POST" action="{{ route('member.forgot.verify.store') }}">
@@ -28,7 +28,7 @@
     <div class="auth-links">
         <form method="POST" action="{{ route('member.forgot.resend') }}">
             @csrf
-            <button type="submit" class="btn btn-link p-0 forgot">Resend OTP</button>
+            <button type="submit" class="auth-link-button">Resend OTP</button>
         </form>
         <a href="{{ route('login') }}" class="forgot">Sign In</a>
     </div>

@@ -373,7 +373,6 @@ class ReportSummaryService
         $generation = DB::table('report_summary_generations')
             ->where('id', $state->active_generation_id)
             ->where('status', 'active')
-            ->whereNotNull('validated_at')
             ->first(['source_timezone']);
 
         if (! $generation) {

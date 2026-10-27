@@ -40,7 +40,7 @@
   <div class="container">
 
     <!-- SECTION HEADING -->
-    <div class="text-center mx-auto mb-5" style="max-width:700px">
+    <div class="mx-auto mb-12 text-center" style="max-width:700px">
       <span class="section-tag">Choose Your Package</span>
       <h2 class="section-title">Find The Option That Suits You</h2>
       <p class="section-desc">
@@ -52,17 +52,17 @@
     <!-- OPTION 1 -->
     <div class="text-center mb-4">
       <span class="section-tag">PACKAGE OPTION 01</span>
-      <h3 class="fw-bold mt-2">Travel Experience Package</h3>
-      <div class="package-price justify-content-center mt-2">
+      <h3 class="mt-2 font-bold">Travel Experience Package</h3>
+      <div class="package-price mt-2 justify-center">
         <strong>₹10,000/-</strong>
         <span>/ package</span>
       </div>
     </div>
 
-    <div class="row g-4">
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
       <!-- DIGHA -->
-      <div class="col-md-6 col-lg-4">
+      <div>
         <div class="destination-card">
           <div class="destination-image">
             <img
@@ -115,7 +115,7 @@
       </div>
 
       <!-- GOA -->
-      <div class="col-md-6 col-lg-4">
+      <div>
         <div class="destination-card">
           <div class="destination-image">
             <img
@@ -168,7 +168,7 @@
       </div>
 
       <!-- GANGTOK -->
-      <div class="col-md-6 col-lg-4">
+      <div>
         <div class="destination-card">
           <div class="destination-image">
             <img
@@ -226,8 +226,8 @@
     <div class="or-divider">OR</div>
 
     <!-- OPTION 2 -->
-    <div class="row justify-content-center">
-      <div class="col-lg-6">
+    <div class="grid justify-center lg:grid-cols-2">
+      <div>
         <div class="package-card">
 
           <div class="package-head">
@@ -287,11 +287,11 @@
         </div>
       </div>
 
-      <div class="col-lg-6">
+      <div>
         <div class="monthly-box">
 
           <span class="section-tag">Payment Breakdown</span>
-          <h3 class="fw-bold mt-2 mb-3">Monthly Option Summary</h3>
+          <h3 class="mt-2 mb-4 font-bold">Monthly Option Summary</h3>
 
           <p class="section-desc">
             Summary of the payment figures shown in the package details.
@@ -351,9 +351,9 @@
     <section class="cta-section">
       <div class="container">
         <div class="cta-box">
-          <div class="row align-items-center g-4">
-            <div class="col-lg-8">
-              <span class="text-warning fw-bold small"
+          <div class="cta-grid grid items-center gap-6 lg:grid-cols-12">
+            <div class="lg:col-span-8">
+              <span class="text-sm font-bold text-amber-400"
                 >NEED MORE INFORMATION?</span
               >
               <h2>Let's Discuss Your Package</h2>
@@ -362,7 +362,7 @@
                 the details you need before making a decision.
               </p>
             </div>
-            <div class="col-lg-4 text-lg-end">
+            <div class="lg:col-span-4 lg:text-right">
               <a href="{{ route('public.contact') }}" class="btn-orange">
                 Contact Us <i class="bi bi-arrow-up-right"></i>
               </a>

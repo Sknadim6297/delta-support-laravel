@@ -7,8 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center; font-family: 'DM Sans', sans-serif; background: #f3f6fc; color: #172033; }
@@ -38,6 +36,11 @@
         .login-footer a:hover, .forgot:hover { text-decoration: underline; }
         .auth-links { display: flex; justify-content: space-between; margin-top: 18px; font-size: 13px; }
         .validation-message { min-height: 18px; color: #dc3545; font-size: 12px; }
+        .auth-alert { margin-bottom: 16px; border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+        .auth-alert-danger { background: #fde8ea; color: #b42318; }
+        .auth-alert-success { background: #e8f8ef; color: #067647; }
+        .auth-alert-info { background: #e8f3fc; color: #0752a0; }
+        .auth-link-button { border: 0; background: transparent; padding: 0; color: #0878d1; font-weight: 700; cursor: pointer; }
         @media (max-width: 768px) { body { padding: 15px; } .login-wrapper { flex-direction: column; max-width: 450px; min-height: auto; border-radius: 22px; } .login-left { width: 100%; min-height: 220px; padding: 35px 25px; } .login-left h2 { font-size: 23px; } .login-left p { font-size: 13px; } .login-right { width: 100%; padding: 35px 25px 40px; } .login-title { font-size: 26px; } }
         @media (max-width: 380px) { .login-right { padding: 30px 20px; } }
     </style>
