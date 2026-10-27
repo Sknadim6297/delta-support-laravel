@@ -3,6 +3,13 @@ import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+    experimental: {
+        renderBuiltUrl(filename, { hostType }) {
+            if (hostType === 'css') {
+                return { relative: true };
+            }
+        },
+    },
     plugins: [
         laravel({
             input: [

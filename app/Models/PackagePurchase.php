@@ -15,6 +15,16 @@ class PackagePurchase extends Model
 
     public const REJECTED = 'rejected';
 
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            self::PENDING => 'Pending Verification',
+            self::APPROVED => 'Active',
+            self::REJECTED => 'Rejected',
+            default => ucfirst((string) $this->status),
+        };
+    }
+
     protected $fillable = [
         'reference',
         'idempotency_key',
@@ -22,11 +32,17 @@ class PackagePurchase extends Model
         'package_id',
         'package_code',
         'package_name',
+        'package_type',
         'price_usd',
         'tour_title',
         'tour_details',
         'duration',
         'benefits',
+        'description',
+        'full_description',
+        'destinations',
+        'inclusions',
+        'exclusions',
         'currency_label',
         'network',
         'payment_reference',

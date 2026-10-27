@@ -28,7 +28,7 @@ class PackagePurchaseService
         $settings = PaymentSetting::current();
         if (! $settings->isReady()) {
             throw ValidationException::withMessages([
-                'package' => 'Payment instructions are not available yet.',
+                'package' => 'Payment Currently Unavailable.',
             ]);
         }
 
@@ -67,11 +67,17 @@ class PackagePurchaseService
                 'package_id' => $lockedPackage->id,
                 'package_code' => $lockedPackage->code,
                 'package_name' => $lockedPackage->name,
+                'package_type' => $lockedPackage->package_type ?: Package::TYPE_TOUR,
                 'price_usd' => $lockedPackage->price_usd,
                 'tour_title' => $lockedPackage->tour_title,
                 'tour_details' => $lockedPackage->tour_details,
                 'duration' => $lockedPackage->duration,
                 'benefits' => $lockedPackage->benefits,
+                'description' => $lockedPackage->description,
+                'full_description' => $lockedPackage->full_description,
+                'destinations' => $lockedPackage->destinations,
+                'inclusions' => $lockedPackage->inclusions,
+                'exclusions' => $lockedPackage->exclusions,
                 'currency_label' => $settings->currency_label,
                 'network' => $settings->network,
                 'payment_reference' => $reference,
@@ -113,9 +119,12 @@ class PackagePurchaseService
             $invoice = Invoice::query()->create([
                 'invoice_number' => $this->uniqueCode('DS-INV'),
                 'package_purchase_id' => $locked->id,
+                'purchase_reference' => $locked->reference,
                 'member_id' => $locked->member_id,
                 'member_name' => $memberName,
                 'package_name' => $locked->package_name,
+                'package_code' => $locked->package_code,
+                'package_details' => $this->packageDetails($locked),
                 'price_usd' => $locked->price_usd,
                 'currency_label' => $locked->currency_label,
                 'network' => $locked->network,
@@ -166,6 +175,18 @@ class PackagePurchaseService
 
             return $locked;
         });
+    }
+
+    private function packageDetails(PackagePurchase $purchase): ?string
+    {
+        $lines = array_values(array_filter([
+            $purchase->tour_title,
+            filled($purchase->destinations) ? 'Destinations: '.$purchase->destinations : null,
+            filled($purchase->duration) ? 'Duration: '.$purchase->duration : null,
+            $purchase->benefits,
+        ], fn ($line) => trim((string) $line) !== ''));
+
+        return $lines === [] ? null : implode("\n", $lines);
     }
 
     private function assertReferenceShape(PaymentSetting $settings, string $reference): void

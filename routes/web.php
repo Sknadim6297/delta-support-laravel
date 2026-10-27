@@ -49,7 +49,16 @@
     })->name('home');
 
     Route::view('/about', 'public.about')->name('public.about');
-    Route::view('/packages', 'public.packages')->name('public.packages');
+    Route::get('/packages', function () {
+        $packages = \App\Models\Package::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('public.packages', compact('packages'));
+    })->name('public.packages');
+    Route::get('/packages/{package}/image', [PackageController::class, 'publicImage'])->name('public.packages.image');
     Route::view('/business-plan', 'public.business-plan')->name('public.business-plan');
     Route::view('/contact', 'public.contact')->name('public.contact');
 
@@ -211,6 +220,7 @@
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');
             Route::get('/{package}/image', 'image')->name('image');
+            Route::patch('/{package}/status', 'updateStatus')->name('status');
             Route::get('/{package}/edit', 'edit')->name('edit');
             Route::put('/{package}', 'update')->name('update');
         });
@@ -221,14 +231,16 @@
             Route::get('/settings', 'settings')->name('settings');
             Route::put('/settings', 'updateSettings')->name('settings.update');
             Route::get('/qr', 'qr')->name('qr');
+            Route::get('/{purchase}', 'show')->name('show');
             Route::post('/{purchase}/approve', 'approve')->name('approve');
             Route::post('/{purchase}/reject', 'reject')->name('reject');
         });
 
         Route::controller(InvoiceController::class)->prefix('admin/invoices')->name('admin.invoices.')->group(function () {
             Route::get('/', 'index')->name('index');
-            Route::get('/{invoice}', 'show')->name('show');
+            Route::get('/{invoice}/print', 'print')->name('print');
             Route::get('/{invoice}/pdf', 'pdf')->name('pdf');
+            Route::get('/{invoice}', 'show')->name('show');
         });
 
         Route::controller(CompanySettingController::class)->prefix('admin/settings')->name('admin.settings.')->group(function () {
@@ -635,8 +647,9 @@
             Route::get('/member/payments/qr', 'qr')->name('member.payments.qr');
             Route::get('/member/payments/{purchase}', 'payment')->name('member.payments.show');
             Route::get('/member/invoices', 'invoices')->name('member.invoices.index');
-            Route::get('/member/invoices/{invoice}', 'invoice')->name('member.invoices.show');
+            Route::get('/member/invoices/{invoice}/print', 'invoicePrint')->name('member.invoices.print');
             Route::get('/member/invoices/{invoice}/pdf', 'invoicePdf')->name('member.invoices.pdf');
+            Route::get('/member/invoices/{invoice}', 'invoice')->name('member.invoices.show');
             Route::get('/member/referral', 'referral')->name('member.referral');
             Route::get('/member/tours', 'tours')->name('member.tours');
             Route::get('/member/support', 'support')->name('member.support');

@@ -10,9 +10,12 @@ class Invoice extends Model
     protected $fillable = [
         'invoice_number',
         'package_purchase_id',
+        'purchase_reference',
         'member_id',
         'member_name',
         'package_name',
+        'package_code',
+        'package_details',
         'price_usd',
         'currency_label',
         'network',

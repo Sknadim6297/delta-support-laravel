@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\Package;
 use App\Models\PackagePurchase;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class OperationsController extends Controller
@@ -30,11 +31,9 @@ class OperationsController extends Controller
         return view('admin.wallets.transactions');
     }
 
-    public function tours(): View
+    public function tours(): RedirectResponse
     {
-        $packages = Package::query()->orderBy('sort_order')->orderBy('name')->paginate(20);
-
-        return view('admin.tours.index', compact('packages'));
+        return redirect()->route('admin.packages.index');
     }
 
     public function reports(string $report): View

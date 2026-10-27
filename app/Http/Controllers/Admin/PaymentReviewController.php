@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PackagePurchase;
 use App\Models\PaymentSetting;
+use App\Models\User;
 use App\Services\PackagePurchaseService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,7 +72,7 @@ class PaymentReviewController extends Controller
             'receiving_address' => ['nullable', 'string', 'max:255'],
             'instructions' => ['nullable', 'string', 'max:5000'],
             'reference_pattern' => ['nullable', 'string', 'max:120'],
-            'qr_image' => ['nullable', 'image', 'max:2048'],
+            'qr_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'is_enabled' => ['nullable', 'boolean'],
         ]);
 
@@ -102,6 +103,16 @@ class PaymentReviewController extends Controller
         }
 
         return redirect()->route('admin.payments.settings')->with('success', 'Payment settings saved. Members are not approved automatically.');
+    }
+
+    public function show(PackagePurchase $purchase): View
+    {
+        $purchase->load(['member', 'invoice']);
+
+        return view('admin.payments.show', [
+            'purchase' => $purchase,
+            'reviewer' => $purchase->reviewed_by ? User::query()->find($purchase->reviewed_by) : null,
+        ]);
     }
 
     public function qr()

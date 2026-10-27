@@ -10,7 +10,6 @@ use App\Models\Package;
 use App\Models\PackagePurchase;
 use App\Models\PaymentSetting;
 use App\Services\PackagePurchaseService;
-use App\Support\SimplePdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -112,14 +111,18 @@ class CatalogController extends Controller
         return view('member.invoices.show', compact('invoice'));
     }
 
+    public function invoicePrint(Request $request, Invoice $invoice): View
+    {
+        $this->ownsInvoice($request, $invoice);
+
+        return view('invoices.print', compact('invoice'));
+    }
+
     public function invoicePdf(Request $request, Invoice $invoice): Response
     {
         $this->ownsInvoice($request, $invoice);
 
-        return response(SimplePdf::document(InvoiceController::lines($invoice)), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $invoice->invoice_number . '.pdf"',
-        ]);
+        return InvoiceController::download($invoice);
     }
 
     public function referral(Request $request): View
@@ -132,15 +135,9 @@ class CatalogController extends Controller
         ]);
     }
 
-    public function tours(Request $request): View
+    public function tours(): RedirectResponse
     {
-        $purchases = PackagePurchase::query()
-            ->where('member_id', $this->member($request)->member_id)
-            ->where('status', PackagePurchase::APPROVED)
-            ->latest('reviewed_at')
-            ->get();
-
-        return view('member.tours.index', compact('purchases'));
+        return redirect()->route('member.packages.mine');
     }
 
     public function support(): View

@@ -1,15 +1,36 @@
 @extends('member.layouts.app')
 @section('content')
-<div class="mx-auto max-w-5xl">
-    <h1 class="mb-4 text-2xl font-bold text-navy-900">My Invoices</h1>
-    <div class="overflow-x-auto rounded-xl border bg-white">
+<div class="mx-auto max-w-6xl">
+    <header class="mb-4">
+        <h1 class="ds-page-title">My Invoices</h1>
+        <p class="ds-page-copy">These are the invoices issued for your approved package purchases.</p>
+    </header>
+    <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left"><tr><th class="p-3">Invoice</th><th class="p-3">Package</th><th class="p-3">USD</th><th class="p-3"></th></tr></thead>
+            <thead class="bg-slate-50 text-left">
+                <tr>
+                    <th class="p-3">Invoice number</th>
+                    <th class="p-3">Package</th>
+                    <th class="p-3">Date</th>
+                    <th class="p-3">USD amount</th>
+                    <th class="p-3">Actions</th>
+                </tr>
+            </thead>
             <tbody>
             @forelse($invoices as $invoice)
-                <tr class="border-t"><td class="p-3">{{ $invoice->invoice_number }}</td><td class="p-3">{{ $invoice->package_name }}</td><td class="p-3">{{ $invoice->price_usd }}</td><td class="p-3"><a class="font-semibold text-brand-700" href="{{ route('member.invoices.show', $invoice) }}">View</a></td></tr>
+                <tr class="border-t border-slate-100">
+                    <td class="p-3 font-semibold">{{ $invoice->invoice_number }}</td>
+                    <td class="p-3">{{ $invoice->package_name }}</td>
+                    <td class="p-3">{{ optional($invoice->approved_at)->timezone('Asia/Kolkata')->format('d M Y') }}</td>
+                    <td class="p-3">USD {{ $invoice->price_usd }}</td>
+                    <td class="p-3">
+                        <a class="font-semibold text-brand-700" href="{{ route('member.invoices.show', $invoice) }}">View</a>
+                        <a class="ml-3 font-semibold text-navy-900" href="{{ route('member.invoices.print', $invoice) }}">Print</a>
+                        <a class="ml-3 font-semibold text-navy-900" href="{{ route('member.invoices.pdf', $invoice) }}">PDF</a>
+                    </td>
+                </tr>
             @empty
-                <tr><td colspan="4" class="p-6 text-slate-500">Invoices appear after a payment is approved.</td></tr>
+                <tr><td colspan="5" class="p-6 text-slate-500">Invoices appear after a payment is approved.</td></tr>
             @endforelse
             </tbody>
         </table>

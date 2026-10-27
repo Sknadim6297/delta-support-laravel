@@ -18,8 +18,9 @@
                     <td class="p-3">{{ $purchase->package_name }}</td>
                     <td class="p-3">{{ $purchase->price_usd }}</td>
                     <td class="p-3">{{ $purchase->payment_reference }}</td>
-                    <td class="p-3">{{ ucfirst($purchase->status) }}</td>
+                    <td class="p-3">{{ $purchase->statusLabel() }}</td>
                     <td class="p-3">
+                        <a class="mb-2 inline-block font-semibold text-brand-700" href="{{ route('admin.payments.show', $purchase) }}">Review</a>
                         @if($purchase->status === 'pending')
                             <form method="POST" action="{{ route('admin.payments.approve', $purchase) }}" class="mb-2">@csrf<button class="rounded bg-brand-500 px-3 py-1 text-white">Approve</button></form>
                             <form method="POST" action="{{ route('admin.payments.reject', $purchase) }}" class="flex gap-2">@csrf<input name="reason" placeholder="Rejection reason" class="rounded border px-2 py-1" required><button class="rounded bg-navy-900 px-3 py-1 text-white">Reject</button></form>
