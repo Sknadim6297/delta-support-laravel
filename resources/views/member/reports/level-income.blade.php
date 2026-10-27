@@ -2,60 +2,60 @@
 @section('content')
 
 
-        <main class="dashboard-content">
+        <main>
 
 
 
-    <div class="form-card">
+    <div>
 
         <!-- TITLE -->
-        <div class="form-title">
+        <div>
             <h4>Level Commission Report</h4>
         </div>
 
 
         <!-- SEARCH AREA -->
         <form method="GET" action="{{ route('member.reports.level-income') }}" id="levelIncomeReportForm">
-        <div class="row align-items-end">
+        <div>
 
             <!-- MEMBER ID -->
-            <div class="col-md-4 mb-3">
+            <div>
                 <label>Member ID</label>
 
                 <input type="text"
                        name="member_id"
                        value="{{ request('member_id') }}"
-                       class="form-control"
+                      
                        placeholder="Enter Member ID">
             </div>
 
             <!-- FROM DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>From Date</label>
 
                 <input type="date"
                        name="from_date"
                        value="{{ request('from_date') }}"
-                       class="form-control">
+                      >
             </div>
 
 
             <!-- TO DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>To Date</label>
 
                 <input type="date"
                        name="to_date"
                        value="{{ request('to_date') }}"
-                       class="form-control">
+                      >
             </div>
 
 
             <!-- LEVEL -->
-            <div class="col-md-2 mb-3">
+            <div>
                 <label>Level</label>
 
-                <select name="level" class="form-control">
+                <select name="level">
                     <option value="">All Levels</option>
                     @foreach ($levels as $level)
                         <option value="{{ $level }}" @selected((string) request('level') === (string) $level)>Level {{ $level }}</option>
@@ -67,32 +67,32 @@
 
 
         <!-- BUTTONS -->
-        <div class="d-flex justify-content-end gap-2 mb-4">
+        <div>
 
             <button type="button"
-                    class="btn btn-primary"
+                   
                     onclick="window.location.href='{{ route('member.reports.level-income.export') }}?' + new URLSearchParams(new FormData(document.getElementById('levelIncomeReportForm'))).toString()">
 
-                <i class="bi bi-file-earmark-excel"></i>
+                <i></i>
                 Export to Excel
 
             </button>
 
 
             <button type="submit"
-                    class="btn btn-primary">
+                   >
 
-                <i class="bi bi-search"></i>
+                <i></i>
                 Search
 
             </button>
 
 
             <button type="button"
-                    class="btn btn-primary"
+                   
                     onclick="window.location.href='{{ route('member.reports.level-income') }}'">
 
-                <i class="bi bi-arrow-counterclockwise"></i>
+                <i></i>
                 Reset
 
             </button>
@@ -100,25 +100,24 @@
         </div>
         </form>
 
-        <div class="rank-access-panel mb-4">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <div>
+            <div>
                 <strong>Level Commission Access</strong>
-                <span class="small text-muted">{{ $rankData['current_rank']?->name ?? 'Unranked' }} · {{ $rankData['unlocked_levels'] }} / 32 levels unlocked</span>
+                <span>{{ $rankData['current_rank']?->name ?? 'Unranked' }} · {{ $rankData['unlocked_levels'] }} / 32 levels unlocked</span>
             </div>
-            <div class="rank-level-grid">
+            <div>
                 @foreach ($levelAccess as $access)
-                    <span class="rank-level-badge {{ $access['unlocked'] ? 'level-unlocked' : 'level-locked' }}">
-                        <i class="bi {{ $access['unlocked'] ? 'bi-check-lg' : 'bi-lock' }}"></i>
+                    <span class="{{ $access['unlocked'] ? 'level-unlocked' : 'level-locked' }}">
                         L{{ $access['level'] }}
                     </span>
                 @endforeach
             </div>
-            <p class="small text-muted mb-0 mt-2">Locked levels are not eligible for Level Commission.</p>
+            <p>Locked levels are not eligible for Level Commission.</p>
         </div>
 
-          <div class="col-md-2 mb-3">
+          <div>
 
-                <div class="total-amount-box">
+                <div>
 
                     <span>Total Amount (USDT)</span>
 
@@ -128,9 +127,9 @@
 
             </div>
         <!-- TABLE -->
-        <div class="table-responsive">
+        <div>
 
-            <table class="table table-bordered table-hover member-table">
+            <table>
 
                 <thead>
 
@@ -165,7 +164,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center">No level commission transactions found.</td>
+                            <td colspan="8">No level commission transactions found.</td>
                         </tr>
                     @endforelse
 
@@ -177,7 +176,7 @@
 
 
         <!-- PAGINATION -->
-        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+        <div>
 
             <nav>
 

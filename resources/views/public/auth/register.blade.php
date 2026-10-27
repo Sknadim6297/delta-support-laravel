@@ -21,10 +21,6 @@
             @if (session('success'))
                 <div class="form-message mb-3" role="status">
                     {{ session('success') }}
-                    @if (session('temporary_password'))
-                        <br><strong>Temporary password:</strong> {{ session('temporary_password') }}
-                        <br><small>Keep this password private. You can reset it later from Forgot Password.</small>
-                    @endif
                 </div>
             @endif
 

@@ -9,49 +9,31 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     @vite(['resources/css/panel.css', 'resources/js/panel.js'])
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-    <div class="app-wrapper">
-        <div class="loader-wrapper">
-            <div class="loader_24"></div>
-        </div>
-
+    <div class="ds-app">
         @include('admin.partials.sidebar')
         <div class="ds-sidebar-backdrop" hidden></div>
 
-        <div class="app-content">
+        <div class="ds-main">
             @include('admin.partials.topbar')
 
-            <main class="dashboard-content">
+            <main class="ds-content">
                 @if (session('success'))
                     <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
                 @endif
                 @yield('content')
             </main>
 
-            <footer>
-                <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-md-9 col-12">
-                            <p class="footer-text f-w-600 mb-0">Copyright © {{ date('Y') }} Delta Support</p>
-                        </div>
-                    </div>
-                </div>
+            <footer class="ds-footer">
+                <p>Copyright © {{ date('Y') }} Delta Support</p>
             </footer>
         </div>
     </div>
 
-    <div class="go-top">
-        <span class="progress-value">
-            <i class="ph-bold ph-caret-up"></i>
-        </span>
-    </div>
-
-    <script src="{{ asset('main/assets/vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     <script>
         (function () {
             const memberSearchRoute = '{{ route('admin.genealogy.search-members') }}';

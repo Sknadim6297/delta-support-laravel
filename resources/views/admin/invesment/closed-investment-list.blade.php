@@ -1,13 +1,13 @@
 @extends('admin.layouts.app')
 @section('content')
 
-     <main class="dashboard-content">
+     <main>
 
     
            
            
 
-    <div class="form-card">
+    <div>
 
         <!-- TITLE -->
         
@@ -15,39 +15,39 @@
 
         <!-- SEARCH AREA -->
         <form method="GET" action="{{ route('admin.investments.closed-investments') }}" id="closedInvestmentForm">
-        <div class="row align-items-end">
+        <div>
 
             <!-- MEMBER ID -->
-            <div class="col-md-4 mb-3">
+            <div>
                 <label>Member ID</label>
 
                 <input type="text"
                       name="member_id"
                       value="{{ request('member_id') }}"
-                       class="form-control"
+                      
                        placeholder="Enter Member ID">
             </div>
 
 
             <!-- FROM DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>From Close Date</label>
 
                 <input type="date"
                       name="from_date"
                       value="{{ request('from_date') }}"
-                       class="form-control">
+                      >
             </div>
 
 
             <!-- TO DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>To Close Date</label>
 
                 <input type="date"
                       name="to_date"
                       value="{{ request('to_date') }}"
-                       class="form-control">
+                      >
             </div>
 
 
@@ -58,33 +58,33 @@
 
 
         <!-- BUTTONS -->
-        <div class="d-flex justify-content-end gap-2 mb-4">
+        <div>
 
             <button type="button"
-                    class="btn btn-primary"
+                   
                     onclick="window.location.href='{{ route('admin.investments.closed-investments.export') }}?' + new URLSearchParams(new FormData(document.getElementById('closedInvestmentForm'))).toString()">
 
-                <i class="bi bi-file-earmark-excel"></i>
+                <i></i>
                 Export to Excel
 
             </button>
 
 
             <button type="button"
-                    class="btn btn-primary"
+                   
                     onclick="document.getElementById('closedInvestmentForm').submit()">
 
-                <i class="bi bi-search"></i>
+                <i></i>
                 Search
 
             </button>
 
 
             <button type="button"
-                    class="btn btn-primary"
+                   
                     onclick="window.location.href='{{ route('admin.investments.closed-investments') }}'">
 
-                <i class="bi bi-arrow-counterclockwise"></i>
+                <i></i>
                 Reset
 
             </button>
@@ -92,9 +92,9 @@
         </div>
         </form>
 
-          <div class="col-md-2 mb-3">
+          <div>
 
-                <div class="total-amount-box">
+                <div>
 
                     <span>Total Amount (USDT)</span>
 
@@ -104,9 +104,9 @@
 
             </div>
         <!-- TABLE -->
-        <div class="table-responsive">
-    <table class="table custom-table align-middle">
-        <thead class="table-dark">
+        <div>
+    <table>
+        <thead>
             <tr>
                 <th>Serial No</th>
                 <th>Member ID</th>
@@ -132,7 +132,7 @@
                     <td>{{ $investment->closed_at?->format('d-m-Y') }}</td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="text-center">No closed investments found.</td></tr>
+                <tr><td colspan="8">No closed investments found.</td></tr>
             @endforelse
         </tbody>
     </table>
@@ -140,7 +140,7 @@
 
 
         <!-- PAGINATION -->
-        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+        <div>
 
             <nav>
 

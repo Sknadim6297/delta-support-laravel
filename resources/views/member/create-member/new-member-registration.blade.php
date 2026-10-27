@@ -1,70 +1,70 @@
 @extends('member.layouts.app')
 
 @section('content')
-    <main class="member-content">
-        <div class="form-card">
+    <main>
+        <div>
             @if(session('success'))
-                <div class="alert alert-success mb-4">{{ session('success') }}</div>
+                <div>{{ session('success') }}</div>
             @endif
 
             <form method="POST" action="{{ route('member.registration.store') }}">
                 @csrf
 
-                <div class="form-title">
+                <div>
                     <h4>Register New Member</h4>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
+                <div>
+                    <div>
                         <label>Member ID</label>
-                        <input type="text" id="generatedMemberId" class="form-control" value="{{ $generated_member_id ?? '' }}" placeholder="Auto-generated Member ID" readonly>
+                        <input type="text" id="generatedMemberId" value="{{ $generated_member_id ?? '' }}" placeholder="Auto-generated Member ID" readonly>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>Member Name <span class="text-danger">*</span></label>
-                        <input type="text" name="member_name" class="form-control" placeholder="Enter Member Name" value="{{ old('member_name') }}" required>
-                        <div class="text-danger mt-1 small validation-message" data-error-for="member_name">
+                    <div>
+                        <label>Member Name <span>*</span></label>
+                        <input type="text" name="member_name" placeholder="Enter Member Name" value="{{ old('member_name') }}" required>
+                        <div class="validation-message" data-error-for="member_name" hidden>
                             @error('member_name'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>Sponsor ID <span class="text-danger">*</span></label>
-                        <input type="text" name="sponsor_id" class="form-control" value="{{ $default_sponsor_id }}" readonly required>
-                        <div class="text-danger mt-1 small validation-message" data-error-for="sponsor_id">
+                    <div>
+                        <label>Sponsor ID <span>*</span></label>
+                        <input type="text" name="sponsor_id" value="{{ $default_sponsor_id }}" readonly required>
+                        <div class="validation-message" data-error-for="sponsor_id" hidden>
                             @error('sponsor_id'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
+                    <div>
                         <label>Sponsor Name</label>
-                        <input type="text" name="sponsor_name" class="form-control" value="{{ $default_sponsor_name }}" readonly>
-                        <div class="text-danger mt-1 small validation-message" data-error-for="sponsor_name">
+                        <input type="text" name="sponsor_name" value="{{ $default_sponsor_name }}" readonly>
+                        <div class="validation-message" data-error-for="sponsor_name" hidden>
                             @error('sponsor_name'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>Email ID <span class="text-danger">*</span></label>
-                        <input type="email" name="email" class="form-control" placeholder="Enter Email ID" value="{{ old('email') }}" required>
-                        <div class="text-danger mt-1 small validation-message" data-error-for="email">
+                    <div>
+                        <label>Email ID <span>*</span></label>
+                        <input type="email" name="email" placeholder="Enter Email ID" value="{{ old('email') }}" required>
+                        <div class="validation-message" data-error-for="email" hidden>
                             @error('email'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>Mobile No <span class="text-danger">*</span></label>
-                        <input type="text" name="mobile_no" class="form-control" placeholder="Enter Mobile No" value="{{ old('mobile_no') }}" required maxlength="10">
-                        <div class="text-danger mt-1 small validation-message" data-error-for="mobile_no">
+                    <div>
+                        <label>Mobile No <span>*</span></label>
+                        <input type="text" name="mobile_no" placeholder="Enter Mobile No" value="{{ old('mobile_no') }}" required maxlength="10">
+                        <div class="validation-message" data-error-for="mobile_no" hidden>
                             @error('mobile_no'){{ $message }}@enderror
                         </div>
                     </div>
 
                 </div>
 
-                <div class="text-end mt-3">
-                    <button type="submit" class="btn btn-primary px-4">
-                        <i class="bi bi-person-plus"></i>
+                <div>
+                    <button type="submit">
+                        <i></i>
                         Register
                     </button>
                 </div>
@@ -91,7 +91,7 @@
             }
 
             target.textContent = message;
-            target.style.display = message ? 'block' : 'none';
+            target.hidden = !message;
         }
 
         function markTouched(fieldName) {

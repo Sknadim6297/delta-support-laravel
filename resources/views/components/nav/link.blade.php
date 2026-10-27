@@ -1,5 +1,5 @@
 @props(['href', 'active' => false, 'soon' => false, 'single' => false, 'icon' => null])
-<li @class(['ds-item', 'is-active' => $active])>
+<li>
     <a href="{{ $href }}" @if($active) aria-current="page" @endif>
         @if ($icon)
             <x-nav.icon :name="$icon" />

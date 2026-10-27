@@ -1,97 +1,103 @@
 @extends('admin.layouts.app')
 
 @section('content')
-    <main class="member-content">
-        <div class="form-card">
+    <main>
+        <div>
             @if(session('success'))
-                <div class="alert alert-success mb-4">{{ session('success') }}</div>
+                <div>{{ session('success') }}</div>
             @endif
 
             <form method="POST" action="{{ route('admin.members.store') }}">
                 @csrf
 
-                <div class="form-title">
-                    <h4>Add Member</h4>
+                <div>
+                    <h4>Member Registration</h4>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
+                <div>
+                    <div>
                         <label>Member ID</label>
-                        <input type="text" id="generatedMemberId" class="form-control" value="{{ old('generated_member_id', $generated_member_id ?? '') }}" placeholder="Auto-generated Member ID" readonly>
+                        <input type="text" id="generatedMemberId" value="{{ old('generated_member_id', $generated_member_id ?? '') }}" placeholder="Auto-generated Member ID" readonly>
                         <input type="hidden" name="generated_member_id" value="{{ old('generated_member_id', $generated_member_id ?? '') }}">
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>Member Name <span class="text-danger">*</span></label>
-                        <input type="text" name="member_name" class="form-control" placeholder="Enter Member Name" value="{{ old('member_name') }}" required>
-                        <div class="text-danger mt-1 small validation-message" data-error-for="member_name">
+                    <div>
+                        <label>Member Name <span>*</span></label>
+                        <input type="text" name="member_name" placeholder="Enter Member Name" value="{{ old('member_name') }}" required>
+                        <div class="validation-message" data-error-for="member_name" hidden>
                             @error('member_name'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>Sponsor ID <span class="text-danger">*</span></label>
-                        <input type="text" name="sponsor_id" class="form-control" placeholder="Enter Sponsor ID" value="{{ old('sponsor_id', $default_sponsor_id ?? 'ST666666') }}" required>
-                        <div class="text-danger mt-1 small validation-message" data-error-for="sponsor_id">
+                    <div>
+                        <label>Sponsor ID <span>*</span></label>
+                        <input type="text" name="sponsor_id" placeholder="Enter Sponsor ID" value="{{ old('sponsor_id', $default_sponsor_id ?? 'ST666666') }}" required>
+                        <div class="validation-message" data-error-for="sponsor_id" hidden>
                             @error('sponsor_id'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>Sponsor Name <span class="text-danger">*</span></label>
-                        <input type="text" name="sponsor_name" class="form-control" placeholder="Sponsor Name will auto-fill" value="{{ old('sponsor_name', $default_sponsor_name ?? 'Admin') }}" readonly>
-                        <div class="text-danger mt-1 small validation-message" data-error-for="sponsor_name">
+                    <div>
+                        <label>Sponsor Name <span>*</span></label>
+                        <input type="text" name="sponsor_name" placeholder="Sponsor Name will auto-fill" value="{{ old('sponsor_name', $default_sponsor_name ?? 'Admin') }}" readonly>
+                        <div class="validation-message" data-error-for="sponsor_name" hidden>
                             @error('sponsor_name'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>Email ID <span class="text-danger">*</span></label>
-                        <input type="email" name="email" class="form-control" placeholder="Enter Email ID" value="{{ old('email') }}" required>
-                        <div class="text-danger mt-1 small validation-message" data-error-for="email">
+                    <div>
+                        <label>Email ID <span>*</span></label>
+                        <input type="email" name="email" placeholder="Enter Email ID" value="{{ old('email') }}" required>
+                        <div class="validation-message" data-error-for="email" hidden>
                             @error('email'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>Mobile No <span class="text-danger">*</span></label>
-                        <input type="text" name="mobile_no" class="form-control" placeholder="Enter Mobile No" value="{{ old('mobile_no') }}" required maxlength="10">
-                        <div class="text-danger mt-1 small validation-message" data-error-for="mobile_no">
+                    <div>
+                        <label>Mobile No <span>*</span></label>
+                        <input type="text" name="mobile_no" placeholder="Enter Mobile No" value="{{ old('mobile_no') }}" required maxlength="10">
+                        <div class="validation-message" data-error-for="mobile_no" hidden>
                             @error('mobile_no'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label>PAN Card Number <span class="text-danger">*</span></label>
-                        <input type="text" name="pan_card_no" class="form-control" placeholder="Enter PAN Card Number" value="{{ old('pan_card_no') }}" required maxlength="10" style="text-transform: uppercase;">
-                        <div class="text-danger mt-1 small validation-message" data-error-for="pan_card_no">
+                    <div>
+                        <label>PAN Card Number <span>*</span></label>
+                        <input type="text" name="pan_card_no" placeholder="Enter PAN Card Number" value="{{ old('pan_card_no') }}" required maxlength="10">
+                        <div class="validation-message" data-error-for="pan_card_no" hidden>
                             @error('pan_card_no'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
+                    <div>
                         <label>Wallet Address</label>
-                        <input type="text" name="wallet_address" class="form-control" placeholder="Optional wallet address" value="{{ old('wallet_address') }}">
+                        <input type="text" name="wallet_address" placeholder="Optional wallet address" value="{{ old('wallet_address') }}">
                     </div>
 
-                    <div class="col-md-6 mb-3">
+                    <div>
                         <label>Password</label>
-                        <input type="password" name="password" class="form-control" placeholder="Optional password" autocomplete="new-password">
-                        <div class="text-danger mt-1 small validation-message" data-error-for="password">
+                        <div>
+                            <input type="password" id="registrationPassword" name="password" placeholder="Optional password" autocomplete="new-password">
+                            <button type="button" data-toggle-password="registrationPassword" aria-label="Show password">Show password</button>
+                        </div>
+                        <div class="validation-message" data-error-for="password" hidden>
                             @error('password'){{ $message }}@enderror
                         </div>
                     </div>
 
-                    <div class="col-md-6 mb-3">
+                    <div>
                         <label>Confirm Password</label>
-                        <input type="password" name="password_confirmation" class="form-control" placeholder="Confirm password" autocomplete="new-password">
+                        <div>
+                            <input type="password" id="registrationPasswordConfirmation" name="password_confirmation" placeholder="Confirm password" autocomplete="new-password">
+                            <button type="button" data-toggle-password="registrationPasswordConfirmation" aria-label="Show password confirmation">Show password</button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="text-end mt-3">
-                    <button type="submit" class="btn btn-primary px-4">
-                        <i class="bi bi-person-plus"></i>
-                        Add Member
+                <div>
+                    <button type="submit">
+                        <i></i>
+                        Register Member
                     </button>
                 </div>
             </form>
@@ -99,6 +105,19 @@
     </main>
 
     <script>
+        document.querySelectorAll('[data-toggle-password]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const input = document.getElementById(button.getAttribute('data-toggle-password'));
+                if (!input) {
+                    return;
+                }
+                const showing = input.type === 'text';
+                input.type = showing ? 'password' : 'text';
+                button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+                button.textContent = showing ? 'Show password' : 'Hide password';
+            });
+        });
+
         const sponsorIdInput = document.querySelector('input[name="sponsor_id"]');
         const sponsorNameInput = document.querySelector('input[name="sponsor_name"]');
         const memberNameInput = document.querySelector('input[name="member_name"]');
@@ -117,7 +136,7 @@
             }
 
             target.textContent = message;
-            target.style.display = message ? 'block' : 'none';
+            target.hidden = !message;
         }
 
         function markTouched(fieldName) {

@@ -1,49 +1,49 @@
 @extends('admin.layouts.app')
 
 @section('content')
-    <main class="dashboard-content">
+    <main>
 
     
            
            
 
-    <div class="form-card">
+    <div>
 
         <!-- TITLE -->
         
 
 
         <!-- SEARCH AREA -->
-        <div class="row align-items-end">
+        <div>
 
             <!-- MEMBER ID -->
-            <div class="col-md-4 mb-3">
+            <div>
                 <label>Member ID</label>
 
                 <input type="text"
                      
-                       class="form-control"
+                      
                        placeholder="Enter Member ID">
             </div>
 
 
             <!-- FROM DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>From Date</label>
 
                 <input type="date"
                       
-                       class="form-control">
+                      >
             </div>
 
 
             <!-- TO DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>To Date</label>
 
                 <input type="date"
                        
-                       class="form-control">
+                      >
             </div>
 
 
@@ -54,42 +54,42 @@
 
 
         <!-- BUTTONS -->
-        <div class="d-flex justify-content-end gap-2 mb-4">
+        <div>
 
             <button type="button"
-                    class="btn btn-primary"
+                   
                     ">
 
-                <i class="bi bi-file-earmark-excel"></i>
+                <i></i>
                 Export to Excel
 
             </button>
 
 
             <button type="button"
-                    class="btn btn-primary"
+                   
                     onclick="searchInvestment()">
 
-                <i class="bi bi-search"></i>
+                <i></i>
                 Search
 
             </button>
 
 
             <button type="button"
-                    class="btn btn-primary"
+                   
                    ">
 
-                <i class="bi bi-arrow-counterclockwise"></i>
+                <i></i>
                 Reset
 
             </button>
 
         </div>
 
-          <div class="col-md-2 mb-3">
+          <div>
 
-                <div class="total-amount-box">
+                <div>
 
                     <span>Total Amount (USDT)</span>
 
@@ -99,9 +99,9 @@
 
             </div>
         <!-- TABLE -->
-        <div class="table-responsive">
+        <div>
 
-    <table class="table table-bordered table-hover member-table">
+    <table>
 
         <thead>
             <tr>
@@ -122,8 +122,8 @@
                 <td>1</td>
                 <td>
                     <button type="button"
-                            class="btn btn-pink btn-sm">
-                        <i class="bi bi-reply"></i>
+                           >
+                        <i></i>
                         Reply
                     </button>
                 </td>
@@ -139,8 +139,8 @@
                 <td>2</td>
                 <td>
                     <button type="button"
-                            class="btn btn-pink btn-sm">
-                        <i class="bi bi-reply"></i>
+                           >
+                        <i></i>
                         Reply
                     </button>
                 </td>
@@ -156,8 +156,8 @@
                 <td>3</td>
                 <td>
                     <button type="button"
-                            class="btn btn-pink btn-sm">
-                        <i class="bi bi-reply"></i>
+                           >
+                        <i></i>
                         Reply
                     </button>
                 </td>
@@ -177,26 +177,26 @@
 
 
         <!-- PAGINATION -->
-        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+        <div>
 
-            <div class="table-info">
+            <div>
                 Showing 1 to 3 of 3 entries
             </div>
 
             <nav>
 
-                <ul class="pagination pagination-sm mb-0">
+                <ul>
 
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#">Previous</a>
+                    <li>
+                        <a href="#">Previous</a>
                     </li>
 
-                    <li class="page-item active">
-                        <a class="page-link" href="#">1</a>
+                    <li>
+                        <a href="#">1</a>
                     </li>
 
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#">Next</a>
+                    <li>
+                        <a href="#">Next</a>
                     </li>
 
                 </ul>

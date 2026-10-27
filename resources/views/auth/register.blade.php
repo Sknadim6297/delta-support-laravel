@@ -12,10 +12,6 @@
     @if (session('success'))
         <div class="auth-alert auth-alert-success">
             {{ session('success') }}
-            @if (session('temporary_password'))
-                <br><strong>Temporary password:</strong> {{ session('temporary_password') }}
-                <br><small>Keep this password private. You can reset it later from Forgot Password.</small>
-            @endif
         </div>
     @endif
 

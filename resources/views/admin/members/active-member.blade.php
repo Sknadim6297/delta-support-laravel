@@ -1,123 +1,67 @@
 @extends('admin.layouts.app')
 
 @section('content')
-    <main class="member-content">
-        <div class="form-card">
-            <div class="form-title">
-                <h4>Active Member List</h4>
+    <div>
+        <div>
+            <div>
+                <h1>Active Member List</h1>
+                <p>{{ number_format($activeMemberCount) }} active · {{ number_format($inactiveMemberCount) }} inactive</p>
             </div>
-
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="total-amount-box">
-                        <span>Active Members</span>
-                        <strong>{{ number_format($activeMemberCount) }}</strong>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="total-amount-box">
-                        <span>Inactive Members</span>
-                        <strong>{{ number_format($inactiveMemberCount) }}</strong>
-                    </div>
-                </div>
-            </div>
-
-            <form method="GET" action="{{ route('admin.members.active') }}" class="row align-items-end mb-4">
-                <div class="col-md-4 mb-3 mb-md-0">
-                    <label>Member Name <span class="text-danger">*</span></label>
-                    <input type="text" id="memberName" name="member_name" value="{{ $memberName }}" class="form-control" placeholder="Enter Member Name">
-                </div>
-
-                <div class="col-md-4 mb-3 mb-md-0">
-                    <label>Member ID <span class="text-danger">*</span></label>
-                    <input type="text" id="memberId" name="member_id" value="{{ $memberId }}" class="form-control" placeholder="Enter Member ID">
-                </div>
-
-                <div class="col-md-2 mb-3 mb-md-0">
-                    <button type="submit" class="btn btn-primary w-full">
-                        <i class="bi bi-search"></i>
-                        Search
-                    </button>
-                </div>
-
-                <div class="col-md-2">
-                    <button type="button" class="btn btn-success w-full" onclick="window.location.href='{{ route('admin.members.export', ['status' => 'active']) }}?' + new URLSearchParams(new FormData(this.form)).toString()">
-                        <i class="bi bi-file-earmark-excel"></i>
-                        Export Excel
-                    </button>
-                </div>
-            </form>
-
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover member-table" id="memberTable">
-                    <thead>
-                        <tr>
-                            <th>Go to Member Panel</th>
-                            <th>Serial No</th>
-                            <th>Member ID</th>
-                            <th>Member Name</th>
-                            <th>Joining Date</th>
-                            <th>Sponsor ID</th>
-                            <th>Sponsor Name</th>
-                            <th>Email</th>
-                            <th>Mobile No</th>
-                            <th>PAN Card Number</th>
-                            <th>Investment Amount (USDT)</th>
-                            <th>Password</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($members as $member)
-                            <tr>
-                                <td>
-                                    <a href="{{ route('admin.member-panel', ['member_id' => $member['member_id']]) }}" class="member-panel-link" target="_blank" rel="noopener">Go to Member Panel</a>
-                                </td>
-                                <td>{{ $member['serial'] }}</td>
-                                <td>{{ $member['member_id'] }}</td>
-                                <td>{{ $member['name'] }}</td>
-                                <td>{{ $member['joining_date'] }}</td>
-                                <td>{{ $member['sponsor_id'] }}</td>
-                                <td>{{ $member['sponsor_name'] }}</td>
-                                <td>{{ $member['email'] }}</td>
-                                <td>{{ $member['mobile'] }}</td>
-                                <td>{{ $member['pan_card_no'] }}</td>
-                                <td>{{ \App\Support\MoneyDisplay::usdt($member['investment_amount']) }}</td>
-                                <td>
-                                    <span class="password-value" data-password="{{ $member['password'] }}">******</span>
-                                    <button type="button" class="btn btn-link p-0 ms-1 password-toggle" aria-label="Show password" title="Show password">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="12" class="text-center">No active members found.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
-                <nav>
-                    {{ $members->links('pagination::bootstrap-5') }}
-                </nav>
-            </div>
+            <a href="{{ route('admin.members.export', ['status' => 'active']) }}?{{ http_build_query(request()->only(['member_name', 'member_id'])) }}">Export</a>
         </div>
-    </main>
-@endsection
 
-@section('scripts')
-    <script>
-        document.querySelectorAll('.password-toggle').forEach(function (button) {
-            button.addEventListener('click', function () {
-                const value = button.previousElementSibling;
-                const visible = value.textContent !== '******';
-                value.textContent = visible ? '******' : value.dataset.password;
-                button.querySelector('i').className = visible ? 'bi bi-eye' : 'bi bi-eye-slash';
-                button.setAttribute('aria-label', visible ? 'Show password' : 'Hide password');
-                button.setAttribute('title', visible ? 'Show password' : 'Hide password');
-            });
-        });
-    </script>
+        <form method="GET" action="{{ route('admin.members.active') }}">
+            <label>
+                Member name, email, or mobile
+                <input type="text" name="member_name" value="{{ $memberName }}" placeholder="Search">
+            </label>
+            <label>
+                Member ID
+                <input type="text" name="member_id" value="{{ $memberId }}" placeholder="ST100000">
+            </label>
+            <button type="submit">Search</button>
+        </form>
+
+        <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Member ID</th>
+                        <th>Member Name</th>
+                        <th>Sponsor ID</th>
+                        <th>Sponsor Name</th>
+                        <th>Email</th>
+                        <th>Mobile</th>
+                        <th>Registration</th>
+                        <th>Account</th>
+                        <th>Package</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($members as $member)
+                        <tr>
+                            <td>{{ $member['member_id'] }}</td>
+                            <td>{{ $member['name'] }}</td>
+                            <td>{{ $member['sponsor_id'] }}</td>
+                            <td>{{ $member['sponsor_name'] }}</td>
+                            <td>{{ $member['email'] }}</td>
+                            <td>{{ $member['mobile'] }}</td>
+                            <td>{{ $member['joining_date'] }}</td>
+                            <td><span>{{ $member['account_status'] }}</span></td>
+                            <td>{{ $member['package_status'] }}</td>
+                            <td>
+                                <a href="{{ route('admin.members.update', ['member_id' => $member['member_id']]) }}">View / Edit</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="10">No active members found.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div>{{ $members->links('pagination::bootstrap-5') }}</div>
+    </div>
 @endsection

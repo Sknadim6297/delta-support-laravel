@@ -1,28 +1,28 @@
 @extends('member.layouts.app')
 
 @section('content')
-    <div class="form-card">
+    <div>
         @include('partials.legacy-financial-lock')
 
         <!-- TITLE -->
-        <div class="form-title">
+        <div>
             <h4>Investment Entry</h4>
         </div>
 
         @if (session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
+            <div>{{ session('success') }}</div>
         @endif
 
         @if ($errors->any())
-            <div class="alert alert-danger">{{ $errors->first() }}</div>
+            <div>{{ $errors->first() }}</div>
         @endif
 
         <form method="POST" action="{{ route('member.investments.store') }}">
             @csrf
-        <div class="row">
+        <div>
 
             <!-- INVESTMENT AMOUNT -->
-            <div class="col-md-6 mb-3">
+            <div>
                 <label>Investment Amount (USDT)</label>
 
                 <input type="number"
@@ -30,7 +30,7 @@
                         name="amount"
                         value="{{ old('amount') }}"
                         data-error-for="amount"
-                       class="form-control"
+                      
                        placeholder="Enter Investment Amount"
                        step="0.0001">
             </div>
@@ -39,22 +39,22 @@
 
 
         <!-- BUTTONS -->
-        <div class="text-end mt-2">
+        <div>
 
             <button type="submit"
-                    class="btn btn-primary px-4"
+                   
                     >
 
-                <i class="bi bi-check-circle"></i>
+                <i></i>
                 Submit
 
             </button>
 
             <button type="reset"
-                    class="btn btn-primary px-4 ms-2"
+                   
                     >
 
-                <i class="bi bi-arrow-counterclockwise"></i>
+                <i></i>
                 Reset
 
             </button>
@@ -79,12 +79,12 @@
             let error = target.parentElement.querySelector('.validation-message');
             if (!error) {
                 error = document.createElement('div');
-                error.className = 'text-danger mt-1 small validation-message';
+                error.className = 'validation-message';
                 target.parentElement.appendChild(error);
             }
 
             error.textContent = message;
-            error.style.display = message ? 'block' : 'none';
+            error.hidden = !message;
         }
 
         function validateInvestmentAmount(force = false) {

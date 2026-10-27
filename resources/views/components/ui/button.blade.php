@@ -2,19 +2,22 @@
     'href' => null,
     'type' => 'button',
     'variant' => 'primary',
+    'size' => null,
 ])
 
 @php
-    $classes = match ($variant) {
-        'secondary' => 'inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-navy-900 transition hover:bg-brand-50',
-        'ghost' => 'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-ink-500 transition hover:bg-slate-100 hover:text-navy-900',
-        'danger' => 'inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700',
-        default => 'inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600',
+    $variantClass = match ($variant) {
+        'secondary' => 'ds-btn ds-btn-secondary',
+        'danger' => 'ds-btn ds-btn-danger',
+        default => 'ds-btn',
     };
+    if ($size === 'sm') {
+        $variantClass .= ' ds-btn-sm';
+    }
 @endphp
 
 @if ($href)
-    <a href="{{ $href }}" {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}</a>
+    <a href="{{ $href }}" {{ $attributes->merge(['class' => $variantClass]) }}>{{ $slot }}</a>
 @else
-    <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}</button>
+    <button type="{{ $type }}" {{ $attributes->merge(['class' => $variantClass]) }}>{{ $slot }}</button>
 @endif

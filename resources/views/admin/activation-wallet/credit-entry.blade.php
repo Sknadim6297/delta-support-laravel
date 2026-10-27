@@ -1,32 +1,32 @@
 @extends('admin.layouts.app')
 
 @section('content') 
-        <main class="dashboard-content">
+        <main>
 
     
 
-    <div class="form-card">
+    <div>
         @include('partials.legacy-financial-lock')
 
         @if ($errors->any())
-            <div class="alert alert-danger">{{ $errors->first() }}</div>
+            <div>{{ $errors->first() }}</div>
         @endif
 
         @if (session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
+            <div>{{ session('success') }}</div>
         @endif
 
         <!-- TITLE -->
-        <div class="form-title">
+        <div>
             <h4>Transfer to Member Activation Wallet</h4>
         </div>
 
         <form method="POST" action="{{ route('admin.activation-wallet.store-credit-entry') }}" id="activationWalletForm">
             @csrf
-        <div class="row">
+        <div>
 
             <!-- MEMBER ID -->
-            <div class="col-md-6 mb-3">
+            <div>
                 <label>
                     Member ID
                 </label>
@@ -35,13 +35,13 @@
                       id="memberId"
                       name="member_id"
                       data-error-for="member_id"
-                       class="form-control"
+                      
                        placeholder="Enter Member ID">
             </div>
 
 
             <!-- MEMBER NAME -->
-            <div class="col-md-6 mb-3">
+            <div>
                 <label>
                     Member Name
                 </label>
@@ -49,14 +49,14 @@
                 <input type="text"
                       id="memberName"
                       name="member_name"
-                       class="form-control"
+                      
                       placeholder="Enter Member Name"
                       readonly>
             </div>
 
 
             <!-- ACTIVATION WALLET AMOUNT -->
-            <div class="col-md-6 mb-3">
+            <div>
                 <label>
                     Activation Wallet Amount (USDT)
                 </label>
@@ -64,14 +64,14 @@
                 <input type="text"
                       id="walletAmount"
                       name="wallet_amount"
-                       class="form-control"
+                      
                        placeholder="Activation Wallet Amount"
                        readonly>
             </div>
 
 
             <!-- TRANSFER AMOUNT -->
-            <div class="col-md-6 mb-3">
+            <div>
                 <label>
                     Amount Want to Transfer (USDT)
                 </label>
@@ -80,7 +80,7 @@
                        id="transferAmount"
                       name="amount"
                       data-error-for="amount"
-                       class="form-control"
+                      
                        placeholder="Enter Amount">
             </div>
 
@@ -88,24 +88,24 @@
 
 
         <!-- BUTTONS -->
-        <div class="text-end mt-2">
+        <div>
 
             <button type="button"
                     id="fetchMemberDetails"
-                    class="btn btn-primary px-4"
+                   
                    >
 
-                <i class="bi bi-arrow-right-circle"></i>
+                <i></i>
                 Submit
 
             </button>
 
                     <button type="reset"
                     id="resetActivationWalletForm"
-                    class="btn btn-primary px-4 ms-2"
+                   
                     >
 
-                <i class="bi bi-arrow-counterclockwise"></i>
+                <i></i>
                 Reset
 
             </button>
@@ -143,12 +143,12 @@
             let error = target.parentElement.querySelector('.validation-message');
             if (!error) {
                 error = document.createElement('div');
-                error.className = 'text-danger mt-1 small validation-message';
+                error.className = 'validation-message';
                 target.parentElement.appendChild(error);
             }
 
             error.textContent = message;
-            error.style.display = message ? 'block' : 'none';
+            error.hidden = !message;
         }
 
         function formatAmount(value) {
@@ -162,7 +162,7 @@
             walletAmountInput.value = '';
             actionButton.type = 'button';
             actionButton.disabled = false;
-            actionButton.innerHTML = '<i class="bi bi-arrow-right-circle"></i> Submit';
+            actionButton.innerHTML = '<i></i> Submit';
         }
 
         function isIncompleteMemberId(value) {
@@ -245,7 +245,7 @@
                     fetchedMemberId = member.member_id;
                     workingWalletBalance = member.working_wallet_amount;
                     actionButton.type = 'submit';
-                    actionButton.innerHTML = '<i class="bi bi-arrow-right-circle"></i> Transfer';
+                    actionButton.innerHTML = '<i></i> Transfer';
                     setError('member_id', '');
                     validateTransferAmount();
                 }).catch(function (error) {

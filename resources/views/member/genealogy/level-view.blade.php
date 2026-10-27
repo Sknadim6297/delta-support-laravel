@@ -2,37 +2,37 @@
 
 @section('content')
 
-        <main class="dashboard-content">
+        <main>
 
     
           
 
-     <div class="form-card">
+     <div>
 
         <!-- TITLE -->
-        <div class="form-title">
+        <div>
             <h4>Levelwise Members</h4>
         </div>
 
         <!-- SEARCH FORM -->
-        <div class="row align-items-end">
+        <div>
 
             <!-- MEMBER ID -->
-            <div class="col-md-5 mb-3">
+            <div>
                 <label>
                     Member ID
                 </label>
 
                 <input type="text"
                        id="levelMemberId"
-                       class="form-control"
+                      
                        value="{{ $member->member_id }}"
                        readonly>
             </div>
 
 
             <!-- LEVEL -->
-            <div class="col-md-4 mb-3">
+            <div>
 
                 <label>
                     Level
@@ -40,23 +40,23 @@
 
                <input type="text"
                        id="Text1"
-                       class="form-control"
+                      
                        placeholder="Enter Level">
 
             </div>
 
 
             <!-- BUTTONS -->
-            <div class="col-md-3 mb-3">
+            <div>
 
-                <div class="d-flex gap-2">
+                <div>
 
                     <button type="button"
                             id="levelSearchBtn"
-                            class="btn btn-primary"
+                           
                            >
 
-                        <i class="bi bi-search"></i>
+                        <i></i>
                         Search
 
                     </button>
@@ -64,10 +64,10 @@
 
                     <button type="button"
                             id="levelResetBtn"
-                            class="btn btn-secondary"
+                           
                            >
 
-                        <i class="bi bi-arrow-counterclockwise"></i>
+                        <i></i>
                         Reset
 
                     </button>
@@ -78,12 +78,12 @@
 
         </div>
 
-        <div id="levelViewError" class="text-danger small mb-3"></div>
+        <div id="levelViewError"></div>
 
         <!-- TABLE -->
-        <div class="table-responsive">
+        <div>
 
-            <table class="table table-bordered table-hover member-table">
+            <table>
 
                 <thead>
                     <tr>
@@ -97,7 +97,7 @@
 
                 <tbody id="levelViewResults">
                     <tr>
-                        <td colspan="5" class="text-center">Enter a Member ID and click Search.</td>
+                        <td colspan="5">Enter a Member ID and click Search.</td>
                     </tr>
                 </tbody>
 
@@ -128,7 +128,7 @@
                 const emptyRow = document.createElement('tr');
                 const emptyCell = document.createElement('td');
                 emptyCell.colSpan = 5;
-                emptyCell.className = 'text-center';
+                emptyCell.className = '';
                 emptyCell.textContent = 'No members found.';
                 emptyRow.appendChild(emptyCell);
                 levelViewResults.appendChild(emptyRow);
@@ -181,7 +181,7 @@
             if (levelMemberIdInput) levelMemberIdInput.value = '{{ $member->member_id }}';
             if (levelInput) levelInput.value = '';
             levelViewError.textContent = '';
-            levelViewResults.innerHTML = '<tr><td colspan="5" class="text-center">Enter a Member ID and click Search.</td></tr>';
+            levelViewResults.innerHTML = '<tr><td colspan="5">Enter a Member ID and click Search.</td></tr>';
         });
     </script>
 @endsection

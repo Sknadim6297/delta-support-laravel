@@ -27,7 +27,7 @@ class SponsorRegistrationFlowTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.members.registration'))
             ->assertOk()
-            ->assertSeeText('Add Member')
+            ->assertSeeText('Member Registration')
             ->assertSee('name="_token"', false);
 
         $this->actingAs($admin)

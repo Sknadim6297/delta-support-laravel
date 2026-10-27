@@ -88,7 +88,7 @@ class MenuAuditTest extends TestCase
         $this->withSession(['member_context_id' => $member->member_id])
             ->get(route('member.genealogy.tree-view'))
             ->assertOk()
-            ->assertSeeText('Tree View')
+            ->assertSeeText('Referral Network')
             ->assertSeeText($member->member_id);
 
         $this->withSession(['member_context_id' => $member->member_id])

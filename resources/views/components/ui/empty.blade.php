@@ -1,11 +1,14 @@
 @props(['title' => 'Nothing here yet', 'message' => null])
 
-<div {{ $attributes->merge(['class' => 'rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center']) }}>
-    <h3 class="text-base font-semibold text-navy-900">{{ $title }}</h3>
+<div {{ $attributes->merge(['class' => 'ds-empty']) }}>
+    @isset($icon)
+        <div class="ds-empty-icon">{{ $icon }}</div>
+    @endisset
+    <h3>{{ $title }}</h3>
     @if ($message)
-        <p class="mx-auto mt-2 max-w-md text-sm text-ink-500">{{ $message }}</p>
+        <p>{{ $message }}</p>
     @endif
-    @if (trim($slot))
-        <div class="mt-4">{{ $slot }}</div>
+    @if ($slot->isNotEmpty())
+        <div class="ds-empty-actions">{{ $slot }}</div>
     @endif
 </div>

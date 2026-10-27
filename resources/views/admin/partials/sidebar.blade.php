@@ -1,28 +1,23 @@
-<aside class="ds-sidebar" id="dsSidebar">
-    <div class="ds-sidebar-head">
+<aside id="dsSidebar" aria-label="Admin">
+    <div class="ds-brand">
         <a href="{{ route('dashboard') }}">
-            <img src="{{ asset('site/img/logo.png') }}" alt="Delta Support">
+            <img class="ds-logo" src="{{ asset('site/img/logo.png') }}" alt="Delta Support">
         </a>
         <button type="button" class="ds-sidebar-close" aria-label="Close menu">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
-    </div>
-    <div class="ds-sidebar-user">
-        <span class="ds-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}</span>
-        <div>
-            <strong>{{ auth()->user()->name ?? 'Admin' }}</strong>
-            <small>{{ auth()->user()->email }}</small>
-        </div>
     </div>
     <div class="ds-sidebar-scroll">
         <ul class="ds-menu">
             <x-nav.link single icon="layout-dashboard" :href="route('dashboard')" :active="request()->routeIs('dashboard')">Dashboard</x-nav.link>
 
             <x-nav.group label="Member Management" icon="users" :open="request()->routeIs('admin.members.*', 'admin.genealogy.tree-view')">
-                <x-nav.link :href="route('admin.members.directory')" :active="request()->routeIs('admin.members.directory')">All Members</x-nav.link>
-                <x-nav.link :href="route('admin.members.registration')" :active="request()->routeIs('admin.members.registration')">Add Member</x-nav.link>
-                <x-nav.link :href="route('admin.members.update')" :active="request()->routeIs('admin.members.update')">Member Details</x-nav.link>
-                <x-nav.link :href="route('admin.genealogy.tree-view')" :active="request()->routeIs('admin.genealogy.tree-view')">Referral Tree</x-nav.link>
+                <x-nav.link icon="users" :href="route('admin.members.directory')" :active="request()->routeIs('admin.members.directory')">All Members</x-nav.link>
+                <x-nav.link icon="user-plus" :href="route('admin.members.registration')" :active="request()->routeIs('admin.members.registration')">Member Registration</x-nav.link>
+                <x-nav.link icon="user-round-pen" :href="route('admin.members.update')" :active="request()->routeIs('admin.members.update')">View / Update Member Profile</x-nav.link>
+                <x-nav.link icon="user-round-x" :href="route('admin.members.inactive')" :active="request()->routeIs('admin.members.inactive')">Inactive Member List</x-nav.link>
+                <x-nav.link icon="user-round-check" :href="route('admin.members.active')" :active="request()->routeIs('admin.members.active')">Active Member List</x-nav.link>
+                <x-nav.link icon="network" :href="route('admin.genealogy.tree-view')" :active="request()->routeIs('admin.genealogy.tree-view')">Referral Tree</x-nav.link>
             </x-nav.group>
 
             <x-nav.group label="Package Management" icon="package" :open="request()->routeIs('admin.packages.*', 'admin.purchases.*')">
@@ -88,7 +83,7 @@
                 <x-nav.link :href="route('admin.settings.profile')" :active="request()->routeIs('admin.settings.profile')">Admin Profile</x-nav.link>
             </x-nav.group>
 
-            <li class="ds-item">
+            <li>
                 <form action="{{ route('admin.logout') }}" method="POST">
                     @csrf
                     <button type="submit"><x-nav.icon name="log-out" /><span>Log out</span></button>

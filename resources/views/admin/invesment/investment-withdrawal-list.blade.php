@@ -1,53 +1,53 @@
 @extends('admin.layouts.app')
 
 @section('content')
-      <main class="dashboard-content">
+      <main>
 
     
           
 
-    <div class="form-card">
+    <div>
 
         <!-- PAGE TITLE -->
-        <div class="form-title">
+        <div>
             <h4>Withdrawn Investment List</h4>
         </div>
 
         <!-- SEARCH AREA -->
         <form method="GET" action="{{ route('admin.investments.investment-withdrawal-list') }}" id="investmentWithdrawalListForm">
-        <div class="row align-items-end">
+        <div>
 
             <!-- MEMBER ID -->
-            <div class="col-md-4 mb-3">
+            <div>
                 <label>Member ID</label>
 
                 <input type="text"
                       name="member_id"
                       value="{{ request('member_id') }}"
-                       class="form-control"
+                      
                        placeholder="Enter Member ID">
             </div>
 
 
             <!-- FROM DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>From Withdraw Date</label>
 
                 <input type="date"
                       name="from_date"
                       value="{{ request('from_date') }}"
-                       class="form-control">
+                      >
             </div>
 
 
             <!-- TO DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>To Withdraw Date</label>
 
                 <input type="date"
                       name="to_date"
                       value="{{ request('to_date') }}"
-                       class="form-control">
+                      >
             </div>
 
 
@@ -55,20 +55,20 @@
           
 
         </div>
-        <div class="d-flex justify-content-end gap-2 mb-4">
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-search"></i>
+        <div>
+            <button type="submit">
+                <i></i>
                 Search
             </button>
-            <button type="button" class="btn btn-primary" onclick="window.location.href='{{ route('admin.investments.investment-withdrawal-list') }}'">
-                <i class="bi bi-arrow-counterclockwise"></i>
+            <button type="button" onclick="window.location.href='{{ route('admin.investments.investment-withdrawal-list') }}'">
+                <i></i>
                 Reset
             </button>
         </div>
         </form>
-        <div class="col-md-2 mb-3">
+        <div>
 
-                <div class="total-amount-box">
+                <div>
 
                     <span>Total Amount (USDT)</span>
 
@@ -85,7 +85,7 @@
                     <td>{{ $withdrawal->withdrawn_at?->format('d-m-Y') }}</td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="text-center">No investment withdrawals found.</td></tr>
+                <tr><td colspan="7">No investment withdrawals found.</td></tr>
             @endforelse
         </tbody>
     </table>
@@ -93,7 +93,7 @@
 
 
         <!-- PAGINATION -->
-        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+        <div>
 
             <nav>
                 {{ $withdrawals->links('pagination::bootstrap-5') }}

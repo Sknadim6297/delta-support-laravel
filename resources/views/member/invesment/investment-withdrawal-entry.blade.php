@@ -1,57 +1,57 @@
 @extends('admin.layouts.app')
 
 @section('content')
-        <main class="dashboard-content">
+        <main>
 
     
            
            
 
-    <div class="form-card">
+    <div>
         @include('partials.legacy-financial-lock')
 
         @if (session('success'))
-            <div class="alert alert-success mb-4">{{ session('success') }}</div>
+            <div>{{ session('success') }}</div>
         @endif
 
         @if ($errors->any())
-            <div class="alert alert-danger mb-4">{{ $errors->first() }}</div>
+            <div>{{ $errors->first() }}</div>
         @endif
 
         <form method="POST" action="{{ route('admin.investments.investment-withdrawal-store') }}" id="investmentWithdrawalForm">
             @csrf
 
-        <div class="row">
+        <div>
 
-            <div class="col-md-6 mb-3">
+            <div>
                 <label>Member ID</label>
-                <input type="text" id="withdrawalMemberId" name="member_id" value="{{ old('member_id') }}" class="form-control" placeholder="Enter Member ID" required data-member-autocomplete autocomplete="off">
-                <div class="text-danger mt-1 small validation-message" data-error-for="member_id"></div>
+                <input type="text" id="withdrawalMemberId" name="member_id" value="{{ old('member_id') }}" placeholder="Enter Member ID" required data-member-autocomplete autocomplete="off">
+                <div class="validation-message" data-error-for="member_id" hidden></div>
             </div>
 
-            <div class="col-md-6 mb-3">
+            <div>
                 <label>Member Name</label>
-                <input type="text" id="withdrawalMemberName" name="member_name" value="{{ old('member_name') }}" class="form-control" placeholder="Enter Member Name" readonly>
+                <input type="text" id="withdrawalMemberName" name="member_name" value="{{ old('member_name') }}" placeholder="Enter Member Name" readonly>
             </div>
 
-            <div class="col-md-6 mb-3">
+            <div>
                 <label>Investment ID</label>
-                <input type="text" id="withdrawalInvestmentId" name="investment_id" value="{{ old('investment_id') }}" class="form-control" placeholder="Enter Sponsor ID" required>
-                <div class="text-danger mt-1 small validation-message" data-error-for="investment_id"></div>
+                <input type="text" id="withdrawalInvestmentId" name="investment_id" value="{{ old('investment_id') }}" placeholder="Enter Sponsor ID" required>
+                <div class="validation-message" data-error-for="investment_id" hidden></div>
             </div>
 
           
-            <div class="col-md-6 mb-3">
+            <div>
                 <label>Investment Amount (USDT)</label>
-                <input type="number" id="withdrawalAmount" name="amount" value="{{ old('amount') }}" class="form-control" placeholder="Enter Amount" min="0.0001" step="0.0001" required>
-                <div class="text-danger mt-1 small validation-message" data-error-for="amount"></div>
+                <input type="number" id="withdrawalAmount" name="amount" value="{{ old('amount') }}" placeholder="Enter Amount" min="0.0001" step="0.0001" required>
+                <div class="validation-message" data-error-for="amount" hidden></div>
             </div>
 
         </div>
 
-        <div class="text-end mt-2">
-            <button type="submit" class="btn btn-primary px-4">
-                <i class="bi bi-check-circle"></i>
+        <div>
+            <button type="submit">
+                <i></i>
                 Submit
             </button>
         </div>
@@ -89,7 +89,7 @@
             }
 
             target.textContent = message;
-            target.style.display = message ? 'block' : 'none';
+            target.hidden = !message;
         }
 
         function clearInvestmentData() {

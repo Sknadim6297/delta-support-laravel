@@ -1,122 +1,27 @@
-<div class="genealogy-toolbar" role="toolbar" aria-label="Genealogy controls">
-    <button type="button" class="btn btn-primary btn-sm" data-tree-action="expand">
-        <i class="bi bi-arrows-expand"></i>
+<x-ui.toolbar class="tree-toolbar" label="Genealogy controls">
+    <button type="button" data-tree-action="expand">
+        <svg class="ds-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 8 5-5 5 5"/><path d="M12 3v10"/><path d="m7 16 5 5 5-5"/><path d="M12 21V11"/></svg>
         <span>Expand All</span>
     </button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-tree-action="collapse">
-        <i class="bi bi-arrows-collapse"></i>
+    <button type="button" data-tree-action="collapse">
+        <svg class="ds-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/><path d="m7 14 5-5 5 5"/></svg>
         <span>Collapse All</span>
     </button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-tree-action="zoom-out" aria-label="Zoom out">
-        <i class="bi bi-zoom-out"></i>
+    <button type="button" data-tree-action="zoom-out" aria-label="Zoom Out">
+        <svg class="ds-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+        <span>Zoom Out</span>
     </button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-tree-action="zoom-in" aria-label="Zoom in">
-        <i class="bi bi-zoom-in"></i>
+    <button type="button" data-tree-action="zoom-in" aria-label="Zoom In">
+        <svg class="ds-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        <span>Zoom In</span>
     </button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-tree-action="fit">
-        <i class="bi bi-fullscreen"></i>
+    <button type="button" data-tree-action="fit">
+        <svg class="ds-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
         <span>Fit Tree</span>
     </button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-tree-action="reset">
-        <i class="bi bi-crosshair"></i>
-        <span>Center / Reset View</span>
+    <button type="button" data-tree-action="reset">
+        <svg class="ds-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        <span>Reset View</span>
     </button>
-    <span class="genealogy-zoom-label" data-tree-zoom>100%</span>
-</div>
-
-<script>
-    function initializeGenealogyControls() {
-        const treeContainer = document.getElementById('treeContainer');
-        const tree = treeContainer?.querySelector('.member-tree');
-        if (!tree || tree.dataset.controlsBound === 'true') {
-            return;
-        }
-
-        tree.dataset.controlsBound = 'true';
-        let scale = 1;
-        const minScale = 0.6;
-        const maxScale = 1.5;
-        const step = 0.1;
-        const zoomLabel = document.querySelector('[data-tree-zoom]');
-
-        function updateZoom() {
-            tree.style.setProperty('--tree-scale', scale.toFixed(2));
-            if (zoomLabel) {
-                zoomLabel.textContent = Math.round(scale * 100) + '%';
-            }
-        }
-
-        function setExpanded(node, expanded) {
-            const children = node.querySelector(':scope > .tree-children');
-            const toggle = node.querySelector(':scope > .tree-member [data-tree-toggle]');
-            if (!children || !toggle) {
-                return;
-            }
-
-            children.hidden = !expanded;
-            toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-            toggle.innerHTML = expanded
-                ? '<i class="bi bi-chevron-down"></i>'
-                : '<i class="bi bi-chevron-right"></i>';
-        }
-
-        function allNodes() {
-            return tree.querySelectorAll('[data-member-node]');
-        }
-
-        function expandAll(expanded) {
-            allNodes().forEach(function (node) {
-                setExpanded(node, expanded);
-            });
-        }
-
-        tree.addEventListener('click', function (event) {
-            const toggle = event.target.closest('[data-tree-toggle]');
-            if (toggle) {
-                event.preventDefault();
-                const node = toggle.closest('[data-member-node]');
-                const expanded = toggle.getAttribute('aria-expanded') === 'true';
-                setExpanded(node, !expanded);
-            }
-        });
-
-        document.querySelectorAll('[data-tree-action]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                const action = button.dataset.treeAction;
-                if (action === 'expand') {
-                    expandAll(true);
-                } else if (action === 'collapse') {
-                    expandAll(false);
-                    setExpanded(tree.querySelector(':scope > [data-member-node]'), true);
-                } else if (action === 'zoom-in') {
-                    scale = Math.min(maxScale, scale + step);
-                    updateZoom();
-                } else if (action === 'zoom-out') {
-                    scale = Math.max(minScale, scale - step);
-                    updateZoom();
-                } else if (action === 'fit') {
-                    scale = Math.min(1, treeContainer.clientWidth / Math.max(tree.scrollWidth, treeContainer.clientWidth));
-                    updateZoom();
-                    treeContainer.scrollLeft = 0;
-                    treeContainer.scrollTop = 0;
-                } else if (action === 'reset') {
-                    scale = 1;
-                    updateZoom();
-                    treeContainer.scrollLeft = 0;
-                    treeContainer.scrollTop = 0;
-                }
-            });
-        });
-
-        allNodes().forEach(function (node, index) {
-            setExpanded(node, index === 0);
-        });
-        updateZoom();
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeGenealogyControls);
-    } else {
-        initializeGenealogyControls();
-    }
-</script>
+    <span class="tree-zoom" data-tree-zoom aria-live="polite">100%</span>
+</x-ui.toolbar>

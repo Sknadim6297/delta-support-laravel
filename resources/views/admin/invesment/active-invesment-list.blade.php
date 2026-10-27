@@ -1,13 +1,13 @@
 @extends('admin.layouts.app')
 @section('content')
 
-<main class="dashboard-content">
+<main>
 
     
            
            
 
-    <div class="form-card">
+    <div>
 
         <!-- TITLE -->
         
@@ -15,39 +15,39 @@
 
         <!-- SEARCH AREA -->
         <form method="GET" action="{{ route('admin.investments.active-investments') }}">
-        <div class="row align-items-end">
+        <div>
 
             <!-- MEMBER ID -->
-            <div class="col-md-4 mb-3">
+            <div>
                 <label>Member ID</label>
 
                   <input type="text"
                       name="member_id"
                       value="{{ request('member_id') }}"
-                       class="form-control"
+                      
                        placeholder="Enter Member ID">
             </div>
 
 
             <!-- FROM DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>From Investment Date</label>
 
                   <input type="date"
                       name="from_date"
                       value="{{ request('from_date') }}"
-                       class="form-control">
+                      >
             </div>
 
 
             <!-- TO DATE -->
-            <div class="col-md-3 mb-3">
+            <div>
                 <label>To Investment Date</label>
 
                   <input type="date"
                       name="to_date"
                       value="{{ request('to_date') }}"
-                       class="form-control">
+                      >
             </div>
 
 
@@ -58,32 +58,32 @@
 
 
         <!-- BUTTONS -->
-        <div class="d-flex justify-content-end gap-2 mb-4">
+        <div>
 
                 <button type="button"
-                    class="btn btn-primary"
+                   
                     onclick="window.location.href='{{ route('admin.investments.active-investments.export') }}?' + new URLSearchParams(new FormData(this.closest('form'))).toString()">
 
-                <i class="bi bi-file-earmark-excel"></i>
+                <i></i>
                 Export to Excel
 
             </button>
 
 
                     <button type="submit"
-                        class="btn btn-primary">
+                       >
 
-                <i class="bi bi-search"></i>
+                <i></i>
                 Search
 
             </button>
 
 
                 <button type="button"
-                    class="btn btn-primary"
+                   
                     onclick="window.location.href='{{ route('admin.investments.active-investments') }}'">
 
-                <i class="bi bi-arrow-counterclockwise"></i>
+                <i></i>
                 Reset
 
             </button>
@@ -91,9 +91,9 @@
         </div>
         </form>
 
-          <div class="col-md-2 mb-3">
+          <div>
 
-                <div class="total-amount-box">
+                <div>
 
                     <span>Total Amount (USDT)</span>
 
@@ -103,9 +103,9 @@
 
             </div>
         <!-- TABLE -->
-        <div class="table-responsive">
-    <table class="table table-bordered table-hover align-middle">
-        <thead class="table-dark">
+        <div>
+    <table>
+        <thead>
             <tr>
                 <th>Serial No</th>
                 <th>Member ID</th>
@@ -128,7 +128,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="text-center">No active investments found.</td>
+                    <td colspan="6">No active investments found.</td>
                 </tr>
             @endforelse
         </tbody>
@@ -137,7 +137,7 @@
 
 
         <!-- PAGINATION -->
-        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+        <div>
 
             <nav>
 

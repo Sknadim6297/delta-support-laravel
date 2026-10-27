@@ -85,7 +85,7 @@ class MemberProfileUpdateTest extends TestCase
             'pan_card_no' => 'ABCDE1234F',
             'email' => 'rahul@example.com',
             'password' => '',
-        ])->assertRedirect(route('admin.members.update'));
+        ])->assertRedirect(route('admin.members.update', ['member_id' => $member->member_id]));
 
         $this->assertDatabaseHas('members', [
             'member_id' => $member->member_id,
@@ -112,7 +112,7 @@ class MemberProfileUpdateTest extends TestCase
             'pan_card_no' => 'ABCDE1234F',
             'email' => 'rahul@example.com',
             'password' => 'new-password',
-        ])->assertRedirect(route('admin.members.update'));
+        ])->assertRedirect(route('admin.members.update', ['member_id' => $member->member_id]));
 
         $member->refresh();
 
@@ -166,7 +166,7 @@ class MemberProfileUpdateTest extends TestCase
             'mobile_no' => $member->mobile_no,
             'pan_card_no' => $member->pan_card_no,
             'email' => $member->email,
-        ])->assertRedirect(route('admin.members.update'));
+        ])->assertRedirect(route('admin.members.update', ['member_id' => $member->member_id]));
 
         $this->assertDatabaseHas('members', [
             'member_id' => $member->member_id,

@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Mail\MemberPasswordOtpMail;
 use App\Mail\MemberWelcomeMail;
 use App\Models\Member;
+use App\Models\User;
 use App\Services\MemberRegistrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -77,8 +79,63 @@ class PublicMemberAuthController extends Controller
         ));
 
         return redirect()->route('member.register')
-            ->with('success', 'Registration successful. Your Member ID is ' . $member->member_id . '.')
-            ->with('temporary_password', $temporaryPassword);
+            ->with('success', 'Registration successful. Your Member ID is ' . $member->member_id . '. Your password was sent to your email. You can replace it from Forgot Password.');
+    }
+
+    public function login(Request $request): RedirectResponse
+    {
+        $credentials = $request->validate([
+            'member_id' => ['required_without:email', 'nullable', 'string'],
+            'email' => ['required_without:member_id', 'nullable', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $memberInput = trim((string) ($credentials['member_id'] ?? ''));
+        $emailInput = trim((string) ($credentials['email'] ?? ''));
+        $memberId = strtoupper($memberInput);
+        $member = $memberInput !== '' && ! str_contains($memberInput, '@')
+            ? Member::query()->where('member_id', $memberId)->first()
+            : null;
+
+        if ($member && $this->memberCanAuthenticate($member) && $this->passwordMatches($member, $credentials['password'])) {
+            $request->session()->regenerate();
+            $request->session()->put('member_context_id', $member->member_id);
+
+            return redirect()->intended(route('member.dashboard'));
+        }
+
+        if ($memberId === MemberRegistrationService::ADMIN_SPONSOR_ID) {
+            $admin = User::query()->where('is_admin', true)->first();
+
+            if ($admin && Hash::check($credentials['password'], $admin->password)) {
+                Auth::login($admin, $request->boolean('remember'));
+                $request->session()->regenerate();
+                $request->session()->forget('member_context_id');
+
+                return redirect()->intended('/dashboard');
+            }
+        }
+
+        $adminEmail = $emailInput !== '' ? $emailInput : (str_contains($memberInput, '@') ? $memberInput : null);
+
+        if (
+            $adminEmail
+            && Auth::attempt(
+                ['email' => $adminEmail, 'password' => $credentials['password']],
+                $request->boolean('remember')
+            )
+        ) {
+            $request->session()->regenerate();
+            $request->session()->forget('member_context_id');
+
+            return redirect()->intended('/dashboard');
+        }
+
+        $errorKey = $request->filled('member_id') ? 'member_id' : 'email';
+
+        return back()
+            ->withErrors([$errorKey => 'Invalid Member ID or password.'])
+            ->onlyInput($errorKey);
     }
 
     public function forgot(): View
@@ -199,6 +256,18 @@ class PublicMemberAuthController extends Controller
         ]);
 
         return redirect()->route('login')->with('success', 'Password reset successfully.');
+    }
+
+    private function memberCanAuthenticate(Member $member): bool
+    {
+        return in_array(strtolower((string) $member->status), ['active', 'inactive'], true);
+    }
+
+    private function passwordMatches(Member $member, string $password): bool
+    {
+        $hash = $member->getRawOriginal('password');
+
+        return is_string($hash) && $hash !== '' && Hash::check($password, $hash);
     }
 
     private function issueOtp(Request $request, Member $member): void

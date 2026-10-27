@@ -1,23 +1,23 @@
 @extends('admin.layouts.app')
 
 @section('content')
-    <main class="dashboard-content">
-        <div class="form-card">
+    <main>
+        <div>
             @include('partials.legacy-financial-lock')
             @if (session('success'))
-                <div class="alert alert-success mb-4">{{ session('success') }}</div>
+                <div>{{ session('success') }}</div>
             @endif
 
             @if ($errors->any())
-                <div class="alert alert-danger mb-4">{{ $errors->first() }}</div>
+                <div>{{ $errors->first() }}</div>
             @endif
 
-            <div class="form-title">
+            <div>
                 <h4>Level Commission Statement</h4>
             </div>
 
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover member-table">
+            <div>
+                <table>
                     <thead>
                         <tr>
                             <th>Level</th>
@@ -29,21 +29,21 @@
                             <tr>
                                 <td>Level {{ $rate['level'] }}</td>
                                 <td>
-                                    <form method="POST" action="{{ route('admin.level-commission.statement.update', ['levelCommission' => $rate['id']]) }}" class="d-inline-flex align-items-center gap-2">
+                                    <form method="POST" action="{{ route('admin.level-commission.statement.update', ['levelCommission' => $rate['id']]) }}">
                                         @csrf
-                                        <div class="input-group">
+                                        <div>
                                             <input type="number"
                                                    name="percentage"
                                                    value="{{ old('percentage', $rate['percentage']) }}"
-                                                   class="form-control"
+                                                  
                                                    min="0"
                                                    max="100"
                                                    step="0.0001"
                                                    required>
-                                            <span class="input-group-text">%</span>
+                                            <span>%</span>
                                         </div>
                                         <button type="submit"
-                                                class="btn btn-primary"
+                                               
                                                 onclick="return confirm('Are you sure to update this?');">
                                             Update
                                         </button>

@@ -1,36 +1,36 @@
-<header class="header-main">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-8 col-sm-6 d-flex align-items-center header-left p-0">
-                <button class="header-toggle border-0" id="sidebarToggle" type="button" aria-label="Toggle navigation" aria-controls="dsSidebar" aria-expanded="false">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-                </button>
-                <div class="header-searchbar w-full">
-                    <form class="mx-sm-3 app-form app-icon-form" action="#" onsubmit="return false;">
-                        <div class="position-relative">
-                            <input aria-label="Search menu" class="form-control" data-menu-search placeholder="Search menu..." type="search">
-                            <i class="ph-bold ph-magnifying-glass"></i>
-                        </div>
-                    </form>
-                </div>
+<header class="ds-header">
+    <div class="ds-header-start">
+        <button class="header-toggle" id="sidebarToggle" type="button" aria-label="Toggle navigation" aria-controls="dsSidebar" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <p class="ds-header-title">@yield('page-title', 'Admin')</p>
+    </div>
+    <div class="ds-header-end">
+        <input class="ds-search" aria-label="Search menu" data-menu-search placeholder="Search menu..." type="search">
+        <div data-menu>
+            <button type="button" class="ds-icon-btn" data-menu-button aria-label="Notifications" aria-haspopup="menu" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            </button>
+            <div data-menu-panel hidden role="menu">
+                <p class="ds-menu-note">No new notifications</p>
             </div>
-            <div class="col-4 col-sm-6 d-flex align-items-center justify-content-end header-right p-0">
-                <div class="top-actions" data-menu>
-                    <button type="button" class="d-flex align-items-center gap-2 border-0 bg-transparent" data-menu-button aria-haspopup="menu" aria-expanded="false">
-                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-semibold" style="width:36px;height:36px;background:#0878d1;">
-                            {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
-                        </span>
-                        <span class="d-none d-sm-inline fw-semibold">{{ auth()->user()->name ?? 'Admin' }}</span>
-                    </button>
-                    <div class="ds-menu-panel" data-menu-panel hidden role="menu">
-                        <p class="px-3 py-2 text-xs text-ink-500">{{ auth()->user()->email }}</p>
-                        <a href="{{ route('admin.change-password.index') }}" class="block rounded-lg px-3 py-2 font-medium text-navy-900 hover:bg-brand-50" role="menuitem">Change password</a>
-                        <form action="{{ route('admin.logout') }}" method="POST">
-                            @csrf
-                            <button type="submit" class="mt-1 w-full rounded-lg px-3 py-2 text-left font-medium text-red-700 hover:bg-red-50" role="menuitem">Log out</button>
-                        </form>
-                    </div>
-                </div>
+        </div>
+        <div data-menu>
+            <button type="button" class="ds-user-btn" data-menu-button aria-haspopup="menu" aria-expanded="false">
+                <span class="ds-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}</span>
+                <span class="ds-user-copy">
+                    <span class="ds-user-name">{{ auth()->user()->name ?? 'Admin' }}</span>
+                    <span class="ds-user-role">Administrator</span>
+                </span>
+                <svg class="ds-user-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div data-menu-panel hidden role="menu">
+                <p class="ds-menu-note">{{ auth()->user()->email }}</p>
+                <a href="{{ route('admin.change-password.index') }}" role="menuitem">Change password</a>
+                <form action="{{ route('admin.logout') }}" method="POST">
+                    @csrf
+                    <button type="submit" role="menuitem">Log out</button>
+                </form>
             </div>
         </div>
     </div>

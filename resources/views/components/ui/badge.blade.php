@@ -1,14 +1,13 @@
 @props(['tone' => 'brand'])
 
 @php
-    $classes = match ($tone) {
-        'muted' => 'bg-slate-100 text-slate-600',
-        'warning' => 'bg-amber-50 text-amber-700',
-        'success' => 'bg-emerald-50 text-emerald-700',
-        default => 'bg-brand-50 text-brand-700',
+    $toneClass = match ($tone) {
+        'success', 'active' => 'ds-badge ds-badge-success',
+        'warning', 'inactive' => 'ds-badge ds-badge-warning',
+        'muted' => 'ds-badge ds-badge-muted',
+        'danger' => 'ds-badge ds-badge-danger',
+        default => 'ds-badge',
     };
 @endphp
 
-<span {{ $attributes->merge(['class' => 'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold '.$classes]) }}>
-    {{ $slot }}
-</span>
+<span {{ $attributes->merge(['class' => $toneClass]) }}>{{ $slot }}</span>

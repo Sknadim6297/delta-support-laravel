@@ -1,11 +1,7 @@
 @extends('member.layouts.app')
 @section('title', $feature . ' - Coming Soon')
+@section('page-title', $feature)
 @section('content')
-<div class="mx-auto max-w-3xl">
-    <header class="mb-5">
-        <h1 class="ds-page-title">{{ $feature }}</h1>
-        <p class="ds-page-copy">Coming Soon</p>
-    </header>
-    <div class="ds-card text-sm text-ink-500">This module is reserved for a later phase. No balances are credited from this page.</div>
-</div>
+    <x-ui.page-header :title="$feature" lead="Coming Soon" />
+    <x-ui.empty title="Coming Soon" message="This module is reserved for a later phase. No balances are credited from this page." />
 @endsection

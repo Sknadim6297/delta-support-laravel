@@ -1,163 +1,109 @@
 @extends('admin.layouts.app')
 
+@section('title', 'View / Update Member')
+@section('page-title', 'View / Update Member')
+
 @section('content')
-        <main class="dashboard-content">
+    <div class="ds-dash">
+        <x-ui.page-header
+            title="View / Update Member"
+            lead="Look up a member by ID, then update the profile. Sponsor identity and wallet balances stay on their existing rules."
+        />
 
-        
+        @if ($errors->any())
+            <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
+        @endif
 
-        <div class="form-card">
+        <div id="memberSummary" class="ds-member-summary" hidden>
+            <article class="ds-stat">
+                <p class="ds-stat-label">Account status</p>
+                <p class="ds-stat-value" id="summaryStatus"></p>
+            </article>
+            <article class="ds-stat">
+                <p class="ds-stat-label">Registration date</p>
+                <p class="ds-stat-value" id="summaryRegistered"></p>
+            </article>
+            <article class="ds-stat">
+                <p class="ds-stat-label">Package status</p>
+                <p class="ds-stat-value" id="summaryPackage"></p>
+            </article>
+            <article class="ds-stat">
+                <p class="ds-stat-label">Direct referrals</p>
+                <p class="ds-stat-value" id="summaryReferrals"></p>
+            </article>
+        </div>
 
-            @if ($errors->any())
-                <div class="alert alert-danger">{{ $errors->first() }}</div>
-            @endif
-
-            @if (session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
-
-            <div id="memberSummary" class="row mb-4" hidden>
-                <div class="col-md-3 mb-2"><label>Account status</label><div id="summaryStatus" class="fw-semibold"></div></div>
-                <div class="col-md-3 mb-2"><label>Registration date</label><div id="summaryRegistered" class="fw-semibold"></div></div>
-                <div class="col-md-3 mb-2"><label>Package status</label><div id="summaryPackage" class="fw-semibold"></div></div>
-                <div class="col-md-3 mb-2"><label>Direct referrals</label><div id="summaryReferrals" class="fw-semibold"></div></div>
+        <section class="ds-card">
+            <div class="ds-card-head">
+                <div>
+                    <h2>Find a member</h2>
+                    <p>Enter the member ID and load the saved profile.</p>
+                </div>
             </div>
-
-            <!-- MEMBER ID SEARCH -->
-            <div class="row align-items-end mb-4">
-
-                <div class="col-md-6">
-                    <label>Member ID</label>
+            <div class="ds-member-lookup">
+                <div>
+                    <label for="memberId">Member ID</label>
                     <input type="text"
                         id="memberId"
                         name="member_id"
                         form="memberUpdateForm"
                         value="{{ old('member_id', request('member_id')) }}"
-                        class="form-control"
-                        placeholder="Enter Member ID">
+                        placeholder="Enter Member ID"
+                        autocomplete="off">
                 </div>
-
-                <div class="col-md-auto mt-3 mt-md-0">
-                    <button type="button" id="fetchMemberDetails" class="btn btn-primary px-4">
-                        <i class="bi bi-search"></i>
-                        Submit
-                    </button>
-                </div>
-
+                <button type="button" id="fetchMemberDetails" class="ds-btn">Look up</button>
             </div>
+        </section>
 
-
-            <!-- PERSONAL DETAILS -->
-            <div class="form-title">
-                <h4>Personal Details</h4>
-            </div>
-
-            <form method="POST" action="{{ route('admin.members.update-member') }}" id="memberUpdateForm">
-                @csrf
-
-            <div class="row">
-
-                <div class="col-md-6 mb-3">
-                    <label>Sponsor ID <span class="text-danger">*</span></label>
-                    <input type="text"
-                        id="sponsorId"
-                        name="sponsor_id"
-                        value="{{ old('sponsor_id') }}"
-                        class="form-control"
-                        placeholder="Enter Sponsor ID">
+        <form method="POST" action="{{ route('admin.members.update-member') }}" id="memberUpdateForm" class="ds-profile-form">
+            @csrf
+            <section class="ds-card">
+                <div class="ds-card-head">
+                    <div>
+                        <h2>Personal details</h2>
+                        <p>Leave the password blank to keep the current password.</p>
+                    </div>
                 </div>
-
-                <div class="col-md-6 mb-3">
-                    <label>Sponsor Name <span class="text-danger">*</span></label>
-                    <input type="text"
-                        id="sponsorName"
-                        name="sponsor_name"
-                        value="{{ old('sponsor_name') }}"
-                        class="form-control"
-                        placeholder="Enter Sponsor Name">
+                <div class="ds-field-grid">
+                    <div>
+                        <label for="sponsorId">Sponsor ID <span>*</span></label>
+                        <input type="text" id="sponsorId" name="sponsor_id" readonly value="{{ old('sponsor_id') }}" placeholder="Enter Sponsor ID">
+                    </div>
+                    <div>
+                        <label for="sponsorName">Sponsor Name <span>*</span></label>
+                        <input type="text" id="sponsorName" name="sponsor_name" value="{{ old('sponsor_name') }}" placeholder="Enter Sponsor Name">
+                    </div>
+                    <div>
+                        <label for="memberName">Member Name <span>*</span></label>
+                        <input type="text" id="memberName" name="member_name" value="{{ old('member_name') }}" placeholder="Enter Member Name">
+                    </div>
+                    <div>
+                        <label for="walletAddress">BEP20 Wallet Address</label>
+                        <input type="text" id="walletAddress" name="wallet_address" value="{{ old('wallet_address') }}" placeholder="Enter BEP20 Wallet Address">
+                    </div>
+                    <div>
+                        <label for="mobileNo">Mobile No <span>*</span></label>
+                        <input type="text" id="mobileNo" name="mobile_no" value="{{ old('mobile_no') }}" placeholder="Enter Mobile No" required maxlength="10">
+                    </div>
+                    <div>
+                        <label for="email">Email ID <span>*</span></label>
+                        <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="Enter Email ID" autocomplete="off">
+                    </div>
+                    <div>
+                        <label for="panCardNo">PAN Card Number <span>*</span></label>
+                        <input type="text" id="panCardNo" name="pan_card_no" value="{{ old('pan_card_no') }}" placeholder="Enter PAN Card Number" maxlength="10">
+                    </div>
+                    <div>
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="Enter Password" autocomplete="new-password">
+                    </div>
                 </div>
-
-                <div class="col-md-6 mb-3">
-                    <label>Member Name <span class="text-danger">*</span></label>
-                    <input type="text"
-                        id="memberName"
-                        name="member_name"
-                        value="{{ old('member_name') }}"
-                        class="form-control"
-                        placeholder="Enter Member Name">
+                <div class="ds-form-actions">
+                    <button type="submit" class="ds-btn">Update</button>
                 </div>
-
-                <div class="col-md-6 mb-3">
-                    <label>BEP20 Wallet Address</label>
-                    <input type="text"
-                        id="walletAddress"
-                        name="wallet_address"
-                        value="{{ old('wallet_address') }}"
-                        class="form-control"
-                        placeholder="Enter BEP20 Wallet Address">
-                </div>
-
-                <div class="col-md-6 mb-3">
-                    <label>Mobile No <span class="text-danger">*</span></label>
-                    <input type="text"
-                        id="mobileNo"
-                        name="mobile_no"
-                        value="{{ old('mobile_no') }}"
-                        class="form-control"
-                        placeholder="Enter Mobile No"
-                        required
-                        maxlength="10">
-                </div>
-
-                <div class="col-md-6 mb-3">
-                    <label>Email ID <span class="text-danger">*</span></label>
-                    <input type="email"
-                        id="email"
-                        name="email"
-                        value="{{ old('email') }}"
-                        class="form-control"
-                        placeholder="Enter Email ID">
-                </div>
-
-                <div class="col-md-6 mb-3">
-                    <label>PAN Card Number <span class="text-danger">*</span></label>
-                    <input type="text"
-                        id="panCardNo"
-                        name="pan_card_no"
-                        value="{{ old('pan_card_no') }}"
-                        class="form-control"
-                        placeholder="Enter PAN Card Number"
-                        maxlength="10">
-                </div>
-
-                <div class="col-md-6 mb-3">
-                    <label>Password</label>
-                    <input type="password"
-                        id="password"
-                        name="password"
-                        class="form-control"
-                        placeholder="Enter Password">
-                </div>
-
-            </div>
-
-
-            <!-- UPDATE BUTTON -->
-            <div class="text-end mt-3">
-
-                <button type="submit" class="btn btn-success px-4">
-                    <i class="bi bi-check-circle"></i>
-                    Update
-                </button>
-
-            </div>
-
-            </form>
-
-        </div>
-
-
-    </main>
-
+            </section>
+        </form>
+    </div>
 @endsection
 
 @section('scripts')
@@ -194,7 +140,7 @@
 
             if (!error) {
                 error = document.createElement('div');
-                error.className = 'text-danger mt-1 small validation-message';
+                error.className = 'validation-message';
                 error.dataset.errorFor = fieldName;
                 const field = {
                     member_name: memberNameInput,
@@ -209,7 +155,7 @@
             }
 
             error.textContent = message;
-            error.style.display = message ? 'block' : 'none';
+            error.hidden = !message;
         }
 
         function markTouched(fieldName) {
@@ -399,7 +345,7 @@
             if (!error) {
                 error = document.createElement('div');
                 error.id = 'memberIdError';
-                error.className = 'text-danger mt-1 small';
+                error.className = 'validation-message';
                 memberIdInput.parentElement.appendChild(error);
             }
 

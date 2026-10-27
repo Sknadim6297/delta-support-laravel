@@ -13,6 +13,10 @@ class MemberDirectoryController extends Controller
     public function index(Request $request): View
     {
         $members = Member::query()
+            ->withExists([
+                'packagePurchases as has_approved_package' => fn ($query) => $query->where('status', \App\Models\PackagePurchase::APPROVED),
+                'packagePurchases as has_pending_package' => fn ($query) => $query->where('status', \App\Models\PackagePurchase::PENDING),
+            ])
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $term = '%' . trim((string) $request->query('q')) . '%';
                 $query->where(function ($inner) use ($term): void {

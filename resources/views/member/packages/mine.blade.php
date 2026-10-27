@@ -1,41 +1,41 @@
 @extends('member.layouts.app')
 @section('content')
-<div class="mx-auto max-w-6xl">
-    <header class="mb-5">
-        <h1 class="ds-page-title">My Packages</h1>
-        <p class="ds-page-copy">Each row is a separate purchase. The amount and denomination are the values saved when the request was created.</p>
+<div>
+    <header>
+        <h1>My Packages</h1>
+        <p>Each row is a separate purchase. The amount and denomination are the values saved when the request was created.</p>
     </header>
-    <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left">
+    <div>
+        <table>
+            <thead>
                 <tr>
-                    <th class="p-3">Package</th>
-                    <th class="p-3">Reference</th>
-                    <th class="p-3">Saved price</th>
-                    <th class="p-3">Status</th>
-                    <th class="p-3">Purchase date</th>
-                    <th class="p-3"></th>
+                    <th>Package</th>
+                    <th>Reference</th>
+                    <th>Saved price</th>
+                    <th>Status</th>
+                    <th>Purchase date</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
             @forelse($purchases as $purchase)
-                <tr class="border-t border-slate-100">
-                    <td class="p-3">
-                        <div class="font-semibold text-navy-900">{{ $purchase->package_name }}</div>
-                        <div class="text-slate-500">{{ $purchase->package_code }}</div>
+                <tr>
+                    <td>
+                        <div>{{ $purchase->package_name }}</div>
+                        <div>{{ $purchase->package_code }}</div>
                     </td>
-                    <td class="p-3">{{ $purchase->reference }}</td>
-                    <td class="p-3">{{ \App\Support\MoneyDisplay::format($purchase->price_usd, $purchase->denomination) }}</td>
-                    <td class="p-3">{{ $purchase->statusLabel() }}</td>
-                    <td class="p-3">{{ optional($purchase->submitted_at)->timezone('Asia/Kolkata')->format('d M Y H:i') }}</td>
-                    <td class="p-3"><a class="font-semibold text-brand-700" href="{{ route('member.payments.show', $purchase) }}">View details</a></td>
+                    <td>{{ $purchase->reference }}</td>
+                    <td>{{ \App\Support\MoneyDisplay::format($purchase->price_usd, $purchase->denomination) }}</td>
+                    <td>{{ $purchase->statusLabel() }}</td>
+                    <td>{{ optional($purchase->submitted_at)->timezone('Asia/Kolkata')->format('d M Y H:i') }}</td>
+                    <td><a href="{{ route('member.payments.show', $purchase) }}">View details</a></td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="p-6 text-slate-500">You have not requested a package yet.</td></tr>
+                <tr><td colspan="6">You have not requested a package yet.</td></tr>
             @endforelse
             </tbody>
         </table>
     </div>
-    <div class="mt-4">{{ $purchases->links('pagination::bootstrap-5') }}</div>
+    <div>{{ $purchases->links('pagination::bootstrap-5') }}</div>
 </div>
 @endsection

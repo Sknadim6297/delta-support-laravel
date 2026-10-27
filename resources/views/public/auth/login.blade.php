@@ -33,13 +33,13 @@
                     <div class="form-message mb-4 text-red-600" role="alert">{{ $errors->first() }}</div>
                 @endif
 
-                <form method="POST" action="{{ route('login.submit') }}" id="loginForm">
+                <form method="POST" action="{{ route('member.login.store') }}" id="loginForm">
                     @csrf
                     <div class="mb-6">
-                        <label for="username" class="form-label">Email Address / Member ID</label>
+                        <label for="username" class="form-label">Member ID</label>
                         <div class="input-wrap">
                             <i class="bi bi-person input-icon"></i>
-                            <input type="text" class="form-control" id="username" name="member_id" value="{{ old('member_id', old('email')) }}" placeholder="Enter email or member ID" autocomplete="username" required>
+                            <input type="text" class="form-control" id="username" name="member_id" value="{{ old('member_id') }}" placeholder="Enter your Member ID (STxxxxxx)" autocomplete="username" required>
                         </div>
                     </div>
 
@@ -63,7 +63,7 @@
                     </div>
 
                     <button type="submit" class="login-btn">
-                        <span>Sign In</span>
+                        <span>Login</span>
                         <i class="bi bi-arrow-right"></i>
                     </button>
                 </form>

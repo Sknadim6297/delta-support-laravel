@@ -77,7 +77,7 @@ class NewMemberRegistrationController extends Controller
 
         return redirect()
             ->route('member.registration')
-            ->with('success', 'Member registered successfully. Member ID: ' . $result['member']->member_id);
+            ->with('success', 'Member registered successfully. Member ID: ' . $result['member']->member_id . '. No password was set. The member can create one from Forgot Password.');
     }
 
     private function currentMember(Request $request): Member

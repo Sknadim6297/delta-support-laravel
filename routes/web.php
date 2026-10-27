@@ -2,7 +2,6 @@
 
     use Illuminate\Http\Request;
     use Illuminate\Support\Facades\Auth;
-    use Illuminate\Support\Facades\Hash;
     use Illuminate\Support\Facades\Route;
 
     use App\Http\Controllers\MemberController;
@@ -133,61 +132,13 @@
         ->name('member.forgot.reset.store');
 
 
-    Route::post('/admin/login', function (Request $request) {
+    Route::post('/login', [PublicMemberAuthController::class, 'login'])
+        ->middleware('throttle:5,1')
+        ->name('member.login.store');
 
-        $credentials = $request->validate([
-            'member_id' => ['required_without:email', 'nullable', 'string'],
-            'email' => ['required_without:member_id', 'nullable', 'email'],
-            'password' => ['required', 'string'],
-        ]);
-
-        $memberId = trim($credentials['member_id'] ?? $credentials['email']);
-
-        $member = Member::where('member_id', $memberId)
-            ->where('status', 'active')
-            ->first();
-
-        if ($member && $member->password && Hash::check($credentials['password'], $member->password)) {
-            $request->session()->regenerate();
-            $request->session()->put('member_context_id', $member->member_id);
-
-            return redirect()->intended(route('member.dashboard'));
-        }
-
-        if (strtoupper($memberId) === 'ST666666') {
-            $admin = User::where('is_admin', true)->first();
-
-            if ($admin && Hash::check($credentials['password'], $admin->password)) {
-                Auth::login($admin, $request->boolean('remember'));
-                $request->session()->regenerate();
-                $request->session()->forget('member_context_id');
-
-                return redirect()->intended('/dashboard');
-            }
-        }
-
-        if (
-            Auth::attempt(
-                [
-                    'email' => $memberId,
-                    'password' => $credentials['password'],
-                ],
-                $request->boolean('remember')
-            )
-        ) {
-            $request->session()->regenerate();
-            $request->session()->forget('member_context_id');
-
-            return redirect()->intended('/dashboard');
-        }
-
-        return back()
-            ->withErrors([
-                $request->filled('member_id') ? 'member_id' : 'email' => 'Invalid Member ID or password.',
-            ])
-            ->onlyInput($request->filled('member_id') ? 'member_id' : 'email');
-
-    })->middleware('throttle:5,1')->name('login.submit');
+    Route::post('/admin/login', [PublicMemberAuthController::class, 'login'])
+        ->middleware('throttle:5,1')
+        ->name('login.submit');
 
 
     /*
@@ -291,6 +242,8 @@
         Route::get('/dashboard', function (Request $request) {
             $request->session()->forget('member_context_id');
 
+            $purchaseColumns = ['id', 'reference', 'member_id', 'package_name', 'price_usd', 'denomination', 'status', 'created_at', 'reviewed_at'];
+
             return view('admin.dashboard.index', [
                 'activationWalletTotal' => (float) \App\Models\Member::sum('activation_wallet_amount'),
                 'workingWalletTotal' => (float) \App\Models\Member::sum('working_wallet_amount'),
@@ -298,8 +251,16 @@
                 'memberCount' => \App\Models\Member::count(),
                 'activeMembers' => \App\Models\Member::where('status', 'active')->count(),
                 'inactiveMembers' => \App\Models\Member::where('status', 'inactive')->count(),
+                'packageCount' => \App\Models\Package::count(),
+                'activePackageCount' => \App\Models\Package::where('is_active', true)->count(),
                 'approvedPurchases' => \App\Support\CommerceTotals::sums(\App\Models\PackagePurchase::class, \App\Models\PackagePurchase::APPROVED),
                 'pendingPurchases' => \App\Support\CommerceTotals::sums(\App\Models\PackagePurchase::class, \App\Models\PackagePurchase::PENDING),
+                'pendingCount' => \App\Models\PackagePurchase::where('status', \App\Models\PackagePurchase::PENDING)->count(),
+                'approvedCount' => \App\Models\PackagePurchase::where('status', \App\Models\PackagePurchase::APPROVED)->count(),
+                'rejectedCount' => \App\Models\PackagePurchase::where('status', \App\Models\PackagePurchase::REJECTED)->count(),
+                'recentMembers' => \App\Models\Member::query()->latest()->limit(5)->get(['member_id', 'member_name', 'status', 'created_at']),
+                'recentPurchases' => \App\Models\PackagePurchase::query()->latest()->limit(5)->get($purchaseColumns),
+                'recentReviews' => \App\Models\PackagePurchase::query()->whereNotNull('reviewed_at')->latest('reviewed_at')->limit(5)->get($purchaseColumns),
             ]);
         })->name('dashboard');
 
@@ -766,7 +727,8 @@
             $request->session()->invalidate();
             $request->session()->regenerateToken();
         } else {
-            $request->session()->forget('member_context_id');
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
         }
 
         return redirect()->route('login');

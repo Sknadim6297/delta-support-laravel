@@ -30,8 +30,11 @@ class MemberController extends Controller
                     'mobile' => $member->mobile_no,
                     'pan_card_no' => $member->pan_card_no,
                     'investment_amount' => (float) ($member->investment_amount ?? 0),
-                    'password' => $member->password ? 'Protected' : 'Not set',
                     'status' => $member->status,
+                    'account_status' => $member->status === 'active' ? 'Active' : 'Inactive',
+                    'package_status' => $member->has_approved_package
+                        ? 'Approved package'
+                        : ($member->has_pending_package ? 'Pending package' : 'Unpaid'),
                 ];
             })
             ->values()
@@ -273,7 +276,11 @@ class MemberController extends Controller
         $query = Member::where('status', $status)
             ->withSum(['investments as investment_amount' => function ($investmentQuery) {
                 $investmentQuery->where('status', 'active')->where('amount', '>=', 100);
-            }], 'amount');
+            }], 'amount')
+            ->withExists([
+                'packagePurchases as has_approved_package' => fn ($purchaseQuery) => $purchaseQuery->where('status', \App\Models\PackagePurchase::APPROVED),
+                'packagePurchases as has_pending_package' => fn ($purchaseQuery) => $purchaseQuery->where('status', \App\Models\PackagePurchase::PENDING),
+            ]);
 
         $memberName = trim((string) $request->query('member_name', ''));
         $memberId = trim((string) $request->query('member_id', ''));
@@ -281,6 +288,7 @@ class MemberController extends Controller
         if ($memberName !== '') {
             $query->where(function ($memberQuery) use ($memberName) {
                 $memberQuery->where('member_name', 'like', '%' . $memberName . '%')
+                    ->orWhere('email', 'like', '%' . $memberName . '%')
                     ->orWhere('mobile_no', 'like', '%' . $memberName . '%')
                     ->orWhere('sponsor_id', 'like', '%' . $memberName . '%')
                     ->orWhere('sponsor_name', 'like', '%' . $memberName . '%');
@@ -292,7 +300,7 @@ class MemberController extends Controller
         }
 
         $members = $query->orderByDesc('created_at')
-            ->paginate(10)
+            ->paginate(30)
             ->withQueryString();
         $members->setCollection(collect($this->formatMembers($members->getCollection())));
         $members->getCollection()->transform(function (array $member, int $index) use ($members) {
@@ -326,6 +334,7 @@ class MemberController extends Controller
         if ($memberName !== '') {
             $query->where(function ($memberQuery) use ($memberName) {
                 $memberQuery->where('member_name', 'like', '%' . $memberName . '%')
+                    ->orWhere('email', 'like', '%' . $memberName . '%')
                     ->orWhere('mobile_no', 'like', '%' . $memberName . '%')
                     ->orWhere('sponsor_id', 'like', '%' . $memberName . '%')
                     ->orWhere('sponsor_name', 'like', '%' . $memberName . '%');
@@ -340,7 +349,7 @@ class MemberController extends Controller
 
         return response()->streamDownload(function () use ($members) {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Serial No', 'Member ID', 'Member Name', 'Joining Date', 'Sponsor ID', 'Sponsor Name', 'Mobile No', 'PAN Card Number', 'Investment Amount (USDT)', 'Password']);
+            fputcsv($output, ['Serial No', 'Member ID', 'Member Name', 'Joining Date', 'Sponsor ID', 'Sponsor Name', 'Email', 'Mobile No', 'PAN Card Number', 'Account Status', 'Investment Amount (USDT)']);
 
             foreach ($members as $index => $member) {
                 fputcsv($output, [
@@ -350,10 +359,11 @@ class MemberController extends Controller
                     $member->created_at?->format('d-M-Y') ?? 'N/A',
                     $member->sponsor_id,
                     $member->sponsor_name,
+                    $member->email,
                     $member->mobile_no,
                     $member->pan_card_no,
+                    $member->status === 'active' ? 'Active' : 'Inactive',
                     $this->formatUsdt($member->investment_amount ?? 0),
-                    $member->password ? 'Protected' : 'Not set',
                 ]);
             }
 
@@ -532,8 +542,13 @@ class MemberController extends Controller
 
         $request->session()->forget('generated_member_id');
 
+        $message = 'Member registration submitted successfully. Member ID: ' . $result['member']->member_id;
+        if (! filled($validated['password'] ?? null)) {
+            $message .= ' No password was set. The member can create one from Forgot Password.';
+        }
+
         return redirect()->route('admin.members.registration')
-            ->with('success', 'Member registration submitted successfully. Member ID: ' . $result['member']->member_id);
+            ->with('success', $message);
     }
 
     public function updateMember(Request $request)
@@ -576,11 +591,7 @@ class MemberController extends Controller
             return back()->withErrors(['mobile_no' => 'This mobile number has already been used 3 times.'])->withInput();
         }
 
-        $sponsorDetails = $this->resolveSponsorDetails($request);
-
         $memberData = [
-            'sponsor_id' => $sponsorDetails['sponsor_id'],
-            'sponsor_name' => $sponsorDetails['sponsor_name'],
             'member_name' => $validated['member_name'],
             'wallet_address' => $validated['wallet_address'] ?? null,
             'mobile_no' => $validated['mobile_no'],
@@ -594,7 +605,7 @@ class MemberController extends Controller
 
         $member->update($memberData);
 
-        return redirect()->route('admin.members.update')
+        return redirect()->route('admin.members.update', ['member_id' => $member->member_id])
             ->with('success', 'Member profile updated successfully.');
     }
 }

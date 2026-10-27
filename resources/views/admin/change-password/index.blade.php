@@ -1,67 +1,67 @@
 @extends('admin.layouts.app')
 @section('content')
 
-        <main class="dashboard-content">
+        <main>
 
-    <div class="form-card">
+    <div>
 
         @if ($errors->any())
-            <div class="alert alert-danger">{{ $errors->first() }}</div>
+            <div>{{ $errors->first() }}</div>
         @endif
 
         @if (session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
+            <div>{{ session('success') }}</div>
         @endif
 
         <!-- TITLE -->
-        <div class="form-title">
+        <div>
             <h4>Change Password</h4>
         </div>
 
         <form method="POST" action="{{ route('admin.change-password.update') }}" id="changePasswordForm">
             @csrf
-            <div class="row">
+            <div>
 
                 <!-- OLD PASSWORD -->
-                <div class="col-md-6 mb-3">
+                <div>
                     <label>
-                        Old Password <span class="text-danger">*</span>
+                        Old Password <span>*</span>
                     </label>
 
                     <input type="password"
                            id="currentPassword"
                            name="current_password"
-                           class="form-control"
+                          
                            data-error-for="current_password"
                            placeholder="Enter Old Password">
                 </div>
 
 
                 <!-- NEW PASSWORD -->
-                <div class="col-md-6 mb-3">
+                <div>
                     <label>
-                        New Password <span class="text-danger">*</span>
+                        New Password <span>*</span>
                     </label>
 
                     <input type="password"
                            id="newPassword"
                            name="new_password"
-                           class="form-control"
+                          
                            data-error-for="new_password"
                            placeholder="Enter New Password">
                 </div>
 
 
                 <!-- CONFIRM PASSWORD -->
-                <div class="col-md-6 mb-3">
+                <div>
                     <label>
-                        Confirm New Password <span class="text-danger">*</span>
+                        Confirm New Password <span>*</span>
                     </label>
 
                     <input type="password"
                            id="confirmPassword"
                            name="new_password_confirmation"
-                           class="form-control"
+                          
                            data-error-for="new_password_confirmation"
                            placeholder="Confirm New Password">
                 </div>
@@ -70,13 +70,13 @@
 
 
             <!-- SUBMIT -->
-            <div class="text-end mt-2">
+            <div>
 
                 <button type="submit"
-                        class="btn btn-primary px-4"
+                       
                        >
 
-                    <i class="bi bi-check-circle"></i>
+                    <i></i>
                     Submit
 
                 </button>
@@ -102,12 +102,12 @@
             let error = target.parentElement.querySelector('.validation-message');
             if (!error) {
                 error = document.createElement('div');
-                error.className = 'text-danger mt-1 small validation-message';
+                error.className = 'validation-message';
                 target.parentElement.appendChild(error);
             }
 
             error.textContent = message;
-            error.style.display = message ? 'block' : 'none';
+            error.hidden = !message;
         }
 
         function validateCurrentPassword(force = false) {

@@ -11,6 +11,10 @@ class Member extends Model
 {
     use HasFactory;
 
+    protected $hidden = [
+        'password',
+    ];
+
     protected $fillable = [
         'member_id',
         'rank_id',

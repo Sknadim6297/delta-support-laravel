@@ -1,9 +1,16 @@
 @props(['label', 'value', 'hint' => null])
 
-<article {{ $attributes->merge(['class' => 'rounded-2xl border border-slate-200 bg-white p-5 shadow-sm']) }}>
-    <p class="text-xs font-semibold uppercase tracking-wide text-ink-500">{{ $label }}</p>
-    <p class="mt-2 text-2xl font-semibold tracking-tight text-navy-900">{{ $value }}</p>
+<article {{ $attributes->merge(['class' => 'ds-stat']) }}>
+    @isset($icon)
+        <div class="ds-stat-top">
+            <span class="ds-stat-icon" aria-hidden="true">{{ $icon }}</span>
+            <p class="ds-stat-label">{{ $label }}</p>
+        </div>
+    @else
+        <p class="ds-stat-label">{{ $label }}</p>
+    @endisset
+    <p class="ds-stat-value">{{ $value }}</p>
     @if ($hint)
-        <p class="mt-2 text-sm text-ink-500">{{ $hint }}</p>
+        <p class="ds-stat-hint">{{ $hint }}</p>
     @endif
 </article>

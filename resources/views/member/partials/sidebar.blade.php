@@ -1,18 +1,11 @@
-<aside class="ds-sidebar" id="dsSidebar" aria-label="Member">
-    <div class="ds-sidebar-head">
+<aside id="dsSidebar" aria-label="Member">
+    <div class="ds-brand">
         <a href="{{ route('member.dashboard') }}">
-            <img src="{{ asset('site/img/logo.png') }}" alt="Delta Support">
+            <img class="ds-logo" src="{{ asset('site/img/logo.png') }}" alt="Delta Support">
         </a>
         <button type="button" class="ds-sidebar-close" aria-label="Close menu">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
-    </div>
-    <div class="ds-sidebar-user">
-        <span class="ds-avatar">{{ strtoupper(substr($member->member_name ?? 'M', 0, 1)) }}</span>
-        <div>
-            <strong>{{ $member->member_name ?? 'Member' }}</strong>
-            <small>{{ $member->member_id ?? session('member_context_id') }}</small>
-        </div>
     </div>
     <div class="ds-sidebar-scroll">
         <ul class="ds-menu">
@@ -66,7 +59,7 @@
                 <x-nav.link :href="route('member.support')" :active="request()->routeIs('member.support')">Help & Support</x-nav.link>
             </x-nav.group>
 
-            <li class="ds-item">
+            <li>
                 <form action="{{ route('member.logout') }}" method="POST">
                     @csrf
                     <button type="submit"><x-nav.icon name="log-out" /><span>Log out</span></button>
