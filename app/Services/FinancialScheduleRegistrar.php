@@ -8,13 +8,9 @@ class FinancialScheduleRegistrar
 {
     public function register(Schedule $schedule): void
     {
-        if (config('financial.accelerated.enabled') && ! app()->environment('production')) {
-            $this->registerAcceleratedCycle($schedule);
-
-            return;
-        }
-
-        $this->registerProductionCommands($schedule);
+        // Legacy ROI, level commission, rank advancement, and the accelerated
+        // payout cycle stay off the scheduler. The command classes and the
+        // definitions below remain for a later review. schedule:run must not start them.
     }
 
     /**

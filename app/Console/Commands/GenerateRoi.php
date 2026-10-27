@@ -2,6 +2,7 @@
 
     namespace App\Console\Commands;
 
+    use App\Console\Commands\Concerns\RefusesLegacyFinancialActions;
     use App\Services\RoiGenerationService;
     use App\Services\BusinessDateGuard;
     use Carbon\CarbonImmutable;
@@ -10,12 +11,18 @@
 
     class GenerateRoi extends Command
     {
+        use RefusesLegacyFinancialActions;
+
         protected $signature = 'roi:generate {--date= : Business date (YYYY-MM-DD) for a safe manual run}';
 
         protected $description = 'Generate daily ROI for eligible investments.';
 
         public function handle(RoiGenerationService $roiGenerationService, BusinessDateGuard $businessDateGuard): int
         {
+            if ($this->legacyFinancialActionsAreBlocked()) {
+                return self::FAILURE;
+            }
+
             $startedAt = microtime(true);
             Log::info('Scheduled ROI generation started.');
 

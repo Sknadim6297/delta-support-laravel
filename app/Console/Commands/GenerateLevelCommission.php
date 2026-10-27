@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\RefusesLegacyFinancialActions;
 use App\Models\Investment;
 use App\Services\LevelCommissionGenerationService;
 use App\Services\BusinessDateGuard;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Log;
 
 class GenerateLevelCommission extends Command
 {
+    use RefusesLegacyFinancialActions;
+
     private const BATCH_SIZE = 500;
 
     protected $signature = 'commission:generate-level {--date= : Business date (YYYY-MM-DD)} {--investment= : Specific Investment ID to (re)process}';
@@ -22,6 +25,10 @@ class GenerateLevelCommission extends Command
 
     public function handle(LevelCommissionGenerationService $service, BusinessDateGuard $businessDateGuard): int
     {
+        if ($this->legacyFinancialActionsAreBlocked()) {
+            return self::FAILURE;
+        }
+
         $startedAt = microtime(true);
         $phase = 'date_resolution';
         $businessDate = null;

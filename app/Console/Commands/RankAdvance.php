@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\RefusesLegacyFinancialActions;
 use App\Models\Member;
 use App\Models\Rank;
 use App\Models\RankAchievement;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 
 class RankAdvance extends Command
 {
+    use RefusesLegacyFinancialActions;
+
     private const ACHIEVEMENT_INSERT_BATCH_SIZE = 500;
 
     protected $signature = 'rank:advance {--member-id= : Limit the one-step advancement to a specific member} {--date= : Evaluate ranks as of this business date}';
@@ -23,6 +26,10 @@ class RankAdvance extends Command
 
     public function handle(RankService $rankService, BusinessDateGuard $businessDateGuard): int
     {
+        if ($this->legacyFinancialActionsAreBlocked()) {
+            return self::FAILURE;
+        }
+
         $startedAt = microtime(true);
         Log::info('Scheduled rank advancement started.');
 
