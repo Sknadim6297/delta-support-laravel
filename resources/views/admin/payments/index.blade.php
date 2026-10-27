@@ -9,14 +9,14 @@
     </form>
     <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left"><tr><th class="p-3">Purchase</th><th class="p-3">Member</th><th class="p-3">Package</th><th class="p-3">USD</th><th class="p-3">Transaction</th><th class="p-3">Status</th><th class="p-3"></th></tr></thead>
+            <thead class="bg-slate-50 text-left"><tr><th class="p-3">Purchase</th><th class="p-3">Member</th><th class="p-3">Package</th><th class="p-3">Amount</th><th class="p-3">Transaction</th><th class="p-3">Status</th><th class="p-3"></th></tr></thead>
             <tbody>
             @forelse($purchases as $purchase)
                 <tr class="border-t">
                     <td class="p-3">{{ $purchase->reference }}</td>
                     <td class="p-3">{{ $purchase->member_id }}</td>
                     <td class="p-3">{{ $purchase->package_name }}</td>
-                    <td class="p-3">{{ $purchase->price_usd }}</td>
+                    <td class="p-3">{{ \App\Support\MoneyDisplay::format($purchase->price_usd, $purchase->denomination) }}</td>
                     <td class="p-3">{{ $purchase->payment_reference }}</td>
                     <td class="p-3">{{ $purchase->statusLabel() }}</td>
                     <td class="p-3">

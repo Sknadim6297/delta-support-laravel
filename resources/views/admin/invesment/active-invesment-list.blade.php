@@ -97,7 +97,7 @@
 
                     <span>Total Amount (USDT)</span>
 
-                    <strong>{{ rtrim(rtrim(number_format($totalAmount, 4, '.', ''), '0'), '.') ?: '0' }}</strong>
+                    <strong>{{ \App\Support\MoneyDisplay::usdt($totalAmount) }}</strong>
 
                 </div>
 
@@ -123,7 +123,7 @@
                     <td>{{ $investment->member_id }}</td>
                     <td>{{ $investment->member_name }}</td>
                     <td>{{ $investment->investment_id }}</td>
-                    <td>{{ rtrim(rtrim(number_format((float) $investment->amount, 4, '.', ''), '0'), '.') ?: '0' }} USDT</td>
+                    <td>{{ \App\Support\MoneyDisplay::usdt($investment->amount) }}</td>
                     <td>{{ $investment->created_at?->format('d-m-Y') }}</td>
                 </tr>
             @empty

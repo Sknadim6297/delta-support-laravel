@@ -21,6 +21,8 @@
     use App\Http\Controllers\Admin\OperationsController;
     use App\Http\Controllers\Admin\PackageController;
     use App\Http\Controllers\Admin\PaymentReviewController;
+    use App\Http\Controllers\Admin\WithdrawalReviewController;
+    use App\Http\Controllers\Admin\WithdrawalSettingController;
     use App\Http\Controllers\Member\CatalogController;
     use App\Http\Controllers\Member\NewMemberRegistrationController;
     use App\Http\Controllers\Member\ProfileController;
@@ -28,6 +30,8 @@
     use App\Http\Controllers\Member\InvestController;
     use App\Http\Controllers\Member\MemberChangePasswordController;
     use App\Http\Controllers\Member\ComingSoonController;
+    use App\Http\Controllers\Member\WithdrawalController;
+    use App\Http\Controllers\Member\WalletController;
     use App\Http\Controllers\Member\RankController as MemberRankController;
     use App\Http\Controllers\Member\ReportController as MemberReportController;
     use App\Http\Controllers\Member\GenealogyController as MemberGenealogyController;
@@ -236,6 +240,18 @@
             Route::post('/{purchase}/reject', 'reject')->name('reject');
         });
 
+        Route::controller(WithdrawalReviewController::class)->prefix('admin/withdrawals')->name('admin.withdrawals.')->group(function () {
+            Route::get('/', 'overview')->name('overview');
+            Route::get('/requests', 'index')->name('index');
+            Route::get('/payouts', 'payouts')->name('payouts');
+            Route::get('/requests/{withdrawalRequest}', 'show')->name('show');
+        });
+
+        Route::controller(WithdrawalSettingController::class)->prefix('admin/withdrawals')->name('admin.withdrawals.')->group(function () {
+            Route::get('/settings', 'edit')->name('settings');
+            Route::put('/settings', 'update')->name('settings.update');
+        });
+
         Route::controller(InvoiceController::class)->prefix('admin/invoices')->name('admin.invoices.')->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/{invoice}/print', 'print')->name('print');
@@ -252,8 +268,16 @@
         });
 
         Route::controller(OperationsController::class)->group(function () {
+            Route::get('/admin/wallets', 'walletOverview')->name('admin.wallets.overview');
             Route::get('/admin/wallets/transactions', 'walletTransactions')->name('admin.wallets.transactions');
-            Route::get('/admin/wallets/{wallet}', 'wallet')->where('wallet', 'roi|working')->name('admin.wallets.show');
+            Route::get('/admin/finance/roi-history', 'roiHistory')->name('admin.finance.roi-history');
+            Route::get('/admin/finance/roi-plans', 'roiPlans')->name('admin.finance.roi-plans');
+            Route::get('/admin/finance/roi-schedule', 'roiSchedule')->name('admin.finance.roi-schedule');
+            Route::get('/admin/finance/level-income', 'levelIncomeHistory')->name('admin.finance.level-income');
+            Route::get('/admin/finance/commission-settings', 'commissionSettings')->name('admin.finance.commission-settings');
+            Route::get('/admin/finance/level-unlock-rules', 'levelUnlockRules')->name('admin.finance.level-unlock-rules');
+            Route::get('/admin/finance/eligibility', 'eligibility')->name('admin.finance.eligibility');
+            Route::get('/admin/wallets/{wallet}', 'wallet')->where('wallet', 'roi|working|activation')->name('admin.wallets.show');
             Route::get('/admin/tours', 'tours')->name('admin.tours.index');
             Route::get('/admin/catalog-reports/{report}', 'reports')->where('report', 'members|packages|payments|earnings')->name('admin.catalog-reports.show');
         });
@@ -274,6 +298,8 @@
                 'memberCount' => \App\Models\Member::count(),
                 'activeMembers' => \App\Models\Member::where('status', 'active')->count(),
                 'inactiveMembers' => \App\Models\Member::where('status', 'inactive')->count(),
+                'approvedPurchases' => \App\Support\CommerceTotals::sums(\App\Models\PackagePurchase::class, \App\Models\PackagePurchase::APPROVED),
+                'pendingPurchases' => \App\Support\CommerceTotals::sums(\App\Models\PackagePurchase::class, \App\Models\PackagePurchase::PENDING),
             ]);
         })->name('dashboard');
 
@@ -653,6 +679,20 @@
             Route::get('/member/referral', 'referral')->name('member.referral');
             Route::get('/member/tours', 'tours')->name('member.tours');
             Route::get('/member/support', 'support')->name('member.support');
+        });
+
+        Route::controller(WalletController::class)->group(function () {
+            Route::get('/member/wallets', 'overview')->name('member.wallets.overview');
+            Route::get('/member/wallets/{wallet}', 'wallet')->where('wallet', 'roi|working')->name('member.wallets.show');
+            Route::get('/member/income/roi', 'roiHistory')->name('member.income.roi');
+            Route::get('/member/income/level', 'levelHistory')->name('member.income.level');
+            Route::get('/member/eligibility', 'eligibility')->name('member.eligibility');
+        });
+
+        Route::controller(WithdrawalController::class)->prefix('member/withdrawals')->name('member.withdrawals.')->group(function () {
+            Route::get('/', 'requestForm')->name('request');
+            Route::get('/history', 'history')->name('history');
+            Route::get('/{withdrawalRequest}', 'show')->name('show');
         });
 
         Route::get('/member/coming-soon/{feature}', [ComingSoonController::class, 'show'])

@@ -69,7 +69,7 @@
                         @forelse ($ranks as $configuredRank)
                             <tr>
                                 <td>{{ $configuredRank->name }}</td>
-                                <td>{{ rtrim(rtrim(number_format((float) $configuredRank->required_full_team_business, 4, '.', ''), '0'), '.') ?: '0' }} USDT</td>
+                                <td>{{ \App\Support\MoneyDisplay::usdt($configuredRank->required_full_team_business) }}</td>
                                 <td>1 - {{ $configuredRank->unlocked_levels }}</td>
                                 <td>{{ $configuredRank->is_active ? 'Active' : 'Inactive' }}</td>
                                 <td>{{ $configuredRank->sort_order }}</td>

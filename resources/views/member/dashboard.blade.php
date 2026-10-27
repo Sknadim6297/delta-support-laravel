@@ -7,13 +7,15 @@
     <header class="mb-5">
         <h1 class="ds-page-title">Welcome back, {{ $member->member_name }}!</h1>
         <p class="ds-page-copy">{{ $member->member_id }} · Member Dashboard · Sponsor ID: {{ $member->sponsor_id }}</p>
-        <p class="mt-2 text-sm text-ink-500">Package purchases use the USD price saved by the administrator. ROI, level income, and withdrawals are not being credited.</p>
+        <p class="mt-2 text-sm text-ink-500">New package purchases are saved in USDT. Historical USD purchases stay in their own total. ROI, level income, and withdrawals are not being credited.</p>
     </header>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Total Investment</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ number_format($metrics['totalInvestment'], 4) }} USDT</p></article>
-        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Active Investment</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ number_format($metrics['activeInvestment'], 4) }} USDT</p></article>
-        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Remaining Balance</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ number_format($metrics['remainingBalance'], 4) }} USDT</p></article>
+        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Package purchases (USDT)</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ \App\Support\MoneyDisplay::usdt($metrics['packagePurchases']['USDT']) }}</p></article>
+        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Package purchases (USD)</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ \App\Support\MoneyDisplay::format($metrics['packagePurchases']['USD'], 'USD') }}</p></article>
+        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Total Investment</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ \App\Support\MoneyDisplay::usdt($metrics['totalInvestment']) }}</p></article>
+        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Active Investment</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ \App\Support\MoneyDisplay::usdt($metrics['activeInvestment']) }}</p></article>
+        <article class="ds-card"><p class="text-xs font-semibold uppercase tracking-wide text-ink-500">Remaining Balance</p><p class="mt-2 text-xl font-semibold text-navy-900">{{ \App\Support\MoneyDisplay::usdt($metrics['remainingBalance']) }}</p></article>
     </div>
 
     <section class="ds-card mt-4">
@@ -23,10 +25,10 @@
         </div>
         <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div><dt class="text-ink-500">Current Rank</dt><dd class="font-semibold text-navy-900">{{ $metrics['rankSummary']['current_rank']?->name ?? 'Unranked' }}</dd></div>
-            <div><dt class="text-ink-500">Full Team Business</dt><dd class="font-semibold text-navy-900">{{ number_format((float) $metrics['rankSummary']['full_team_business'], 2) }} USDT</dd></div>
+            <div><dt class="text-ink-500">Full Team Business</dt><dd class="font-semibold text-navy-900">{{ \App\Support\MoneyDisplay::usdt($metrics['rankSummary']['full_team_business']) }}</dd></div>
             <div><dt class="text-ink-500">Levels Unlocked</dt><dd class="font-semibold text-navy-900">{{ $metrics['rankSummary']['unlocked_levels'] }} / 32</dd></div>
             <div><dt class="text-ink-500">Next Rank</dt><dd class="font-semibold text-navy-900">{{ $metrics['rankSummary']['next_rank']?->name ?? 'Maximum Rank Achieved' }}</dd></div>
-            <div><dt class="text-ink-500">Remaining Business</dt><dd class="font-semibold text-navy-900">{{ number_format(max(0, (float) $metrics['rankSummary']['remaining_business']), 2) }} USDT</dd></div>
+            <div><dt class="text-ink-500">Remaining Business</dt><dd class="font-semibold text-navy-900">{{ \App\Support\MoneyDisplay::usdt($metrics['rankSummary']['remaining_business']) }}</dd></div>
         </dl>
     </section>
 
@@ -34,18 +36,18 @@
         <section class="ds-card" id="activation-wallet">
             <h2 class="mb-3 text-base font-semibold text-navy-900">Wallets</h2>
             <dl class="grid gap-3 text-sm sm:grid-cols-2">
-                <div id="roi-wallet"><dt class="text-ink-500">ROI Wallet</dt><dd class="font-semibold">{{ number_format($metrics['roiWallet'], 4) }} USDT</dd></div>
-                <div id="working-wallet"><dt class="text-ink-500">Working Wallet</dt><dd class="font-semibold">{{ number_format($metrics['workingWallet'], 4) }} USDT</dd></div>
-                <div id="salary-wallet"><dt class="text-ink-500">Salary Wallet</dt><dd class="font-semibold">{{ number_format($metrics['salaryWallet'], 4) }} USDT</dd></div>
-                <div><dt class="text-ink-500">Activation Wallet</dt><dd class="font-semibold">{{ number_format($metrics['activationWallet'], 4) }} USDT</dd></div>
+                <div id="roi-wallet"><dt class="text-ink-500">ROI Wallet</dt><dd class="font-semibold">{{ \App\Support\MoneyDisplay::usdt($metrics['roiWallet']) }}</dd></div>
+                <div id="working-wallet"><dt class="text-ink-500">Working Wallet</dt><dd class="font-semibold">{{ \App\Support\MoneyDisplay::usdt($metrics['workingWallet']) }}</dd></div>
+                <div id="salary-wallet"><dt class="text-ink-500">Salary Wallet</dt><dd class="font-semibold">{{ \App\Support\MoneyDisplay::usdt($metrics['salaryWallet']) }}</dd></div>
+                <div><dt class="text-ink-500">Activation Wallet</dt><dd class="font-semibold">{{ \App\Support\MoneyDisplay::usdt($metrics['activationWallet']) }}</dd></div>
             </dl>
         </section>
         <section class="ds-card" id="reports">
             <h2 class="mb-3 text-base font-semibold text-navy-900">Income</h2>
             <dl class="grid gap-3 text-sm">
-                <div><dt class="text-ink-500">Total ROI Income</dt><dd class="font-semibold">{{ number_format($metrics['roiIncome'], 4) }} USDT</dd></div>
-                <div><dt class="text-ink-500">Total Level Income</dt><dd class="font-semibold">{{ number_format($metrics['levelIncome'], 4) }} USDT</dd></div>
-                <div><dt class="text-ink-500">Total Salary</dt><dd class="font-semibold">{{ number_format($metrics['salaryIncome'], 4) }} USDT</dd></div>
+                <div><dt class="text-ink-500">Total ROI Income</dt><dd class="font-semibold">{{ \App\Support\MoneyDisplay::usdt($metrics['roiIncome']) }}</dd></div>
+                <div><dt class="text-ink-500">Total Level Income</dt><dd class="font-semibold">{{ \App\Support\MoneyDisplay::usdt($metrics['levelIncome']) }}</dd></div>
+                <div><dt class="text-ink-500">Total Salary</dt><dd class="font-semibold">{{ \App\Support\MoneyDisplay::usdt($metrics['salaryIncome']) }}</dd></div>
             </dl>
         </section>
         <section class="ds-card" id="genealogy">
@@ -58,9 +60,9 @@
         </section>
         <section class="ds-card" id="investment">
             <h2 class="mb-3 text-base font-semibold text-navy-900">Team & Withdrawals</h2>
-            <p class="mb-2 text-sm"><strong>Team Active Inv. (USDT):</strong> {{ number_format($metrics['teamActiveInvestment'], 4) }}</p>
-            <p class="mb-2 text-sm"><strong>Team Active Inv. Ratio (USDT):</strong> {{ number_format($metrics['teamActiveInvestment'], 4) }}:{{ number_format($metrics['teamInactiveInvestment'], 4) }}</p>
-            <p class="mb-0 text-sm"><strong>Total Withdrawal (USDT):</strong> {{ number_format($metrics['totalWithdrawal'], 4) }}</p>
+            <p class="mb-2 text-sm"><strong>Team Active Investment:</strong> {{ \App\Support\MoneyDisplay::usdt($metrics['teamActiveInvestment']) }}</p>
+            <p class="mb-2 text-sm"><strong>Team Active Investment Ratio:</strong> {{ \App\Support\MoneyDisplay::usdt($metrics['teamActiveInvestment']) }} : {{ \App\Support\MoneyDisplay::usdt($metrics['teamInactiveInvestment']) }}</p>
+            <p class="mb-0 text-sm"><strong>Total Withdrawal:</strong> {{ \App\Support\MoneyDisplay::usdt($metrics['totalWithdrawal']) }}</p>
         </section>
     </div>
 

@@ -16,8 +16,8 @@
                             <span class="stat-label">Current Rank</span>
                             <h2 class="dashboard-title mt-2">{{ $rankData['current_rank']?->name ?? 'Unranked' }}</h2>
                             <div class="rank-detail-grid">
-                                <div><span>Full Team Business</span><strong>{{ number_format((float) $rankData['full_team_business'], 2) }} USDT</strong></div>
-                                <div><span>Required Business</span><strong>{{ $rankData['current_rank'] ? number_format((float) $rankData['current_rank']->required_full_team_business, 2) : '0.00' }} USDT</strong></div>
+                                <div><span>Full Team Business</span><strong>{{ \App\Support\MoneyDisplay::usdt($rankData['full_team_business']) }}</strong></div>
+                                <div><span>Required Business</span><strong>{{ \App\Support\MoneyDisplay::usdt($rankData['current_rank'] ? $rankData['current_rank']->required_full_team_business : 0) }}</strong></div>
                                 <div><span>Levels Unlocked</span><strong>{{ $rankData['unlocked_levels'] }} / 32</strong></div>
                                 <div><span>Rank Progress</span><strong>{{ number_format((float) $rankData['rank_progress'], 2) }}%</strong></div>
                             </div>
@@ -32,9 +32,9 @@
                             <h2 class="dashboard-title mt-2">{{ $rankData['next_rank']?->name ?? 'Maximum Rank Achieved' }}</h2>
                             @if ($rankData['next_rank'])
                                 <div class="rank-detail-grid">
-                                    <div><span>Required Business</span><strong>{{ number_format((float) $rankData['next_rank']->required_full_team_business, 2) }} USDT</strong></div>
-                                    <div><span>Current Business</span><strong>{{ number_format((float) $rankData['full_team_business'], 2) }} USDT</strong></div>
-                                    <div><span>Remaining Business</span><strong>{{ number_format(max(0, (float) $rankData['remaining_business']), 2) }} USDT</strong></div>
+                                    <div><span>Required Business</span><strong>{{ \App\Support\MoneyDisplay::usdt($rankData['next_rank']->required_full_team_business) }}</strong></div>
+                                    <div><span>Current Business</span><strong>{{ \App\Support\MoneyDisplay::usdt($rankData['full_team_business']) }}</strong></div>
+                                    <div><span>Remaining Business</span><strong>{{ \App\Support\MoneyDisplay::usdt(max(0, (float) $rankData['remaining_business'])) }}</strong></div>
                                     <div><span>Next Unlock</span><strong>{{ max(0, $rankData['next_rank']->unlocked_levels - $rankData['unlocked_levels']) }} additional levels</strong></div>
                                 </div>
                             @else

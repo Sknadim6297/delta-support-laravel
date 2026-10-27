@@ -54,6 +54,11 @@ class Member extends Model
         return $this->hasMany(Investment::class, 'member_id', 'member_id');
     }
 
+    public function packagePurchases(): HasMany
+    {
+        return $this->hasMany(PackagePurchase::class, 'member_id', 'member_id');
+    }
+
     public function roiTransactions(): HasMany
     {
         return $this->hasMany(RoiTransaction::class, 'member_id', 'member_id');

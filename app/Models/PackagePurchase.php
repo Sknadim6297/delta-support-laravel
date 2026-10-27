@@ -34,6 +34,7 @@ class PackagePurchase extends Model
         'package_name',
         'package_type',
         'price_usd',
+        'denomination',
         'tour_title',
         'tour_details',
         'duration',
@@ -72,6 +73,11 @@ class PackagePurchase extends Model
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class);
+    }
+
+    public function incomeTerm(): HasOne
+    {
+        return $this->hasOne(PackageIncomeTerm::class);
     }
 
     public function decisions(): HasMany

@@ -26,6 +26,7 @@ class Package extends Model
         'description',
         'full_description',
         'price_usd',
+        'denomination',
         'tour_title',
         'tour_details',
         'destinations',

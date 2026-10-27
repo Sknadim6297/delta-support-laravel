@@ -2,7 +2,7 @@
 @section('content')
 <div class="mx-auto max-w-3xl rounded-xl border bg-white p-6">
     <h1 class="text-2xl font-bold text-navy-900">{{ $purchase->reference }}</h1>
-    <p class="mt-2 text-sm">{{ $purchase->package_name }} · USD {{ $purchase->price_usd }}</p>
+    <p class="mt-2 text-sm">{{ $purchase->package_name }} · {{ \App\Support\MoneyDisplay::format($purchase->price_usd, $purchase->denomination) }}</p>
     <p class="mt-2 text-sm font-semibold">{{ $purchase->statusLabel() }}</p>
     <p class="mt-2 text-sm">Transaction reference: {{ $purchase->payment_reference }}</p>
     <p class="mt-2 text-sm"><span class="font-semibold">Destinations:</span> {{ $purchase->destinations ?: 'Not set' }}</p>

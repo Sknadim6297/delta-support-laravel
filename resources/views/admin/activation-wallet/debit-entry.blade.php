@@ -7,6 +7,7 @@
     
 
     <div class="form-card">
+        @include('partials.legacy-financial-lock')
 
         @if ($errors->any())
             <div class="alert alert-danger">{{ $errors->first() }}</div>

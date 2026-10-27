@@ -23,10 +23,11 @@
                 <x-nav.link :href="route('member.change-password')" :active="request()->routeIs('member.change-password*')">Account Security</x-nav.link>
             </x-nav.group>
 
-            <x-nav.group label="My Network" icon="network" :open="request()->routeIs('member.referral', 'member.team.*')">
+            <x-nav.group label="My Network" icon="network" :open="request()->routeIs('member.referral', 'member.team.*', 'member.genealogy.*')">
                 <x-nav.link :href="route('member.referral')" :active="request()->routeIs('member.referral')">My Referral Link</x-nav.link>
                 <x-nav.link :href="route('member.team.direct')" :active="request()->routeIs('member.team.direct')">Direct Members</x-nav.link>
                 <x-nav.link :href="route('member.team.whole')" :active="request()->routeIs('member.team.whole')">Team Overview</x-nav.link>
+                <x-nav.link :href="route('member.genealogy.tree-view')" :active="request()->routeIs('member.genealogy.tree-view')">Referral Tree</x-nav.link>
             </x-nav.group>
 
             <x-nav.group label="Packages" icon="package" :open="request()->routeIs('member.packages.*')">
@@ -42,19 +43,22 @@
                 <x-nav.link :href="route('member.invoices.index')" :active="request()->routeIs('member.invoices.*')">My Invoices</x-nav.link>
             </x-nav.group>
 
-            <x-nav.group label="Earnings" icon="wallet">
-                <x-nav.link :href="route('member.coming-soon', ['feature' => 'roi-wallet'])" soon>ROI Wallet</x-nav.link>
-                <x-nav.link :href="route('member.coming-soon', ['feature' => 'working-wallet'])" soon>Working Wallet</x-nav.link>
-                <x-nav.link :href="route('member.coming-soon', ['feature' => 'my-level-income'])" soon>My Level Income</x-nav.link>
+            <x-nav.group label="Earnings" icon="wallet" :open="request()->routeIs('member.wallets.*', 'member.income.*', 'member.eligibility')">
+                <x-nav.link :href="route('member.wallets.overview')" :active="request()->routeIs('member.wallets.overview')">My Wallets</x-nav.link>
+                <x-nav.link :href="route('member.wallets.show', ['wallet' => 'roi'])" :active="request()->routeIs('member.wallets.show') && request()->route('wallet') === 'roi'">ROI Wallet</x-nav.link>
+                <x-nav.link :href="route('member.wallets.show', ['wallet' => 'working'])" :active="request()->routeIs('member.wallets.show') && request()->route('wallet') === 'working'">Working Wallet</x-nav.link>
+                <x-nav.link :href="route('member.income.roi')" :active="request()->routeIs('member.income.roi')">My ROI History</x-nav.link>
+                <x-nav.link :href="route('member.income.level')" :active="request()->routeIs('member.income.level')">My Level Income History</x-nav.link>
+                <x-nav.link :href="route('member.eligibility')" :active="request()->routeIs('member.eligibility')">My Referral Eligibility</x-nav.link>
             </x-nav.group>
 
-            <x-nav.group label="Withdrawals" icon="arrow-down-to-line">
-                <x-nav.link :href="route('member.coming-soon', ['feature' => 'request-withdrawal'])" soon>Request Withdrawal</x-nav.link>
-                <x-nav.link :href="route('member.coming-soon', ['feature' => 'withdrawal-history'])" soon>Withdrawal History</x-nav.link>
+            <x-nav.group label="Withdrawals" icon="arrow-down-to-line" :open="request()->routeIs('member.withdrawals.*')">
+                <x-nav.link :href="route('member.withdrawals.request')" :active="request()->routeIs('member.withdrawals.request')">Withdraw USDT</x-nav.link>
+                <x-nav.link :href="route('member.withdrawals.history')" :active="request()->routeIs('member.withdrawals.history', 'member.withdrawals.show')">Withdrawal History</x-nav.link>
             </x-nav.group>
 
-            <x-nav.group label="Rewards" icon="gift">
-                <x-nav.link :href="route('member.coming-soon', ['feature' => 'my-rewards'])" soon>My Rewards</x-nav.link>
+            <x-nav.group label="Rewards" icon="gift" :open="request()->routeIs('member.coming-soon') && request()->route('feature') === 'my-rewards'">
+                <x-nav.link :href="route('member.coming-soon', ['feature' => 'my-rewards'])" :active="request()->route('feature') === 'my-rewards'" soon>My Rewards</x-nav.link>
             </x-nav.group>
 
             <x-nav.group label="Support" icon="life-buoy" :open="request()->routeIs('member.support')">

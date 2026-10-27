@@ -72,7 +72,7 @@
 
                     <span>Total Amount (USDT)</span>
 
-                    <strong>{{ rtrim(rtrim(number_format((float) $totalAmount, 4, '.', ''), '0'), '.') ?: '0' }}</strong>
+                    <strong>{{ \App\Support\MoneyDisplay::usdt($totalAmount) }}</strong>
         <tbody>
             @forelse ($withdrawals as $withdrawal)
                 <tr>
@@ -80,32 +80,13 @@
                     <td>{{ $withdrawal->member_id }}</td>
                     <td>{{ $withdrawal->member_name }}</td>
                     <td>{{ $withdrawal->investment_id }}</td>
-                    <td>{{ rtrim(rtrim(number_format((float) $withdrawal->withdrawal_amount, 4, '.', ''), '0'), '.') ?: '0' }} USDT</td>
+                    <td>{{ \App\Support\MoneyDisplay::usdt($withdrawal->withdrawal_amount) }}</td>
                     <td>{{ $withdrawal->investment?->created_at?->format('d-m-Y') }}</td>
                     <td>{{ $withdrawal->withdrawn_at?->format('d-m-Y') }}</td>
                 </tr>
             @empty
                 <tr><td colspan="7" class="text-center">No investment withdrawals found.</td></tr>
             @endforelse
-            <tr>
-                <td>1</td>
-                <td>MEM001</td>
-                <td>John Doe</td>
-                <td>INV001</td>
-                <td>500 USDT</td>
-                <td>26-08-2026</td>
-                <td>26-09-2026</td>
-            </tr>
-
-            <tr>
-                <td>2</td>
-                <td>MEM002</td>
-                <td>Rahul Das</td>
-                <td>INV002</td>
-                <td>1,000 USDT</td>
-                <td>25-08-2026</td>
-                <td>25-09-2026</td>
-            </tr>
         </tbody>
     </table>
 </div>

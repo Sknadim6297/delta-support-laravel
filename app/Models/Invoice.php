@@ -17,6 +17,7 @@ class Invoice extends Model
         'package_code',
         'package_details',
         'price_usd',
+        'denomination',
         'currency_label',
         'network',
         'payment_reference',

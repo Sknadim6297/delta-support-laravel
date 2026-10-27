@@ -37,13 +37,13 @@ class MemberPanelTest extends TestCase
         $this->get(route('admin.member-panel', ['member_id' => $rahul->member_id]))
             ->assertOk()
             ->assertSeeText('Rahul Das')
-            ->assertSeeText('100.0000 USDT')
+            ->assertSeeText('USDT 100.0000')
             ->assertDontSeeText('Arif Khan');
 
         $this->get(route('admin.member-panel', ['member_id' => $arif->member_id]))
             ->assertOk()
             ->assertSeeText('Arif Khan')
-            ->assertSeeText('900.0000 USDT')
+            ->assertSeeText('USDT 900.0000')
             ->assertDontSeeText('Rahul Das');
     }
 

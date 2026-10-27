@@ -74,12 +74,7 @@ class PackageCommerceTest extends TestCase
             'is_active' => true,
             'sort_order' => 2,
         ]);
-        PaymentSetting::current()->update([
-            'currency_label' => 'Configured token',
-            'network' => 'Configured network',
-            'instructions' => 'Pay the package amount and submit the transaction reference.',
-            'is_enabled' => true,
-        ]);
+        $this->enablePayments();
 
         $key = (string) Str::uuid();
         $this->withSession(['member_context_id' => $owner->member_id])
@@ -167,12 +162,7 @@ class PackageCommerceTest extends TestCase
             'is_active' => true,
             'sort_order' => 3,
         ]);
-        PaymentSetting::current()->update([
-            'currency_label' => 'Configured token',
-            'network' => 'Configured network',
-            'instructions' => 'Submit the reference for manual review.',
-            'is_enabled' => true,
-        ]);
+        $this->enablePayments();
 
         $this->withSession(['member_context_id' => $member->member_id])
             ->post(route('member.packages.purchase', $package), [
@@ -336,12 +326,7 @@ class PackageCommerceTest extends TestCase
             'is_active' => true,
             'sort_order' => 2,
         ]);
-        PaymentSetting::current()->update([
-            'currency_label' => 'Configured token',
-            'network' => 'Configured network',
-            'instructions' => 'Submit a reference. It is not proof of payment.',
-            'is_enabled' => true,
-        ]);
+        $this->enablePayments();
 
         $this->withSession(['member_context_id' => $owner->member_id])
             ->post(route('member.packages.purchase', $first), [
@@ -482,19 +467,25 @@ class PackageCommerceTest extends TestCase
             'is_enabled' => '1',
         ])->assertForbidden();
 
-        $this->actingAs($admin)->put(route('admin.payments.settings.update'), [
+        $this->actingAs($admin)->from(route('admin.payments.settings'))->put(route('admin.payments.settings.update'), [
             'currency_label' => 'Configured asset',
             'network' => 'Configured chain',
             'receiving_address' => 'public-receiving-address',
             'instructions' => 'Send the USD amount and submit the transaction ID.',
             'is_enabled' => '1',
-        ])->assertRedirect(route('admin.payments.settings'));
+        ])->assertRedirect(route('admin.payments.settings'))->assertSessionHasErrors('network');
 
         $settings = PaymentSetting::current()->fresh();
-        $this->assertSame('Configured asset', $settings->currency_label);
-        $this->assertSame('Configured chain', $settings->network);
-        $this->assertSame('public-receiving-address', $settings->receiving_address);
-        $this->assertTrue($settings->is_enabled);
+        $this->assertFalse($settings->is_enabled);
+
+        $this->actingAs($admin)->put(route('admin.payments.settings.update'), [
+            'currency_label' => 'USDT',
+            'network' => 'Admin selected network',
+            'receiving_address' => 'delta-support-public-address',
+            'instructions' => \App\Models\PaymentSetting::USDT_INSTRUCTION,
+        ])->assertRedirect(route('admin.payments.settings'));
+        $this->assertFalse(PaymentSetting::current()->fresh()->is_enabled);
+        $this->enablePayments();
 
         $this->withSession(['member_context_id' => $owner->member_id])
             ->from(route('member.packages.show', $package))
@@ -584,12 +575,7 @@ class PackageCommerceTest extends TestCase
             'email' => 'accounts@example.test',
             'phone' => '9000002222',
         ]);
-        PaymentSetting::current()->update([
-            'currency_label' => 'Configured asset',
-            'network' => 'Configured chain',
-            'instructions' => 'Submit the transaction ID for manual review.',
-            'is_enabled' => true,
-        ]);
+        $this->enablePayments();
 
         $this->withSession(['member_context_id' => $owner->member_id])
             ->post(route('member.packages.purchase', $package), [
@@ -670,6 +656,18 @@ class PackageCommerceTest extends TestCase
         $this->actingAs($admin)->post(route('admin.payments.reject', $rejected), ['reason' => 'Not matched.'])->assertRedirect();
         $this->assertSame(1, Invoice::query()->count());
         $this->assertSame(0, RoiTransaction::query()->count());
+    }
+
+    private function enablePayments(): void
+    {
+        PaymentSetting::current()->update([
+            'currency_label' => 'USDT',
+            'network' => 'Admin selected network',
+            'receiving_address' => 'delta-support-public-address',
+            'qr_image_path' => 'payment-qr/example.webp',
+            'instructions' => \App\Models\PaymentSetting::USDT_INSTRUCTION,
+            'is_enabled' => true,
+        ]);
     }
 
     private function member(string $memberId, string $email = 'owner@example.test'): Member

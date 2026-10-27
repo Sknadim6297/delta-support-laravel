@@ -206,16 +206,16 @@ class ReportSummaryTest extends TestCase
             $queries[] = strtolower($query->sql);
         });
 
-        $this->get(route('admin.report.roi-report'))->assertOk()->assertSee('<strong>13.0006</strong>', false);
+        $this->get(route('admin.report.roi-report'))->assertOk()->assertSee('<strong>USDT 13.0006</strong>', false);
         $this->get(route('admin.report.roi-report', ['member_id' => 'STROI001']))
-            ->assertOk()->assertSee('<strong>3.0003</strong>', false);
+            ->assertOk()->assertSee('<strong>USDT 3.0003</strong>', false);
         $this->get(route('admin.report.roi-report', ['from_date' => '2026-09-02', 'to_date' => '2026-09-02']))
-            ->assertOk()->assertSee('<strong>5.0005</strong>', false);
+            ->assertOk()->assertSee('<strong>USDT 5.0005</strong>', false);
         $this->get(route('admin.report.roi-report', [
             'member_id' => 'STROI',
             'from_date' => '2026-09-02',
             'to_date' => '2026-09-02',
-        ]))->assertOk()->assertSee('<strong>5.0005</strong>', false);
+        ]))->assertOk()->assertSee('<strong>USDT 5.0005</strong>', false);
 
         $aggregateQueries = array_values(array_filter($queries, fn (string $sql): bool => str_contains($sql, 'sum(')));
         $this->assertCount(4, $aggregateQueries);
@@ -233,33 +233,33 @@ class ReportSummaryTest extends TestCase
         $this->addLevel('LC-REPORT-4', 'STLC002', 3, '4.0000', null);
         $this->actingAs(User::factory()->create(['is_admin' => true]));
 
-        $this->get(route('admin.report.level-income'))->assertOk()->assertSee('<strong>10.0006</strong>', false);
+        $this->get(route('admin.report.level-income'))->assertOk()->assertSee('<strong>USDT 10.0006</strong>', false);
         $this->get(route('admin.report.level-income', ['member_id' => 'STLC001']))
-            ->assertOk()->assertSee('<strong>3.0003</strong>', false);
+            ->assertOk()->assertSee('<strong>USDT 3.0003</strong>', false);
         $this->get(route('admin.report.level-income', ['member_id' => 'STLC']))
-            ->assertOk()->assertSee('<strong>10.0006</strong>', false);
+            ->assertOk()->assertSee('<strong>USDT 10.0006</strong>', false);
         $this->get(route('admin.report.level-income', ['from_date' => '2026-09-02', 'to_date' => '2026-09-02']))
-            ->assertOk()->assertSee('<strong>5.0005</strong>', false);
+            ->assertOk()->assertSee('<strong>USDT 5.0005</strong>', false);
         $this->get(route('admin.report.level-income', ['level' => 2]))
-            ->assertOk()->assertSee('<strong>5.0005</strong>', false);
+            ->assertOk()->assertSee('<strong>USDT 5.0005</strong>', false);
         $this->get(route('admin.report.level-income', ['member_id' => 'STLC001', 'level' => 2]))
-            ->assertOk()->assertSee('<strong>2.0002</strong>', false);
+            ->assertOk()->assertSee('<strong>USDT 2.0002</strong>', false);
         $this->get(route('admin.report.level-income', [
             'member_id' => 'STLC001',
             'from_date' => '2026-09-02',
             'to_date' => '2026-09-02',
-        ]))->assertOk()->assertSee('<strong>2.0002</strong>', false);
+        ]))->assertOk()->assertSee('<strong>USDT 2.0002</strong>', false);
         $this->get(route('admin.report.level-income', [
             'level' => 2,
             'from_date' => '2026-09-02',
             'to_date' => '2026-09-02',
-        ]))->assertOk()->assertSee('<strong>5.0005</strong>', false);
+        ]))->assertOk()->assertSee('<strong>USDT 5.0005</strong>', false);
         $this->get(route('admin.report.level-income', [
             'member_id' => 'STLC001',
             'level' => 2,
             'from_date' => '2026-09-02',
             'to_date' => '2026-09-02',
-        ]))->assertOk()->assertSee('<strong>2.0002</strong>', false);
+        ]))->assertOk()->assertSee('<strong>USDT 2.0002</strong>', false);
     }
 
     private function addRoi(string $reference, string $memberId, string $amount, ?string $createdAt): RoiTransaction

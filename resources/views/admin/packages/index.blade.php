@@ -24,7 +24,7 @@
                     <th class="p-3">Code</th>
                     <th class="p-3">Name</th>
                     <th class="p-3">Type</th>
-                    <th class="p-3">USD price</th>
+                    <th class="p-3">Package price</th>
                     <th class="p-3">Destinations</th>
                     <th class="p-3">Purchases</th>
                     <th class="p-3">Status</th>
@@ -37,7 +37,7 @@
                     <td class="p-3 font-semibold">{{ $package->code }}</td>
                     <td class="p-3">{{ $package->name }}</td>
                     <td class="p-3">{{ $package->typeLabel() }}</td>
-                    <td class="p-3">USD {{ $package->price_usd }}</td>
+                    <td class="p-3">{{ \App\Support\MoneyDisplay::format($package->price_usd, $package->denomination) }}</td>
                     <td class="p-3">{{ $package->destinations ?: '—' }}</td>
                     <td class="p-3">{{ $package->purchases_count }}</td>
                     <td class="p-3">{{ $package->is_active ? 'Active' : 'Inactive' }}</td>
@@ -54,7 +54,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td class="p-6 text-slate-500" colspan="8">No packages yet. Add a package and set its USD price.</td></tr>
+                <tr><td class="p-6 text-slate-500" colspan="8">No packages yet. Add a package and set its USDT price.</td></tr>
             @endforelse
             </tbody>
         </table>

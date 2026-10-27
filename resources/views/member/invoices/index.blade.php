@@ -12,7 +12,7 @@
                     <th class="p-3">Invoice number</th>
                     <th class="p-3">Package</th>
                     <th class="p-3">Date</th>
-                    <th class="p-3">USD amount</th>
+                    <th class="p-3">Amount</th>
                     <th class="p-3">Actions</th>
                 </tr>
             </thead>
@@ -22,7 +22,7 @@
                     <td class="p-3 font-semibold">{{ $invoice->invoice_number }}</td>
                     <td class="p-3">{{ $invoice->package_name }}</td>
                     <td class="p-3">{{ optional($invoice->approved_at)->timezone('Asia/Kolkata')->format('d M Y') }}</td>
-                    <td class="p-3">USD {{ $invoice->price_usd }}</td>
+                    <td class="p-3">{{ \App\Support\MoneyDisplay::format($invoice->price_usd, $invoice->denomination) }}</td>
                     <td class="p-3">
                         <a class="font-semibold text-brand-700" href="{{ route('member.invoices.show', $invoice) }}">View</a>
                         <a class="ml-3 font-semibold text-navy-900" href="{{ route('member.invoices.print', $invoice) }}">Print</a>

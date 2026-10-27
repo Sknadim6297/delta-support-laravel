@@ -7,7 +7,7 @@
         <div>
             <p class="text-sm font-semibold text-brand-600">Delta Support</p>
             <h1 class="ds-page-title mt-1">Dashboard</h1>
-            <p class="mt-1 text-sm text-ink-500">Live member counts from this database. Package sales are priced in USD. ROI, level income, and withdrawals are not being credited.</p>
+            <p class="mt-1 text-sm text-ink-500">New package sales are priced in USDT. Historical USD purchases stay in their own total. ROI, level income, and withdrawals are not being credited.</p>
         </div>
         <x-ui.badge>Development</x-ui.badge>
     </div>
@@ -16,9 +16,13 @@
         <x-ui.stat label="Members" :value="$memberCount" hint="All member records" />
         <x-ui.stat label="Active members" :value="$activeMembers" />
         <x-ui.stat label="Inactive members" :value="$inactiveMembers" />
-        <x-ui.stat label="Activation wallet" :value="'$'.number_format($activationWalletTotal, 2)" hint="Sum of stored balances" />
-        <x-ui.stat label="Working wallet" :value="number_format($workingWalletTotal, 2).' USDT'" hint="Sum of stored balances" />
-        <x-ui.stat label="ROI wallet" :value="number_format($roiWalletTotal, 2)" hint="Sum of stored balances" />
+        <x-ui.stat label="Approved payments (USDT)" :value="\App\Support\MoneyDisplay::usdt($approvedPurchases['USDT'])" hint="USDT purchases only" />
+        <x-ui.stat label="Approved payments (USD)" :value="\App\Support\MoneyDisplay::format($approvedPurchases['USD'], 'USD')" hint="Historical USD purchases only" />
+        <x-ui.stat label="Pending payments (USDT)" :value="\App\Support\MoneyDisplay::usdt($pendingPurchases['USDT'])" hint="USDT purchases only" />
+        <x-ui.stat label="Pending payments (USD)" :value="\App\Support\MoneyDisplay::format($pendingPurchases['USD'], 'USD')" hint="Historical USD purchases only" />
+        <x-ui.stat label="Activation wallet" :value="\App\Support\MoneyDisplay::usdt($activationWalletTotal)" hint="USDT balance" />
+        <x-ui.stat label="Working wallet" :value="\App\Support\MoneyDisplay::usdt($workingWalletTotal)" hint="USDT balance" />
+        <x-ui.stat label="ROI wallet" :value="\App\Support\MoneyDisplay::usdt($roiWalletTotal)" hint="USDT balance" />
     </div>
 
     <div class="mt-6">

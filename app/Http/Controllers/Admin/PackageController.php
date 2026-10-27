@@ -41,7 +41,7 @@ class PackageController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $package = Package::query()->create($this->validated($request));
+        $package = Package::query()->create($this->validated($request) + ['denomination' => 'USDT']);
         $this->storeImage($request, $package);
 
         return redirect()->route('admin.packages.index')->with('success', 'Package saved.');

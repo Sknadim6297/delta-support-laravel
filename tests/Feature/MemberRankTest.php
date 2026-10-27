@@ -22,16 +22,16 @@ class MemberRankTest extends TestCase
         $this->get(route('member.rank'))
             ->assertOk()
             ->assertSeeText('Silver')
-            ->assertSeeText('6,850.00 USDT')
+            ->assertSeeText('USDT 6850.0000')
             ->assertSeeText('Levels Unlocked')
             ->assertSeeText('Gold')
-            ->assertSeeText('5,150.00 USDT')
+            ->assertSeeText('USDT 5150.0000')
             ->assertSeeText('Rank Progress Roadmap');
 
         $this->get(route('member.dashboard'))
             ->assertOk()
             ->assertSeeText('Rank Summary')
-            ->assertSeeText('6,850.00 USDT');
+            ->assertSeeText('USDT 6850.0000');
     }
 
     public function test_member_level_report_shows_server_computed_locked_levels(): void

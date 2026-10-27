@@ -79,7 +79,7 @@ class MemberInvestmentTest extends TestCase
         $this->get(route('member.investments.closed'))
             ->assertOk()
             ->assertSeeText('Closing Amount (USDT)')
-            ->assertSeeText('300 USDT')
+            ->assertSeeText('USDT 300.0000')
             ->assertSeeText('INV-CLOSED-AMOUNT')
             ->assertDontSeeText('INV-ACTIVE-AMOUNT');
 

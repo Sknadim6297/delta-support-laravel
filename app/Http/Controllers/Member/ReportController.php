@@ -13,7 +13,6 @@ use App\Services\ReportSummaryService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class ReportController extends Controller
@@ -38,7 +37,7 @@ class ReportController extends Controller
 
     public function exportRoiReport(Request $request): Response
     {
-        $transactions = $this->roiQuery($this->currentMember($request), $request)->latest()->get();
+        $transactions = $this->roiQuery($this->currentMember($request), $request);
 
         return $this->csvResponse('roi-report-' . now()->format('Y-m-d') . '.csv', [
             'Serial No', 'Form Investment ID', 'Income Amount (USDT)', 'On Investment Amount (USDT)', 'Date',
@@ -89,7 +88,7 @@ class ReportController extends Controller
 
     public function exportLevelIncomeReport(Request $request): Response
     {
-        $transactions = $this->levelIncomeQuery($this->currentMember($request), $request)->latest()->get();
+        $transactions = $this->levelIncomeQuery($this->currentMember($request), $request);
 
         return $this->csvResponse('level-commission-report-' . now()->format('Y-m-d') . '.csv', [
             'Serial No', 'Income Amount (USDT)', 'On Amount (USDT)', 'From Member ID', 'From Level', 'Date',
@@ -206,15 +205,39 @@ class ReportController extends Controller
         return Member::where('member_id', $request->session()->get('member_context_id'))->firstOrFail();
     }
 
-    private function csvResponse(string $filename, array $headers, Collection $records, callable $rowFormatter): Response
+    private function csvResponse(string $filename, array $headers, $query, callable $rowFormatter): Response
     {
-        return response()->streamDownload(function () use ($headers, $records, $rowFormatter) {
+        $query = (clone $query)->latest('created_at')->orderByDesc('id');
+
+        return response()->streamDownload(function () use ($headers, $query, $rowFormatter) {
             $output = fopen('php://output', 'w');
             fputcsv($output, $headers);
 
-            foreach ($records as $index => $record) {
-                fputcsv($output, $rowFormatter($record, $index));
-            }
+            $serial = 0;
+            $lastCreatedAt = null;
+            $lastId = null;
+
+            do {
+                $batch = (clone $query)
+                    ->when($lastCreatedAt !== null, function ($batchQuery) use ($lastCreatedAt, $lastId): void {
+                        $batchQuery->where(function ($cursor) use ($lastCreatedAt, $lastId): void {
+                            $cursor->where('created_at', '<', $lastCreatedAt)
+                                ->orWhere(function ($tie) use ($lastCreatedAt, $lastId): void {
+                                    $tie->where('created_at', $lastCreatedAt)
+                                        ->where('id', '<', $lastId);
+                                });
+                        });
+                    })
+                    ->limit(500)
+                    ->get();
+
+                foreach ($batch as $record) {
+                    fputcsv($output, $rowFormatter($record, $serial));
+                    $serial++;
+                    $lastCreatedAt = $record->created_at;
+                    $lastId = $record->id;
+                }
+            } while ($batch->count() === 500);
 
             fclose($output);
         }, $filename, [
@@ -224,7 +247,7 @@ class ReportController extends Controller
 
     private function formatUsdt($amount): string
     {
-        return rtrim(rtrim(number_format((float) $amount, 4, '.', ''), '0'), '.') ?: '0';
+        return \App\Support\MoneyDisplay::usdt($amount);
     }
 
     private function formatDecimalAmount($amount): string

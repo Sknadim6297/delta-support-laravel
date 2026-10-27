@@ -71,7 +71,7 @@
         <div class="col-md-2 mb-3">
             <div class="total-amount-box">
                 <span>Total Amount (USDT)</span>
-                <strong>{{ rtrim(rtrim(number_format((float) $totalAmount, 4, '.', ''), '0'), '.') ?: '0' }}</strong>
+                <strong>{{ \App\Support\MoneyDisplay::usdt($totalAmount) }}</strong>
             </div>
         </div>
 

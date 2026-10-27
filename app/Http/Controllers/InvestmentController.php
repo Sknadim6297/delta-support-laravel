@@ -191,7 +191,7 @@ class InvestmentController extends Controller
 
     protected function formatUsdt($amount): string
     {
-        return rtrim(rtrim(number_format((float) $amount, 4, '.', ''), '0'), '.') ?: '0';
+        return \App\Support\MoneyDisplay::usdt($amount);
     }
     public function closedInvestments(Request $request)
     {

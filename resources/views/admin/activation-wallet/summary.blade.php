@@ -78,7 +78,7 @@
 
                     <span>Total Amount (USDT)</span>
 
-                    <strong>{{ rtrim(rtrim(number_format($totalAmount, 4, '.', ''), '0'), '.') ?: '0' }}</strong>
+                    <strong>{{ \App\Support\MoneyDisplay::usdt($totalAmount) }}</strong>
 
                 </div>
 
@@ -103,7 +103,7 @@
                     <td>{{ $members->firstItem() + $loop->index }}</td>
                     <td>{{ $member->member_id }}</td>
                     <td>{{ $member->member_name }}</td>
-                    <td>{{ rtrim(rtrim(number_format((float) $member->activation_wallet_amount, 4, '.', ''), '0'), '.') ?: '0' }}</td>
+                    <td>{{ \App\Support\MoneyDisplay::usdt($member->activation_wallet_amount) }}</td>
                 </tr>
             @empty
                 <tr>

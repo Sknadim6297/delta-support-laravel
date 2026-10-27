@@ -4,7 +4,7 @@
     <p class="text-xs font-semibold uppercase tracking-wide text-brand-700">{{ $package->typeLabel() }}</p>
     <h1 class="ds-page-title mt-1">{{ $package->name }}</h1>
     <p class="mt-1 text-sm text-slate-500">{{ $package->code }}</p>
-    <p class="mt-4 text-2xl font-bold text-brand-700">USD {{ $package->price_usd }}</p>
+    <p class="mt-4 text-2xl font-bold text-brand-700">{{ \App\Support\MoneyDisplay::format($package->price_usd, $package->denomination) }}</p>
     @if($package->image_path)
         <img src="{{ route('member.packages.image', $package) }}" alt="{{ $package->name }}" class="mt-4 max-h-64 w-full rounded-lg border object-contain">
     @endif
@@ -34,7 +34,8 @@
 
     <h2 class="mt-6 font-semibold text-navy-900">Payment</h2>
     @if($settings->isReady())
-        <p class="mt-2 text-sm">{{ $settings->currency_label }} on {{ $settings->network }}</p>
+        <p class="mt-2 text-sm">Accepted token {{ $settings->currency_label }} on {{ $settings->network }}</p>
+        <p class="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Send {{ $package->denomination === 'USDT' ? 'USDT' : ($settings->currency_label ?: 'the accepted token') }} only on the exact network shown here. This application does not verify the blockchain.</p>
         <p class="mt-2 whitespace-pre-line text-sm text-slate-600">{{ $settings->instructions }}</p>
         @if($settings->receiving_address)<p class="mt-2 break-all text-sm font-semibold">{{ $settings->receiving_address }}</p>@endif
         @if($settings->qr_image_path)<img src="{{ route('member.payments.qr') }}" alt="Payment QR" class="mt-3 h-40 w-40 rounded border object-contain">@endif

@@ -2,6 +2,7 @@
 
 @section('content')
     <div class="form-card">
+        @include('partials.legacy-financial-lock')
 
         <!-- TITLE -->
         <div class="form-title">

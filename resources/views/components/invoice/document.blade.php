@@ -5,7 +5,7 @@
             <img src="{{ asset('site/img/logo.png') }}" alt="Delta Support" class="h-12 w-auto rounded bg-white p-1">
             <div>
                 <p class="text-sm font-semibold tracking-wide">{{ $invoice->company_name ?: 'Company name not set' }}</p>
-                <p class="text-xs text-white/80">USD invoice</p>
+                <p class="text-xs text-white/80">{{ $invoice->denomination ?: 'USD' }} invoice</p>
             </div>
         </div>
         <div class="text-right">
@@ -41,12 +41,12 @@
                         @if($invoice->package_code)<p class="text-slate-600">{{ $invoice->package_code }}</p>@endif
                         @if($invoice->package_details)<p class="mt-2 whitespace-pre-line text-slate-600">{{ $invoice->package_details }}</p>@endif
                     </td>
-                    <td class="py-3 text-right font-semibold">USD {{ $invoice->price_usd }}</td>
+                    <td class="py-3 text-right font-semibold">{{ \App\Support\MoneyDisplay::format($invoice->price_usd, $invoice->denomination) }}</td>
                 </tr>
             </tbody>
         </table>
         <div class="mt-4 flex justify-end">
-            <p class="rounded-lg bg-slate-50 px-4 py-3 text-base font-bold">Total USD {{ $invoice->price_usd }}</p>
+            <p class="rounded-lg bg-slate-50 px-4 py-3 text-base font-bold">Total {{ \App\Support\MoneyDisplay::format($invoice->price_usd, $invoice->denomination) }}</p>
         </div>
     </div>
     <footer class="mt-6 grid gap-4 px-6 pb-6 text-sm sm:grid-cols-2">

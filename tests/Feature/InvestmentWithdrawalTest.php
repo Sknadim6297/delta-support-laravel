@@ -78,8 +78,8 @@ class InvestmentWithdrawalTest extends TestCase
             ->assertOk()
             ->assertSeeText('Investment Amount (USDT)')
             ->assertSeeText('Closing Amount (USDT)')
-            ->assertSeeText('500 USDT')
-            ->assertSeeText('1500 USDT')
+            ->assertSeeText('USDT 500.0000')
+            ->assertSeeText('USDT 1500.0000')
             ->assertSeeText($expired->investment_id)
             ->assertDontSeeText($active->investment_id);
     }

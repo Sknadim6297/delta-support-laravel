@@ -43,8 +43,8 @@
       <span class="section-tag">Choose Your Package</span>
       <h2 class="section-title">Find The Option That Suits You</h2>
       <p class="section-desc">
-        Packages published by Delta Support are listed here with the USD price
-        and tour details saved by the administrator.
+        Packages published by Delta Support are listed here with the saved price, denomination,
+        and tour details entered by the administrator.
       </p>
     </div>
 
@@ -61,7 +61,7 @@
           <div class="destination-body">
             <span class="destination-category">{{ $package->typeLabel() }}</span>
             <h3>{{ $package->name }}</h3>
-            <p class="package-price mt-2"><strong>USD {{ $package->price_usd }}</strong></p>
+            <p class="package-price mt-2"><strong>{{ \App\Support\MoneyDisplay::format($package->price_usd, $package->denomination) }}</strong></p>
             @if($package->description)
               <p>{{ $package->description }}</p>
             @endif

@@ -68,23 +68,44 @@ class ReportController extends Controller
 
     public function exportRoiReport(Request $request)
     {
-        $transactions = $this->roiQuery($request)->latest()->get();
+        $query = $this->roiQuery($request)->latest('created_at')->orderByDesc('id');
 
-        return response()->streamDownload(function () use ($transactions) {
+        return response()->streamDownload(function () use ($query) {
             $output = fopen('php://output', 'w');
             fputcsv($output, ['Serial No', 'Member ID', 'Name', 'Investment ID', 'Income Amount (USDT)', 'On Amount (USDT)', 'Date']);
 
-            foreach ($transactions as $index => $transaction) {
-                fputcsv($output, [
-                    $index + 1,
-                    $transaction->member_id,
-                    $transaction->member_name,
-                    $transaction->investment_id,
-                    $this->formatUsdt($transaction->income_amount),
-                    $this->formatUsdt($transaction->on_amount),
-                    $transaction->created_at?->format('d-M-Y'),
-                ]);
-            }
+            $serial = 0;
+            $lastCreatedAt = null;
+            $lastId = null;
+
+            do {
+                $batch = (clone $query)
+                    ->when($lastCreatedAt !== null, function ($batchQuery) use ($lastCreatedAt, $lastId): void {
+                        $batchQuery->where(function ($cursor) use ($lastCreatedAt, $lastId): void {
+                            $cursor->where('created_at', '<', $lastCreatedAt)
+                                ->orWhere(function ($tie) use ($lastCreatedAt, $lastId): void {
+                                    $tie->where('created_at', $lastCreatedAt)
+                                        ->where('id', '<', $lastId);
+                                });
+                        });
+                    })
+                    ->limit(500)
+                    ->get();
+
+                foreach ($batch as $transaction) {
+                    fputcsv($output, [
+                        ++$serial,
+                        $transaction->member_id,
+                        $transaction->member_name,
+                        $transaction->investment_id,
+                        $this->formatUsdt($transaction->income_amount),
+                        $this->formatUsdt($transaction->on_amount),
+                        $transaction->created_at?->format('d-M-Y'),
+                    ]);
+                    $lastCreatedAt = $transaction->created_at;
+                    $lastId = $transaction->id;
+                }
+            } while ($batch->count() === 500);
 
             fclose($output);
         }, 'roi-report-' . now()->format('Y-m-d') . '.csv', [
@@ -353,6 +374,6 @@ class ReportController extends Controller
 
     protected function formatUsdt($amount): string
     {
-        return rtrim(rtrim(number_format((float) $amount, 4, '.', ''), '0'), '.') ?: '0';
+        return \App\Support\MoneyDisplay::usdt($amount);
     }
 }

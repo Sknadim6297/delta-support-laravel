@@ -331,7 +331,7 @@ class RoiGenerationTest extends TestCase
             ]));
 
             $roiResponse->assertOk()
-                ->assertSee('<strong>11</strong>', false)
+                ->assertSee('<strong>USDT 11.0000</strong>', false)
                 ->assertDontSee('&laquo;', false)
                 ->assertDontSee('&raquo;', false)
                 ->assertDontSee('«', false)
@@ -358,7 +358,7 @@ class RoiGenerationTest extends TestCase
             ]));
 
             $levelResponse->assertOk()
-                ->assertSee('<strong>22</strong>', false);
+                ->assertSee('<strong>USDT 22.0000</strong>', false);
             $this->assertSame(1, substr_count($levelResponse->getContent(), 'Showing'));
         }
     }

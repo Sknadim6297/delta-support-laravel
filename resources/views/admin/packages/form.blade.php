@@ -3,7 +3,7 @@
 <div class="mx-auto max-w-3xl">
     <header class="mb-5">
         <h1 class="ds-page-title">{{ $package->exists ? 'Edit Package' : 'Add Package' }}</h1>
-        <p class="ds-page-copy">Set the USD price and tour details here. Earlier purchases keep the price and tour snapshot saved at purchase time. ROI and level commission stay inactive.</p>
+        <p class="ds-page-copy">New packages are priced in USDT. Saving an existing package keeps its stored denomination and does not convert the amount. Earlier purchases keep their own snapshot. ROI and level commission stay inactive.</p>
     </header>
     <form method="POST" action="{{ $package->exists ? route('admin.packages.update', $package) : route('admin.packages.store') }}" enctype="multipart/form-data" class="ds-card">
         @csrf
@@ -19,7 +19,7 @@
                     @endforeach
                 </select>
             </label>
-            <label class="ds-field"><span>USD price</span><input name="price_usd" value="{{ old('price_usd', $package->price_usd) }}" required inputmode="decimal" autocomplete="off"></label>
+            <label class="ds-field"><span>{{ $package->exists ? 'Stored price ('.($package->denomination ?: 'USD').')' : 'Package price (USDT)' }}</span><input name="price_usd" value="{{ old('price_usd', $package->price_usd) }}" required inputmode="decimal" autocomplete="off"></label>
             <label class="ds-field"><span>Display order</span><input type="number" name="sort_order" value="{{ old('sort_order', $package->sort_order ?? 0) }}" required min="0"></label>
             <label class="ds-field"><span>Duration (days / nights)</span><input name="duration" value="{{ old('duration', $package->duration) }}" maxlength="80" placeholder="Entered by admin"></label>
             <label class="ds-field ds-span-2"><span>Short description</span><textarea name="description" rows="3" maxlength="500">{{ old('description', $package->description) }}</textarea></label>

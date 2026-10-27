@@ -212,7 +212,10 @@ class MemberController extends Controller
             ->whereHas('member', fn ($query) => $query->where('status', 'inactive'))
             ->sum('amount');
         $rankService = app(RankService::class);
-        $rankService->syncMemberRankAchievement($member);
+        if (! $request->routeIs('admin.member-panel')) {
+            $rankService->syncMemberRankAchievement($member);
+            $member->refresh();
+        }
         $rankData = $rankService->calculateForMember($member);
 
         $request->session()->put('member_context_id', $member->member_id);
@@ -238,6 +241,7 @@ class MemberController extends Controller
                 'teamInactiveInvestment' => $teamInactiveInvestment,
                 'teamActiveInvestmentRatio' => $teamActiveInvestment . ':'. $teamInactiveInvestment,
                 'totalWithdrawal' => $withdrawnAmount,
+                'packagePurchases' => \App\Support\CommerceTotals::sums(\App\Models\PackagePurchase::class, null, $member->member_id),
                 'referralUrl' => route('member.register', ['sponsor_id' => $member->member_id]),
             ],
         ]);
@@ -390,7 +394,7 @@ class MemberController extends Controller
 
     protected function formatUsdt($amount): string
     {
-        return rtrim(rtrim(number_format((float) $amount, 4, '.', ''), '0'), '.') ?: '0';
+        return \App\Support\MoneyDisplay::usdt($amount);
     }
 
     protected function memberValidationRules(?Member $member = null): array

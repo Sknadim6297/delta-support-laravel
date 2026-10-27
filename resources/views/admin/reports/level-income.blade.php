@@ -124,7 +124,7 @@
 
                     <span>Total Amount (USDT)</span>
 
-                    <strong>{{ isset($totalAmount) ? (rtrim(rtrim(number_format((float) $totalAmount, 4, '.', ''), '0'), '.') ?: '0') : '0' }}</strong>
+                    <strong>{{ \App\Support\MoneyDisplay::usdt($totalAmount ?? 0) }}</strong>
 
                 </div>
 
@@ -161,8 +161,8 @@
                             <td>{{ $transaction->reference }}</td>
                             <td>{{ $transaction->member_id }}</td>
                             <td>{{ $transaction->member_name }}</td>
-                            <td>{{ rtrim(rtrim(number_format((float) $transaction->income_amount, 4, '.', ''), '0'), '.') ?: '0' }}</td>
-                            <td>{{ rtrim(rtrim(number_format((float) $transaction->on_amount, 4, '.', ''), '0'), '.') ?: '0' }}</td>
+                            <td>{{ \App\Support\MoneyDisplay::usdt($transaction->income_amount) }}</td>
+                            <td>{{ \App\Support\MoneyDisplay::usdt($transaction->on_amount) }}</td>
                             <td>{{ $transaction->from_member_id }}</td>
                             <td>{{ $transaction->level }}</td>
                             <td>{{ $transaction->created_at?->format('d-M-Y') }}</td>

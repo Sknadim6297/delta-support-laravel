@@ -27,7 +27,7 @@ class SimplePdf
             trim($invoice->member_name.' ('.$invoice->member_id.')'),
             '',
             'Package '.$invoice->package_name.($invoice->package_code ? ' ('.$invoice->package_code.')' : ''),
-            'Amount USD '.$invoice->price_usd,
+            'Amount '.\App\Support\MoneyDisplay::format($invoice->price_usd, $invoice->denomination),
         ];
 
         foreach (preg_split("/\r\n|\n|\r/", (string) $invoice->package_details) ?: [] as $detail) {

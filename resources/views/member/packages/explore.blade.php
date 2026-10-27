@@ -3,7 +3,7 @@
 <div class="mx-auto max-w-6xl">
     <header class="mb-5">
         <h1 class="ds-page-title">Explore Packages</h1>
-        <p class="ds-page-copy">Prices are the USD amounts saved by the administrator. A purchase stays pending until payment is verified.</p>
+        <p class="ds-page-copy">Each price uses the denomination saved on that package. A purchase stays pending until payment is verified.</p>
     </header>
     @if(!$settings->isReady())
         <p class="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Payment Currently Unavailable. You can still review every active package. Purchase stays closed until an administrator enables payment.</p>
@@ -20,7 +20,7 @@
                     <p class="text-xs font-semibold uppercase tracking-wide text-brand-700">{{ $package->typeLabel() }}</p>
                     <h2 class="mt-1 text-lg font-bold text-navy-900">{{ $package->name }}</h2>
                     <p class="mt-1 text-sm text-slate-500">{{ $package->code }}</p>
-                    <p class="mt-3 text-xl font-bold text-brand-700">USD {{ $package->price_usd }}</p>
+                    <p class="mt-3 text-xl font-bold text-brand-700">{{ \App\Support\MoneyDisplay::format($package->price_usd, $package->denomination) }}</p>
                     <p class="mt-3 text-sm text-slate-700"><span class="font-semibold text-navy-900">Destinations:</span> {{ $package->destinations ?: 'Not set' }}</p>
                     <p class="mt-1 text-sm text-slate-700"><span class="font-semibold text-navy-900">Duration:</span> {{ $package->duration ?: 'Not set' }}</p>
                     @if($package->benefits)

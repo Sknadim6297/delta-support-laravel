@@ -26,7 +26,7 @@ class LevelIncomePerformanceTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Showing 1 to 50 of 125 entries', false)
-            ->assertSee('<strong>125</strong>', false)
+            ->assertSee('<strong>USDT 125.0000</strong>', false)
             ->assertSeeText('LC-BENCH-00125')
             ->assertDontSeeText('LC-BENCH-00001');
 
@@ -54,7 +54,7 @@ class LevelIncomePerformanceTest extends TestCase
             ->assertSee('Showing 1 to 1 of 1 entries', false)
             ->assertSeeText('LC-BENCH-00002')
             ->assertDontSeeText('LC-BENCH-00001')
-            ->assertSee('<strong>2</strong>', false);
+            ->assertSee('<strong>USDT 2.0000</strong>', false);
 
         $response = $this->get(route('admin.report.level-income.export'));
         $response->assertOk()

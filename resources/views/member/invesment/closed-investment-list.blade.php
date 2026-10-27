@@ -76,7 +76,7 @@
 
                     <span>Total Amount (USDT)</span>
 
-                    <strong>{{ rtrim(rtrim(number_format((float) $totalAmount, 4, '.', ''), '0'), '.') ?: '0' }}</strong>
+                    <strong>{{ \App\Support\MoneyDisplay::usdt($totalAmount) }}</strong>
 
                 </div>
 
@@ -102,8 +102,8 @@
                     <td>{{ $investments->firstItem() + $loop->index }}</td>
                     <td>Closed</td>
                     <td>{{ $investment->investment_id }}</td>
-                    <td>{{ rtrim(rtrim(number_format((float) $investment->amount, 4, '.', ''), '0'), '.') ?: '0' }} USDT</td>
-                    <td>{{ rtrim(rtrim(number_format((float) $investment->closing_amount, 4, '.', ''), '0'), '.') ?: '0' }} USDT</td>
+                    <td>{{ \App\Support\MoneyDisplay::usdt($investment->amount) }}</td>
+                    <td>{{ \App\Support\MoneyDisplay::usdt($investment->closing_amount) }}</td>
                     <td>{{ $investment->created_at?->format('d-m-Y') }}</td>
                     <td>{{ $investment->closed_at?->format('d-m-Y') }}</td>
                 </tr>

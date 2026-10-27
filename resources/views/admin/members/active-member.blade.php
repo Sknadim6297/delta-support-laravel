@@ -81,7 +81,7 @@
                                 <td>{{ $member['email'] }}</td>
                                 <td>{{ $member['mobile'] }}</td>
                                 <td>{{ $member['pan_card_no'] }}</td>
-                                <td>{{ rtrim(rtrim(number_format($member['investment_amount'], 4, '.', ''), '0'), '.') ?: '0' }} USDT</td>
+                                <td>{{ \App\Support\MoneyDisplay::usdt($member['investment_amount']) }}</td>
                                 <td>
                                     <span class="password-value" data-password="{{ $member['password'] }}">******</span>
                                     <button type="button" class="btn btn-link p-0 ms-1 password-toggle" aria-label="Show password" title="Show password">

@@ -90,16 +90,38 @@ class PaymentReviewController extends Controller
             'receiving_address' => $data['receiving_address'] ?? null,
             'instructions' => $data['instructions'] ?? null,
             'reference_pattern' => $pattern !== '' ? $pattern : null,
-            'is_enabled' => $request->boolean('is_enabled'),
-        ])->save();
+            'is_enabled' => false,
+        ]);
 
-        if ($request->hasFile('qr_image')) {
-            if ($settings->qr_image_path) {
-                Storage::disk('local')->delete($settings->qr_image_path);
+        foreach (['receiving_address', 'instructions'] as $field) {
+            if (PaymentSetting::containsSecret((string) $settings->{$field})) {
+                throw ValidationException::withMessages([
+                    $field => 'Do not store a private key or seed phrase.',
+                ]);
             }
-            $settings->forceFill([
-                'qr_image_path' => $request->file('qr_image')->store('payment-qr', 'local'),
-            ])->save();
+        }
+
+        $previousQr = $settings->qr_image_path;
+        $uploadedQr = null;
+        if ($request->hasFile('qr_image')) {
+            $uploadedQr = $request->file('qr_image')->store('payment-qr', 'local');
+            $settings->qr_image_path = $uploadedQr;
+        }
+
+        if ($request->boolean('is_enabled')) {
+            $errors = $settings->enablementErrors();
+            if ($errors !== []) {
+                if ($uploadedQr) {
+                    Storage::disk('local')->delete($uploadedQr);
+                }
+                throw ValidationException::withMessages($errors);
+            }
+            $settings->is_enabled = true;
+        }
+
+        $settings->save();
+        if ($uploadedQr && $previousQr && $previousQr !== $uploadedQr) {
+            Storage::disk('local')->delete($previousQr);
         }
 
         return redirect()->route('admin.payments.settings')->with('success', 'Payment settings saved. Members are not approved automatically.');

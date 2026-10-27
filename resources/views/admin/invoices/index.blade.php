@@ -3,7 +3,7 @@
 <div class="mx-auto max-w-6xl">
     <header class="mb-4">
         <h1 class="ds-page-title">All Invoices</h1>
-        <p class="ds-page-copy">Each approved purchase has one invoice. The USD amount is the price saved at approval.</p>
+        <p class="ds-page-copy">Each approved purchase has one invoice. The amount and denomination are the values saved at approval.</p>
     </header>
     <form method="GET" class="mb-4 flex flex-wrap gap-2">
         <input name="q" value="{{ request('q') }}" class="rounded-lg border border-slate-200 px-3 py-2" placeholder="Invoice, member, or package" aria-label="Search invoices">
@@ -23,7 +23,7 @@
                     <th class="p-3">Member ID</th>
                     <th class="p-3">Package</th>
                     <th class="p-3">Invoice date</th>
-                    <th class="p-3">USD amount</th>
+                    <th class="p-3">Amount</th>
                     <th class="p-3">Payment</th>
                     <th class="p-3">Status</th>
                     <th class="p-3">Actions</th>
@@ -36,7 +36,7 @@
                     <td class="p-3">{{ $invoice->member_id }}</td>
                     <td class="p-3">{{ $invoice->package_name }}</td>
                     <td class="p-3">{{ optional($invoice->approved_at)->timezone('Asia/Kolkata')->format('d M Y') }}</td>
-                    <td class="p-3">USD {{ $invoice->price_usd }}</td>
+                    <td class="p-3">{{ \App\Support\MoneyDisplay::format($invoice->price_usd, $invoice->denomination) }}</td>
                     <td class="p-3">{{ trim(($invoice->currency_label ?: '').' '.($invoice->payment_reference ?: '')) }}</td>
                     <td class="p-3"><span class="rounded-full bg-brand-500 px-2 py-1 text-xs font-semibold text-white">{{ ucfirst($invoice->status) }}</span></td>
                     <td class="p-3">

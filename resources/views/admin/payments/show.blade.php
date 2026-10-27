@@ -9,7 +9,7 @@
         <p><span class="font-semibold text-navy-900">Status:</span> {{ $purchase->statusLabel() }}</p>
         <p><span class="font-semibold text-navy-900">Member:</span> {{ $purchase->member_id }} @if($purchase->member) · {{ $purchase->member->member_name }} @endif</p>
         <p><span class="font-semibold text-navy-900">Package:</span> {{ $purchase->package_name }} ({{ $purchase->package_code }})</p>
-        <p><span class="font-semibold text-navy-900">Saved USD price:</span> USD {{ $purchase->price_usd }}</p>
+        <p><span class="font-semibold text-navy-900">Saved price:</span> {{ \App\Support\MoneyDisplay::format($purchase->price_usd, $purchase->denomination) }}</p>
         <p><span class="font-semibold text-navy-900">Asset / token:</span> {{ $purchase->currency_label ?: 'Not recorded' }}</p>
         <p><span class="font-semibold text-navy-900">Network:</span> {{ $purchase->network ?: 'Not recorded' }}</p>
         <p class="break-all"><span class="font-semibold text-navy-900">Transaction ID:</span> {{ $purchase->payment_reference }}</p>

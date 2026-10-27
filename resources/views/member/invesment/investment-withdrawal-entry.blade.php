@@ -8,6 +8,7 @@
            
 
     <div class="form-card">
+        @include('partials.legacy-financial-lock')
 
         @if (session('success'))
             <div class="alert alert-success mb-4">{{ session('success') }}</div>
