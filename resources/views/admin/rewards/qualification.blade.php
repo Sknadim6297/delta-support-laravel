@@ -33,6 +33,21 @@
     @if ($delivery)
         <x-ui.card title="Delivery">
             <p><x-ui.badge :tone="$delivery->statusTone()">{{ $delivery->statusLabel() }}</x-ui.badge></p>
+            @if ($delivery->method)
+                <p>Method: {{ $delivery->method }}</p>
+            @endif
+            @if ($delivery->tracking_reference)
+                <p>Tracking: {{ $delivery->tracking_reference }}</p>
+            @endif
+            @if ($delivery->dispatched_at)
+                <p>Dispatched {{ $delivery->dispatched_at->timezone('Asia/Kolkata')->format('d M Y H:i') }} Asia/Kolkata</p>
+            @endif
+            @if ($delivery->delivered_at)
+                <p>Delivered {{ $delivery->delivered_at->timezone('Asia/Kolkata')->format('d M Y H:i') }} Asia/Kolkata</p>
+            @endif
+            @if ($delivery->recipient_confirmation)
+                <p>Recipient confirmation: {{ $delivery->recipient_confirmation }}</p>
+            @endif
             @if ($choices !== [])
                 <form method="POST" action="{{ route('admin.rewards.deliveries.update', $qualification) }}">
                     @csrf

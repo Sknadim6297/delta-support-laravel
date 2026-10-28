@@ -8,7 +8,7 @@
             <x-ui.button :href="route('admin.rewards.reports')" variant="secondary">Reports</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
-    <form method="GET">
+    <form class="ds-filter-form" method="GET">
         <input name="q" value="{{ request('q') }}" placeholder="Search member" aria-label="Search member">
         <input name="member_id" value="{{ request('member_id') }}" placeholder="Member ID" aria-label="Member ID">
         <select name="campaign_id" aria-label="Campaign">
