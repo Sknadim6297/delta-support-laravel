@@ -17,6 +17,8 @@
     use App\Http\Controllers\Admin\CompanySettingController;
     use App\Http\Controllers\Admin\InvoiceController;
     use App\Http\Controllers\Admin\MemberDirectoryController;
+    use App\Http\Controllers\Admin\MemberImpersonationController;
+    use App\Services\MemberImpersonation;
     use App\Http\Controllers\Admin\OperationsController;
     use App\Http\Controllers\Admin\PackageController;
     use App\Http\Controllers\Admin\PaymentReviewController;
@@ -38,6 +40,8 @@
     use App\Models\Member;
     use App\Models\User;
 
+
+    Route::get('/branding/logo', [CompanySettingController::class, 'logo'])->name('brand.logo');
 
     Route::get('/', function () {
         if (Auth::check()) {
@@ -141,13 +145,17 @@
         ->name('login.submit');
 
 
+    Route::post('/admin/impersonation/stop', [MemberImpersonationController::class, 'stop'])
+        ->middleware(['auth', 'admin'])
+        ->name('admin.impersonation.stop');
+
     /*
     |--------------------------------------------------------------------------
     | Authenticated Admin Routes
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['auth', 'admin'])->group(function () {
+    Route::middleware(['auth', 'admin', 'impersonation.block'])->group(function () {
 
         Route::get('/member-panel/{member_id}', [MemberController::class, 'memberPanel'])
             ->name('admin.member-panel');
@@ -168,6 +176,7 @@
             ->name('admin.coming-soon');
 
         Route::get('/admin/members', [MemberDirectoryController::class, 'index'])->name('admin.members.directory');
+        Route::post('/admin/members/{member}/impersonate', [MemberImpersonationController::class, 'start'])->name('admin.members.impersonate');
         Route::patch('/admin/members/{memberId}/status', [MemberDirectoryController::class, 'updateStatus'])->name('admin.members.status');
 
         Route::controller(PackageController::class)->prefix('admin/packages')->name('admin.packages.')->group(function () {
@@ -214,8 +223,14 @@
             Route::get('/general', 'edit')->name('general');
             Route::put('/general', 'update')->name('general.update');
             Route::get('/branding', 'branding')->name('branding');
+            Route::post('/branding/logo', 'updateLogo')->name('branding.logo.update');
+            Route::delete('/branding/logo', 'destroyLogo')->name('branding.logo.destroy');
+            Route::put('/branding/colors', 'updateColors')->name('branding.colors.update');
+            Route::delete('/branding/colors', 'resetColors')->name('branding.colors.reset');
             Route::get('/security', 'security')->name('security');
             Route::get('/profile', 'profile')->name('profile');
+            Route::put('/profile', 'updateProfile')->middleware('throttle:6,1')->name('profile.update');
+            Route::put('/profile/password', 'updatePassword')->middleware('throttle:6,1')->name('profile.password');
         });
 
         Route::controller(OperationsController::class)->group(function () {
@@ -272,6 +287,7 @@
         */
 
         Route::post('/admin/logout', function (Request $request) {
+            app(MemberImpersonation::class)->finish($request);
             Auth::logout();
 
             $request->session()->invalidate();
@@ -722,6 +738,7 @@
 
 
         Route::post('/member/logout', function (Request $request) {
+        app(MemberImpersonation::class)->finish($request);
         if ($request->user()?->is_admin === true) {
             Auth::logout();
             $request->session()->invalidate();

@@ -5,11 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Delta Support Admin')</title>
-    <link rel="icon" href="{{ asset('site/img/logo.png') }}">
+    <link rel="icon" href="{{ \App\Support\BrandTokens::logoUrl() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/panel.css', 'resources/js/panel.js'])
+    @include('partials.brand-tokens')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 

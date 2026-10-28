@@ -11,7 +11,7 @@
         <div class="register-card">
             <div class="register-logo">
                 <a href="{{ route('home') }}">
-                    <img src="{{ asset('site/img/logo.png') }}" alt="Delta Support Logo">
+                    <img src="{{ \App\Support\BrandTokens::logoUrl() }}" alt="Delta Support Logo">
                 </a>
             </div>
 

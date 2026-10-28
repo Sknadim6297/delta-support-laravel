@@ -1,93 +1,60 @@
 @extends('admin.layouts.app')
+
+@section('title', 'Change Password')
+@section('page-title', 'Change Password')
+
 @section('content')
+<div class="ds-catalog">
+    <x-ui.page-header
+        kicker="Security"
+        title="Change Password"
+        lead="Enter the current password, then choose a new one."
+    />
 
-        <main>
+    @if ($errors->any())
+        <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
+    @endif
 
-    <div>
-
-        @if ($errors->any())
-            <div>{{ $errors->first() }}</div>
-        @endif
-
-        @if (session('success'))
-            <div>{{ session('success') }}</div>
-        @endif
-
-        <!-- TITLE -->
-        <div>
-            <h4>Change Password</h4>
+    <form class="ds-settings-form ds-password-form" method="POST" action="{{ route('admin.change-password.update') }}" id="changePasswordForm">
+        @csrf
+        <div class="ds-field-grid">
+            <label>
+                <span>Old Password <span>*</span></span>
+                <input type="password"
+                       id="currentPassword"
+                       name="current_password"
+                       data-error-for="current_password"
+                       placeholder="Enter Old Password"
+                       autocomplete="current-password">
+                @error('current_password')<small>{{ $message }}</small>@enderror
+            </label>
+            <label>
+                <span>New Password <span>*</span></span>
+                <input type="password"
+                       id="newPassword"
+                       name="new_password"
+                       data-error-for="new_password"
+                       placeholder="Enter New Password"
+                       autocomplete="new-password">
+                @error('new_password')<small>{{ $message }}</small>@enderror
+            </label>
+            <label>
+                <span>Confirm New Password <span>*</span></span>
+                <input type="password"
+                       id="confirmPassword"
+                       name="new_password_confirmation"
+                       data-error-for="new_password_confirmation"
+                       placeholder="Confirm New Password"
+                       autocomplete="new-password">
+                @error('new_password_confirmation')<small>{{ $message }}</small>@enderror
+            </label>
         </div>
-
-        <form method="POST" action="{{ route('admin.change-password.update') }}" id="changePasswordForm">
-            @csrf
-            <div>
-
-                <!-- OLD PASSWORD -->
-                <div>
-                    <label>
-                        Old Password <span>*</span>
-                    </label>
-
-                    <input type="password"
-                           id="currentPassword"
-                           name="current_password"
-                          
-                           data-error-for="current_password"
-                           placeholder="Enter Old Password">
-                </div>
-
-
-                <!-- NEW PASSWORD -->
-                <div>
-                    <label>
-                        New Password <span>*</span>
-                    </label>
-
-                    <input type="password"
-                           id="newPassword"
-                           name="new_password"
-                          
-                           data-error-for="new_password"
-                           placeholder="Enter New Password">
-                </div>
-
-
-                <!-- CONFIRM PASSWORD -->
-                <div>
-                    <label>
-                        Confirm New Password <span>*</span>
-                    </label>
-
-                    <input type="password"
-                           id="confirmPassword"
-                           name="new_password_confirmation"
-                          
-                           data-error-for="new_password_confirmation"
-                           placeholder="Confirm New Password">
-                </div>
-
-            </div>
-
-
-            <!-- SUBMIT -->
-            <div>
-
-                <button type="submit"
-                       
-                       >
-
-                    <i></i>
-                    Submit
-
-                </button>
-
-            </div>
-        </form>
-
-    </div>
-
-       </main>
-       @endsection
+        <div class="ds-form-actions">
+            <button type="submit">Submit</button>
+        </div>
+    </form>
+</div>
+@endsection
 
 @section('scripts')
     <script>

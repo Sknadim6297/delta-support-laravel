@@ -1,7 +1,7 @@
 <aside id="dsSidebar" aria-label="Admin">
     <div class="ds-brand">
         <a href="{{ route('dashboard') }}">
-            <img class="ds-logo" src="{{ asset('site/img/logo.png') }}" alt="Delta Support">
+            <img class="ds-logo" src="{{ \App\Support\BrandTokens::logoUrl() }}" alt="Delta Support">
         </a>
         <button type="button" class="ds-sidebar-close" aria-label="Close menu">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>

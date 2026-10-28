@@ -6,6 +6,8 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\EnsureLegacyFinancialActionsEnabled;
 use App\Http\Middleware\EnsureMemberContext;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\PreventImpersonatedMutations;
+use App\Http\Middleware\RedirectImpersonatingAdmins;
 use App\Http\Middleware\SecurityHeaders;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -22,6 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
             'member.context' => EnsureMemberContext::class,
             'legacy.financial' => EnsureLegacyFinancialActionsEnabled::class,
+            'impersonation.block' => RedirectImpersonatingAdmins::class,
+        ]);
+        $middleware->web(append: [
+            PreventImpersonatedMutations::class,
         ]);
         $middleware->append(SecurityHeaders::class);
     })

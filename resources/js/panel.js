@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-error-for]').forEach(function (error) {
+        if (error.matches('input, select, textarea, button')) {
+            return;
+        }
         error.hidden = error.textContent.trim() === '';
     });
 

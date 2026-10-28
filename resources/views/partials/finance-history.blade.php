@@ -1,40 +1,48 @@
-<div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-    <table class="min-w-full text-sm">
-        <thead class="bg-slate-50 text-left">
+<div class="ds-table-wrap">
+    <table class="{{ $kind === 'level' ? 'ds-table-wide' : '' }}">
+        <thead>
             <tr>
                 @if($audience === 'admin')
-                    <th class="p-3">Member</th>
+                    <th>Member</th>
                 @endif
-                <th class="p-3">Reference</th>
-                <th class="p-3">Date</th>
-                <th class="p-3">Amount</th>
-                <th class="p-3">Package reference</th>
-                <th class="p-3">Status</th>
+                <th>Reference</th>
+                <th>Date</th>
+                <th class="ds-money">Amount</th>
+                <th>Package reference</th>
+                <th>Status</th>
                 @if($kind === 'level')
-                    <th class="p-3">Level</th>
-                    <th class="p-3">Source member</th>
+                    <th>Level</th>
+                    <th>Source member</th>
                 @endif
             </tr>
         </thead>
         <tbody>
         @forelse($rows as $row)
-            <tr class="border-t border-slate-100">
+            <tr>
                 @if($audience === 'admin')
-                    <td class="p-3"><span class="font-semibold">{{ $row->member_id }}</span><br><span class="text-ink-500">{{ $row->member_name }}</span></td>
+                    <td>
+                        <span class="ds-person">
+                            <strong>{{ $row->member_id }}</strong>
+                            <small>{{ $row->member_name }}</small>
+                        </span>
+                    </td>
                 @endif
-                <td class="p-3 font-semibold">{{ $row->reference }}</td>
-                <td class="p-3">{{ $kind === 'roi' ? $row->roi_date?->toDateString() : ($row->business_date?->toDateString() ?? $row->created_at?->toDateString()) }}</td>
-                <td class="p-3">{{ \App\Support\MoneyDisplay::usdt($row->income_amount) }}</td>
-                <td class="p-3">Not linked to a package</td>
-                <td class="p-3">{{ $kind === 'roi' ? ucfirst((string) ($row->status ?: 'recorded')) : 'Recorded' }}</td>
+                <td>{{ $row->reference }}</td>
+                <td>{{ $kind === 'roi' ? $row->roi_date?->format('d M Y') : ($row->business_date?->format('d M Y') ?? $row->created_at?->format('d M Y')) }}</td>
+                <td class="ds-money">{{ \App\Support\MoneyDisplay::usdt($row->income_amount) }}</td>
+                <td>Not linked to a package</td>
+                <td>
+                    @php($statusLabel = $kind === 'roi' ? ucfirst((string) ($row->status ?: 'recorded')) : 'Recorded')
+                    <x-ui.badge :tone="$statusLabel === 'Recorded' ? 'brand' : 'muted'">{{ $statusLabel }}</x-ui.badge>
+                </td>
                 @if($kind === 'level')
-                    <td class="p-3">{{ $row->level }}</td>
-                    <td class="p-3">{{ $row->from_member_id }}</td>
+                    <td>{{ $row->level }}</td>
+                    <td>{{ $row->from_member_id }}</td>
                 @endif
             </tr>
         @empty
             <tr>
-                <td class="p-6 text-slate-500" colspan="{{ ($audience === 'admin' ? 6 : 5) + ($kind === 'level' ? 2 : 0) }}">
+                <td class="ds-empty-cell" colspan="{{ ($audience === 'admin' ? 6 : 5) + ($kind === 'level' ? 2 : 0) }}">
                     {{ $kind === 'roi' ? 'No ROI records yet.' : 'No level income records yet.' }}
                 </td>
             </tr>
@@ -42,4 +50,4 @@
         </tbody>
     </table>
 </div>
-<div class="mt-4">{{ $rows->links('pagination::bootstrap-5') }}</div>
+<div class="ds-pagination">{{ $rows->links('pagination::bootstrap-5') }}</div>

@@ -172,7 +172,7 @@
         margin-top: 24px;
         border: 0;
         border-radius: 11px;
-        background: linear-gradient(100deg, #0878d1, #0752a0);
+        background: linear-gradient(100deg, var(--primary), var(--primary-dark));
         color: #fff;
         font-size: 14px;
         font-weight: 700;

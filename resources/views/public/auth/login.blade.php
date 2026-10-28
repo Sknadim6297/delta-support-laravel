@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/auth-portal.css'])
+    @include('partials.brand-tokens')
 </head>
 <body>
     <div class="login-wrapper">
@@ -16,7 +17,7 @@
             <div class="login-form-panel">
                 <div class="login-logo">
                     <a href="{{ route('home') }}">
-                        <img src="{{ asset('site/img/logo.png') }}" alt="Delta Support Logo">
+                        <img src="{{ \App\Support\BrandTokens::logoUrl() }}" alt="Delta Support Logo">
                     </a>
                 </div>
 

@@ -11,7 +11,7 @@
 <nav class="navbar sticky top-0 z-40">
     <div class="container flex flex-wrap items-center justify-between">
         <a class="navbar-brand flex items-center" href="{{ route('home') }}">
-            <img src="{{ asset('site/img/logo.png') }}" class="brand-logo" alt="Delta Support Logo" />
+            <img src="{{ \App\Support\BrandTokens::logoUrl() }}" class="brand-logo" alt="Delta Support Logo" />
             <span class="brand-name">
                 DELTA <span class="text-brand-500">SUPPORT</span>
             </span>

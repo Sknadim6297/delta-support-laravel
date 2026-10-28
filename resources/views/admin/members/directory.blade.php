@@ -46,7 +46,16 @@
                         <x-ui.badge :tone="$member->has_approved_package ? 'success' : ($member->has_pending_package ? 'warning' : 'muted')">{{ $member->has_approved_package ? 'Approved package' : ($member->has_pending_package ? 'Pending package' : 'Unpaid') }}</x-ui.badge>
                     </td>
                     <td>
-                        <x-ui.button variant="secondary" size="sm" :href="route('admin.members.update', ['member_id' => $member->member_id])">View / Edit</x-ui.button>
+                        <div class="ds-row-actions">
+                            <x-ui.button variant="secondary" size="sm" :href="route('admin.members.update', ['member_id' => $member->member_id])">View / Edit</x-ui.button>
+                            <form class="ds-impersonate-form" method="POST" action="{{ route('admin.members.impersonate', $member) }}" target="_blank">
+                                @csrf
+                                <button type="submit" class="ds-btn ds-btn-sm">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg>
+                                    Login as Member
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
             @empty

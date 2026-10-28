@@ -3,7 +3,7 @@
 <article class="ds-invoice">
     <header class="ds-invoice-top">
         <div class="ds-invoice-brand">
-            <img src="{{ asset('site/img/logo.png') }}" alt="Delta Support">
+            <img src="{{ \App\Support\BrandTokens::logoUrl() }}" alt="Delta Support">
             <div>
                 <p class="ds-invoice-company">{{ $invoice->company_name ?: 'Company name not set' }}</p>
                 <p>{{ $invoice->denomination ?: 'USD' }} invoice</p>

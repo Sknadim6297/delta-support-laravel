@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/site.css', 'resources/js/site.js'])
     @stack('styles')
+    @include('partials.brand-tokens')
 </head>
 <body>
     @include('public.partials.header')

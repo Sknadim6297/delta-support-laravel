@@ -11,6 +11,31 @@ class ChangePasswordTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_security_and_change_password_screens_render_the_password_form(): void
+    {
+        $user = User::factory()->create([
+            'is_admin' => true,
+            'email' => 'security-admin@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('admin.settings.security'))
+            ->assertOk()
+            ->assertSeeText('Change password')
+            ->assertSeeText('security-admin@example.com')
+            ->assertSee(route('admin.change-password.index'), false);
+
+        $this->get(route('admin.change-password.index'))
+            ->assertOk()
+            ->assertSee('id="changePasswordForm"', false)
+            ->assertSee('name="current_password"', false)
+            ->assertSee('name="new_password"', false)
+            ->assertSee('name="new_password_confirmation"', false)
+            ->assertSee('id="currentPassword"', false)
+            ->assertSee('id="newPassword"', false)
+            ->assertSee('id="confirmPassword"', false);
+    }
+
     public function test_user_can_change_password_with_valid_old_and_matching_confirmation(): void
     {
         $user = User::factory()->create([

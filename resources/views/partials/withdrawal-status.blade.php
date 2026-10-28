@@ -1,1 +1,10 @@
-<span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-navy-900">{{ \App\Support\WithdrawalStatus::label($status) }}</span>
+@php
+    $tone = match ($status) {
+        'approved', 'completed' => 'success',
+        'pending_review', 'processing', 'draft' => 'warning',
+        'rejected', 'failed' => 'danger',
+        'cancelled' => 'muted',
+        default => 'brand',
+    };
+@endphp
+<x-ui.badge :tone="$tone">{{ \App\Support\WithdrawalStatus::label($status) }}</x-ui.badge>
