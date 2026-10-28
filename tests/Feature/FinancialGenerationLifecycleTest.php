@@ -6,8 +6,8 @@ use App\Models\Investment;
 use App\Models\LevelCommissionTransaction;
 use App\Models\Member;
 use App\Models\RoiTransaction;
-use App\Services\LevelCommissionGenerationService;
 use App\Services\RoiGenerationService;
+use Illuminate\Support\Facades\Artisan;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -54,19 +54,13 @@ class FinancialGenerationLifecycleTest extends TestCase
         $this->assertDatabaseMissing('roi_transactions', ['investment_id' => $investment->investment_id]);
     }
 
-    public function test_expired_investment_cannot_generate_level_commission(): void
+    public function test_legacy_level_commission_command_is_not_registered(): void
     {
-        $member = $this->member('ST100006');
-        $investment = $this->investment($member, 'INV-LIFECYCLE-006');
         $before = LevelCommissionTransaction::query()->count();
 
-        app(LevelCommissionGenerationService::class)->generateForInvestment(
-            $investment,
-            CarbonImmutable::parse('2026-09-02', 'Asia/Kolkata')
-        );
-
+        $this->assertArrayNotHasKey('commission:generate-level', Artisan::all());
+        $this->assertFalse(class_exists(\App\Services\LevelCommissionGenerationService::class));
         $this->assertSame($before, LevelCommissionTransaction::query()->count());
-        $this->assertDatabaseMissing('level_commission_transactions', ['investment_id' => $investment->investment_id]);
     }
 
     public function test_roi_generation_after_expiry_creates_no_new_transactions(): void
@@ -81,15 +75,4 @@ class FinancialGenerationLifecycleTest extends TestCase
         $this->assertDatabaseMissing('roi_transactions', ['investment_id' => $investment->investment_id]);
     }
 
-    public function test_commission_generation_after_expiry_creates_no_new_transactions(): void
-    {
-        $member = $this->member('ST100008');
-        $investment = $this->investment($member, 'INV-LIFECYCLE-008');
-        $before = LevelCommissionTransaction::query()->count();
-
-        $this->artisan('commission:generate-level --date=2026-09-02')->assertExitCode(0);
-
-        $this->assertSame($before, LevelCommissionTransaction::query()->count());
-        $this->assertDatabaseMissing('level_commission_transactions', ['investment_id' => $investment->investment_id]);
-    }
 }

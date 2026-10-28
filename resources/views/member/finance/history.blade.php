@@ -1,14 +1,14 @@
 @extends('member.layouts.app')
 @section('title', $kind === 'roi' ? 'My ROI History' : 'My Level Income History')
+@section('page-title', $kind === 'roi' ? 'My ROI History' : 'My Level Income History')
 @section('content')
-<div>
-    <header>
-        <h1>{{ $kind === 'roi' ? 'My ROI History' : 'My Level Income History' }}</h1>
-        <p>Only your stored investment records are listed, shown as USDT. They are not package purchase credits, and new package income is not being calculated.</p>
-    </header>
-    <form method="GET">
+<div class="ds-finance">
+    <form class="ds-searchbar" method="GET">
         <input name="q" value="{{ request('q') }}" placeholder="Search reference" aria-label="Search your records">
-        <button>Search</button>
+        <button type="submit">Search</button>
+        @if (request()->filled('q'))
+            <a class="ds-btn ds-btn-secondary" href="{{ $kind === 'roi' ? route('member.income.roi') : route('member.income.level') }}">Reset</a>
+        @endif
     </form>
     @include('partials.finance-history', ['kind' => $kind, 'rows' => $rows, 'audience' => 'member'])
 </div>

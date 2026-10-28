@@ -72,7 +72,6 @@ class LegacyFinancialCommandGuardTest extends TestCase
 
         foreach ([
             'roi:generate',
-            'commission:generate-level',
             'rank:advance',
             'financial:cycle',
         ] as $command) {

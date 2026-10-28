@@ -1,11 +1,9 @@
 @extends('member.layouts.app')
 @section('title', 'Withdrawal History')
+@section('page-title', 'Withdrawal History')
 @section('content')
 <div>
-    <header>
-        <h1>Withdrawal History</h1>
-        <p>{{ $member->member_id }} · Only your stored withdrawal requests are listed.</p>
-    </header>
+    <p class="ds-lead">{{ $member->member_id }} · Only your stored withdrawal requests are listed.</p>
     <div>
         <table>
             <thead>
@@ -35,7 +33,7 @@
                     <td><a href="{{ route('member.withdrawals.show', $withdrawal) }}">View Details</a></td>
                 </tr>
             @empty
-                <tr><td colspan="9">No withdrawal requests yet.</td></tr>
+                <tr><td class="ds-empty-cell" colspan="9">No withdrawal requests yet.</td></tr>
             @endforelse
             </tbody>
         </table>

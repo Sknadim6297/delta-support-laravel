@@ -13,6 +13,7 @@
 @endphp
 <div class="ds-dash">
     <x-ui.page-header
+        heading
         :title="'Welcome back, '.$member->member_name.'!'"
         :lead="$member->member_id.' · Sponsor '.$member->sponsor_id.' · '.$member->sponsor_name"
     />

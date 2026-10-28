@@ -1119,6 +1119,7 @@
         border: 1px solid var(--color-line);
         border-radius: 14px;
         background: #fff;
+        container-type: inline-size;
     }
 
     .ds-content table {
@@ -1298,8 +1299,8 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 8px 10px;
-        max-width: 680px;
+        gap: 8px;
+        max-width: 720px;
         margin: 0;
         padding: 12px;
     }
@@ -1859,9 +1860,17 @@
         font-size: 22px;
     }
 
+    .ds-content form.ds-searchbar input,
     .ds-content form.ds-searchbar button,
-    .ds-content form.ds-searchbar .ds-btn {
-        flex: 1 1 auto;
+    .ds-content form.ds-searchbar .ds-btn,
+    .ds-content form.ds-filter > label,
+    .ds-content form.ds-filter-form > label,
+    .ds-content form.ds-filter .ds-filter-actions,
+    .ds-content form.ds-filter-form button,
+    .ds-content form.ds-filter-form .ds-btn {
+        flex: 1 1 100%;
+        max-width: none;
+        width: 100%;
     }
 }
 
@@ -3120,33 +3129,53 @@ body {
         border-color: var(--color-brand);
     }
 
-    .ds-content form.ds-filter {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    .ds-content form.ds-filter,
+    .ds-content form.ds-filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
         gap: 12px;
-        align-items: end;
         max-width: none;
     }
 
-    .ds-content form.ds-filter label {
+    .ds-content form.ds-filter > label,
+    .ds-content form.ds-filter-form > label {
         display: flex;
+        flex: 1 1 180px;
         flex-direction: column;
         gap: 6px;
+        max-width: 280px;
         margin: 0;
         min-width: 0;
     }
 
     .ds-content form.ds-filter input,
-    .ds-content form.ds-filter select {
+    .ds-content form.ds-filter select,
+    .ds-content form.ds-filter-form input,
+    .ds-content form.ds-filter-form select {
         width: 100%;
+        height: 40px;
+        min-height: 40px;
         max-width: none;
+        padding-top: 0;
+        padding-bottom: 0;
     }
 
-    .ds-content form.ds-filter .ds-filter-actions {
+    .ds-content form.ds-filter .ds-filter-actions,
+    .ds-content form.ds-filter-form .ds-filter-actions {
         display: flex;
+        flex: 0 0 auto;
         flex-wrap: wrap;
         gap: 8px;
         align-items: center;
+    }
+
+    .ds-content form.ds-filter .ds-filter-actions button,
+    .ds-content form.ds-filter .ds-filter-actions .ds-btn,
+    .ds-content form.ds-filter-form button,
+    .ds-content form.ds-filter-form .ds-btn {
+        height: 40px;
+        min-height: 40px;
     }
 
     .ds-content th.ds-money,
@@ -3178,6 +3207,19 @@ body {
         color: var(--color-muted);
         font-weight: 600;
         text-align: center;
+    }
+
+    .ds-content td.ds-empty-cell:has(> span) {
+        padding: 0;
+    }
+
+    .ds-content td.ds-empty-cell > span {
+        position: sticky;
+        left: 0;
+        display: block;
+        width: 100cqw;
+        box-sizing: border-box;
+        padding: 28px 16px;
     }
 
     .ds-content .ds-table-wide {

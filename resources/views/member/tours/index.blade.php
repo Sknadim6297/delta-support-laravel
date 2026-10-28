@@ -1,8 +1,9 @@
 @extends('member.layouts.app')
+@section('title', 'My Tour Benefits')
+@section('page-title', 'My Tour Benefits')
 @section('content')
 <div>
-    <h1>My Tour Benefits</h1>
-    <p>Booking requests are not open yet. Approved package purchases show the tour benefit that was saved with the purchase.</p>
+    <p class="ds-lead">Booking requests are not open yet. Approved package purchases show the tour benefit that was saved with the purchase.</p>
     @forelse($purchases as $purchase)
         <article>
             <h2>{{ $purchase->tour_title ?: $purchase->package_name }}</h2>

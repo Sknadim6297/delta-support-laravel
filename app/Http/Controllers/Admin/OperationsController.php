@@ -7,9 +7,14 @@ use App\Models\LevelCommissionTransaction;
 use App\Models\Member;
 use App\Models\Package;
 use App\Models\PackageIncomeTerm;
+use App\Models\PackageLevelAccrual;
 use App\Models\PackagePurchase;
+use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
 use App\Services\CommissionPlan;
+use App\Services\PackageIncomeAdministration;
+use App\Services\PackageIncomeCalculationPreview;
+use App\Services\PackageIncomePolicy;
 use App\Services\FinancialHistoryQuery;
 use App\Services\FinancialScheduleRegistrar;
 use App\Services\ReferralLevelEligibility;
@@ -32,8 +37,8 @@ class OperationsController extends Controller
         return view('admin.wallets.overview', [
             'members' => $members,
             'totals' => $this->walletTotals(),
-            'roiCount' => RoiTransaction::query()->count(),
-            'levelCount' => LevelCommissionTransaction::query()->count(),
+            'roiCount' => RoiTransaction::query()->count() + PackageRoiAccrual::query()->count(),
+            'levelCount' => LevelCommissionTransaction::query()->count() + PackageLevelAccrual::query()->count(),
             'notices' => app(WalletBalanceReconciliation::class)->notices(),
         ]);
     }
@@ -98,28 +103,34 @@ class OperationsController extends Controller
         return redirect()->route('admin.packages.index');
     }
 
-    public function roiPlans(): View
+    public function roiPlans(PackageIncomePolicy $policy): View
     {
+        $packages = Package::query()->orderBy('sort_order')->orderBy('name')->get();
+
         return view('admin.finance.roi-plans', [
-            'packages' => Package::query()->orderBy('sort_order')->orderBy('name')->get(),
+            'packages' => $packages,
+            'rules' => $packages->mapWithKeys(fn (Package $package): array => [$package->code => $policy->definition($package->code)])->all(),
             'incomeTermCount' => PackageIncomeTerm::query()->count(),
         ]);
     }
 
-    public function roiSchedule(FinancialScheduleRegistrar $registrar): View
+    public function roiSchedule(Request $request, FinancialScheduleRegistrar $registrar, PackageIncomeAdministration $administration, PackageIncomeCalculationPreview $preview): View
     {
         $schedule = new Schedule;
         $registrar->register($schedule);
+        $date = $request->query('date');
 
         return view('admin.finance.roi-schedule', [
             'scheduledTasks' => count($schedule->events()),
-            'roiCount' => RoiTransaction::query()->count(),
+            'roiCount' => RoiTransaction::query()->count() + PackageRoiAccrual::query()->count(),
             'legacyEnabled' => (bool) config('deltasupport.legacy_financial_actions'),
             'accelerated' => (bool) config('financial.accelerated.enabled'),
+            'control' => $administration->report(),
+            'calculation' => $preview->forDate(is_string($date) ? $date : null),
         ]);
     }
 
-    public function commissionSettings(CommissionPlan $plan): View
+    public function commissionSettings(CommissionPlan $plan, PackageIncomePolicy $policy): View
     {
         $levels = $plan->levels();
         $total = '0.0000';
@@ -132,6 +143,7 @@ class OperationsController extends Controller
             'total' => $total,
             'active' => $plan->isActive(),
             'errors' => $plan->integrityErrors(),
+            'pools' => $this->packagePools($policy),
         ]);
     }
 
@@ -151,21 +163,6 @@ class OperationsController extends Controller
                 fn (string $type): string => Package::TYPES[$type] ?? $type,
                 ReferralLevelEligibility::QUALIFYING_PACKAGE_TYPES
             ),
-        ]);
-    }
-
-    public function reports(string $report): View
-    {
-        abort_unless(in_array($report, ['members', 'packages', 'payments', 'earnings'], true), 404);
-
-        return view('admin.reports.catalog', [
-            'report' => $report,
-            'memberCount' => Member::query()->count(),
-            'packageCount' => Package::query()->count(),
-            'pendingPayments' => PackagePurchase::query()->where('status', PackagePurchase::PENDING)->count(),
-            'approvedPayments' => PackagePurchase::query()->where('status', PackagePurchase::APPROVED)->count(),
-            'roiCount' => RoiTransaction::query()->count(),
-            'levelCount' => LevelCommissionTransaction::query()->count(),
         ]);
     }
 
@@ -199,5 +196,37 @@ class OperationsController extends Controller
             'working' => bcadd((string) ($totals->working_total ?? '0'), '0', 4),
             'activation' => bcadd((string) ($totals->activation_total ?? '0'), '0', 4),
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function packagePools(PackageIncomePolicy $policy): array
+    {
+        $pools = [];
+        foreach (array_keys(config('deltasupport.package_income.packages', [])) as $code) {
+            $definition = $policy->definition((string) $code);
+            if ($definition === null || $definition['commission_days'] === null) {
+                continue;
+            }
+            $levels = [];
+            $sum = '0.0000';
+            foreach (CommissionPlan::RATE_BY_LEVEL as $level => $rate) {
+                $amount = $policy->levelAmount($definition['commission_pool'], (int) $level);
+                $levels[] = ['level' => $level, 'rate' => $rate, 'amount' => $amount];
+                $sum = bcadd($sum, (string) $amount, 4);
+            }
+            $pools[] = [
+                'code' => (string) $code,
+                'name' => Package::query()->where('code', $code)->value('name') ?: (string) $code,
+                'pool' => $definition['commission_pool'],
+                'days' => $definition['commission_days'],
+                'duration_total' => bcmul($definition['commission_pool'], (string) $definition['commission_days'], 4),
+                'levels' => $levels,
+                'sum' => $sum,
+            ];
+        }
+
+        return $pools;
     }
 }

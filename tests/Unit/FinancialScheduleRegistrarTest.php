@@ -31,6 +31,24 @@ class FinancialScheduleRegistrarTest extends TestCase
         $this->assertSame([], $this->scheduledCommands($schedule));
     }
 
+    public function test_package_income_schedule_is_prepared_and_not_registered(): void
+    {
+        $registered = new Schedule;
+        app(FinancialScheduleRegistrar::class)->register($registered);
+        $this->assertSame([], $registered->events());
+
+        $prepared = new Schedule;
+        app(FinancialScheduleRegistrar::class)->preparePackageIncome($prepared);
+        $event = $prepared->events()[0];
+
+        $this->assertStringContainsString('package-income:accrue', (string) $event->command);
+        $this->assertSame('10 0 * * *', $event->expression);
+        $this->assertSame('Asia/Kolkata', $event->timezone);
+        $this->assertTrue($event->withoutOverlapping);
+        $this->assertTrue($event->onOneServer);
+        $this->assertFalse(config('deltasupport.package_income.enabled'));
+    }
+
     /**
      * @return list<string>
      */

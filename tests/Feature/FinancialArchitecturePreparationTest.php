@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\CommissionPlanLevel;
 use App\Models\Invoice;
-use App\Models\LevelCommission;
 use App\Models\Member;
 use App\Models\Package;
 use App\Models\PackageIncomeTerm;
@@ -13,7 +12,6 @@ use App\Models\RoiTransaction;
 use App\Models\User;
 use App\Services\CommissionPlan;
 use App\Services\FinancialScheduleRegistrar;
-use App\Services\LevelCommissionRateResolver;
 use App\Services\PackageIncomeTermRecorder;
 use App\Services\PackagePurchaseService;
 use App\Services\ReferralLevelEligibility;
@@ -51,9 +49,10 @@ class FinancialArchitecturePreparationTest extends TestCase
         }
         $this->assertSame('100.0000', $total);
 
-        $this->assertSame(32, LevelCommission::query()->count());
-        $this->assertSame('1.0000', LevelCommissionRateResolver::forLevel(1));
-        $this->assertSame('0.2000', LevelCommissionRateResolver::forLevel(32));
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('level_commissions'));
+        $this->assertSame(32, \Illuminate\Support\Facades\DB::table('level_commissions')->count());
+        $this->assertFalse(class_exists(\App\Services\LevelCommissionRateResolver::class));
+        $this->assertFalse(class_exists(\App\Services\LevelCommissionGenerationService::class));
     }
 
     public function test_eligibility_counts_distinct_direct_members_with_an_approved_qualifying_package(): void
@@ -174,7 +173,7 @@ class FinancialArchitecturePreparationTest extends TestCase
         $this->assertSame([], $schedule->events());
         $this->assertFalse(LegacyFinancialActions::enabled());
 
-        foreach (['roi:generate', 'commission:generate-level', 'rank:advance', 'financial:cycle'] as $command) {
+        foreach (['roi:generate', 'rank:advance', 'financial:cycle'] as $command) {
             $this->artisan($command)
                 ->expectsOutputToContain(LegacyFinancialActions::DISABLED_MESSAGE)
                 ->assertExitCode(1);

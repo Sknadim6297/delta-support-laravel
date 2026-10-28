@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Member;
 use App\Http\Controllers\Controller;
 use App\Models\LevelCommissionTransaction;
 use App\Models\Member;
+use App\Models\PackageLevelAccrual;
+use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
 use App\Services\FinancialHistoryQuery;
 use App\Services\ReferralLevelEligibility;
@@ -19,8 +21,10 @@ class WalletController extends Controller
 
         return view('member.wallets.overview', [
             'member' => $member,
-            'roiCount' => RoiTransaction::query()->where('member_id', $member->member_id)->count(),
-            'levelCount' => LevelCommissionTransaction::query()->where('member_id', $member->member_id)->count(),
+            'roiCount' => RoiTransaction::query()->where('member_id', $member->member_id)->count()
+                + PackageRoiAccrual::query()->where('member_id', $member->member_id)->count(),
+            'levelCount' => LevelCommissionTransaction::query()->where('member_id', $member->member_id)->count()
+                + PackageLevelAccrual::query()->where('member_id', $member->member_id)->count(),
         ]);
     }
 
@@ -36,7 +40,9 @@ class WalletController extends Controller
             'balance' => $member->{$column},
             'count' => $wallet === 'roi'
                 ? RoiTransaction::query()->where('member_id', $member->member_id)->count()
-                : LevelCommissionTransaction::query()->where('member_id', $member->member_id)->count(),
+                    + PackageRoiAccrual::query()->where('member_id', $member->member_id)->count()
+                : LevelCommissionTransaction::query()->where('member_id', $member->member_id)->count()
+                    + PackageLevelAccrual::query()->where('member_id', $member->member_id)->count(),
         ]);
     }
 

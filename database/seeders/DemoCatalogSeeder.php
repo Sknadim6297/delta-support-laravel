@@ -22,11 +22,29 @@ class DemoCatalogSeeder extends Seeder
     {
         $this->call(RankSeeder::class);
         $admin = $this->admin();
-        $tour = $this->package('DEMO-COAST', [
+        $this->package('VERIFY-1', [
             'package_type' => Package::TYPE_TOUR,
+            'name' => 'Verification Package',
+            'description' => 'A verification package. ROI and level income stay disabled.',
+            'price_usd' => '100.0000',
+            'denomination' => 'USD',
+            'tour_title' => 'Verification',
+            'tour_details' => 'Demo itinerary stored for the package catalog.',
+            'destinations' => 'Local verification visit',
+            'duration' => '1 day',
+            'benefits' => 'Membership verification',
+            'inclusions' => 'Documented visit',
+            'exclusions' => 'Flights and personal expenses',
+            'roi_eligible' => false,
+            'level_commission_eligible' => false,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $coastal = $this->package('DEMO-COAST', [
+            'package_type' => Package::TYPE_TOUR_ROI,
             'name' => 'Coastal Weekend',
             'description' => 'A short demo tour package for local testing.',
-            'price_usd' => '49.0000',
+            'price_usd' => '100.0000',
             'denomination' => 'USDT',
             'tour_title' => 'Coastal weekend',
             'tour_details' => 'Demo itinerary stored for the package catalog.',
@@ -35,16 +53,16 @@ class DemoCatalogSeeder extends Seeder
             'benefits' => 'Hotel stay and local transfers',
             'inclusions' => 'Breakfast and sightseeing',
             'exclusions' => 'Flights and personal expenses',
-            'roi_eligible' => false,
-            'level_commission_eligible' => false,
+            'roi_eligible' => true,
+            'level_commission_eligible' => true,
             'is_active' => true,
             'sort_order' => 20,
         ]);
         $retreat = $this->package('DEMO-HILLS', [
             'package_type' => Package::TYPE_TOUR_ROI,
             'name' => 'Hill Station Retreat',
-            'description' => 'A demo tour package. It does not credit ROI or commission.',
-            'price_usd' => '99.0000',
+            'description' => 'A demo tour package for local testing.',
+            'price_usd' => '1000.0000',
             'denomination' => 'USDT',
             'tour_title' => 'Hill station retreat',
             'tour_details' => 'Demo itinerary stored for the package catalog.',
@@ -66,7 +84,7 @@ class DemoCatalogSeeder extends Seeder
         $pending = $this->member('ST910102', 'Demo Pending', 'demo-pending-910102@example.test', '9101020002');
         $this->member('ST910103', 'Demo Visitor', 'demo-visitor-910103@example.test', '9101030003');
 
-        $this->purchase($active, $tour, '11111111-1111-4111-8111-000000910101', 'DEMOAPPROVED910101', true, $admin);
+        $this->purchase($active, $coastal, '11111111-1111-4111-8111-000000910101', 'DEMOAPPROVED910101', true, $admin);
         $this->purchase($pending, $retreat, '11111111-1111-4111-8111-000000910102', 'DEMOPENDING910102', false, $admin);
     }
 
@@ -98,9 +116,20 @@ class DemoCatalogSeeder extends Seeder
     private function package(string $code, array $attributes): Package
     {
         $package = Package::query()->firstOrCreate(['code' => $code], $attributes);
-        $package->update(['image_path' => $this->cover($code, $package->name)]);
+        $updates = [
+            'package_type' => $attributes['package_type'] ?? $package->package_type,
+            'roi_eligible' => (bool) ($attributes['roi_eligible'] ?? false),
+            'level_commission_eligible' => (bool) ($attributes['level_commission_eligible'] ?? false),
+        ];
+        if ($package->wasRecentlyCreated || filled($package->image_path)) {
+            $updates['image_path'] = $this->cover($code, $package->name);
+        }
+        if ($package->description === 'A demo tour package. It does not credit ROI or commission.' && isset($attributes['description'])) {
+            $updates['description'] = $attributes['description'];
+        }
+        $package->fill($updates)->save();
 
-        return $package;
+        return $package->refresh();
     }
 
     private function paymentSettings(): void

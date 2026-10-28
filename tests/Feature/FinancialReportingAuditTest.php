@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\ActivationWalletTransaction;
-use App\Models\LevelCommission;
 use App\Models\Member;
 use App\Models\RoiTransaction;
 use App\Models\User;
@@ -29,9 +28,9 @@ class FinancialReportingAuditTest extends TestCase
 
         $report = app(WalletBalanceReconciliation::class)->inspect($member);
 
-        $this->assertFalse($report['roi']['reconciled']);
+        $this->assertTrue($report['roi']['reconciled']);
         $this->assertSame('0.0000', $report['roi']['variance']);
-        $this->assertStringContainsString('not a completed reconciliation', $report['roi']['warning']);
+        $this->assertSame('0.0000', $report['roi']['debits']);
         $this->assertFalse($report['working']['reconciled']);
         $this->assertSame('5.0000', $report['working']['variance']);
         $this->assertTrue($report['activation']['reconciled']);
@@ -75,8 +74,9 @@ class FinancialReportingAuditTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.finance.roi-history'))
             ->assertOk()
-            ->assertSeeText('shown as USDT')
-            ->assertSeeText('No ROI records yet.');
+            ->assertSeeText('ROI History')
+            ->assertDontSeeText('Existing investment records only')
+            ->assertSeeText('No ROI records found.');
 
         $this->actingAs($admin)
             ->get(route('admin.packages.index'))
@@ -92,14 +92,11 @@ class FinancialReportingAuditTest extends TestCase
         $owner = $this->member('STAUD004', '1.0000', '2.0000', '3.0000');
         $other = $this->member('STAUD005');
         $this->roi($other, 'ROI-HIDDEN-1', '8.0000');
-        $rate = LevelCommission::query()->firstOrFail();
 
         $this->actingAs($admin)->get(route('admin.activation-wallet.credit-entry'))
             ->assertOk()
             ->assertSeeText('This legacy financial action is disabled');
-        $this->actingAs($admin)->get(route('admin.level-commission.statement'))
-            ->assertOk()
-            ->assertSeeText('This legacy financial action is disabled');
+        $this->actingAs($admin)->get('/admin/level-commission/statement')->assertNotFound();
         $this->actingAs($admin)->get(route('admin.report.roi-report'))
             ->assertOk()
             ->assertSeeText('Total Amount (USDT)');
@@ -107,7 +104,7 @@ class FinancialReportingAuditTest extends TestCase
         $this->actingAs($admin)->post(route('admin.activation-wallet.store-credit-entry'), [])->assertForbidden();
         $this->actingAs($admin)->post(route('admin.activation-wallet.store-debit-entry'), [])->assertForbidden();
         $this->actingAs($admin)->post(route('admin.investments.store'), [])->assertForbidden();
-        $this->actingAs($admin)->post(route('admin.level-commission.statement.update', $rate), ['percentage' => '25'])->assertForbidden();
+        $this->actingAs($admin)->post('/admin/level-commission/statement/1', ['percentage' => '25'])->assertNotFound();
 
         $this->withSession(['member_context_id' => $owner->member_id])
             ->post(route('member.investments.store'), [])
@@ -119,7 +116,7 @@ class FinancialReportingAuditTest extends TestCase
         $this->withSession(['member_context_id' => $owner->member_id])
             ->get(route('member.income.roi', ['q' => 'ROI-HIDDEN-1']))
             ->assertOk()
-            ->assertSeeText('No ROI records yet.')
+            ->assertSeeText('No ROI records found.')
             ->assertDontSeeText('ROI-HIDDEN-1');
 
         $this->actingAs($outsider)->get(route('admin.report.roi-report'))->assertForbidden();
@@ -129,7 +126,8 @@ class FinancialReportingAuditTest extends TestCase
         $this->assertSame('1.0000', $owner->activation_wallet_amount);
         $this->assertSame('2.0000', $owner->working_wallet_amount);
         $this->assertSame('3.0000', $owner->roi_wallet_amount);
-        $this->assertSame('1.0000', $rate->fresh()->percentage);
+        $this->assertSame(0, bccomp((string) \Illuminate\Support\Facades\DB::table('level_commissions')->where('level', 1)->value('percentage'), '1.0000', 4));
+        $this->assertSame('25.0000', \App\Models\CommissionPlanLevel::query()->where('level', 1)->value('percentage'));
     }
 
     private function member(string $memberId, string $activation = '0.0000', string $working = '0.0000', string $roi = '0.0000'): Member

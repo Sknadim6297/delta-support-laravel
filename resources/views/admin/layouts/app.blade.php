@@ -35,7 +35,7 @@
             <div class="container-fluid">
                 <div class="lh-page-title">
                     <div class="lh-breadcrumb">
-                        <h5>@yield('page-title', 'Admin')</h5>
+                        <h1>@yield('page-title', 'Admin')</h1>
                         <ul>
                             <li><a href="{{ route('dashboard') }}">Home</a></li>
                             <li>@yield('page-title', 'Admin')</li>

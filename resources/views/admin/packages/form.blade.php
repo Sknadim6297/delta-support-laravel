@@ -6,7 +6,7 @@
 <div class="ds-catalog">
     <x-ui.page-header
         :title="$package->exists ? 'Edit Package' : 'Add Package'"
-        lead="New packages are priced in USDT. Saving an existing package keeps its stored denomination. Earlier purchases keep their own snapshot. ROI and level commission stay inactive."
+        lead="New packages are priced in USDT. Saving an existing package keeps its stored denomination. Earlier purchases keep their own snapshot. Saving this form does not credit ROI or level commission."
     />
     <form class="ds-settings-form" method="POST" action="{{ $package->exists ? route('admin.packages.update', $package) : route('admin.packages.store') }}" enctype="multipart/form-data">
         @csrf
@@ -45,7 +45,7 @@
                 <label class="ds-check"><input type="checkbox" name="remove_image" value="1"> Remove current image</label>
             @endif
             <label><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $package->is_active))> Active</label>
-            <p>Tour + ROI and Premium types only reserve future ROI and level-commission metadata. They do not credit income.</p>
+            <p>Daily ROI and level-commission amounts come from the package income configuration. Saving this form does not credit income.</p>
             @if($errors->any())<div>{{ $errors->first() }}</div>@endif
         </div>
         <div>

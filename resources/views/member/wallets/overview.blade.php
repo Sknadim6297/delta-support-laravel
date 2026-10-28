@@ -1,11 +1,9 @@
 @extends('member.layouts.app')
 @section('title', 'My Wallets')
+@section('page-title', 'My Wallets')
 @section('content')
 <div>
-    <header>
-        <h1>My Wallets</h1>
-        <p>{{ $member->member_id }} · Wallet balances are USDT. ROI and level income are not being credited.</p>
-    </header>
+    <p class="ds-lead">{{ $member->member_id }} · Wallet balances are USDT. ROI and level income are not being credited.</p>
     <div>
         <article>
             <p>ROI Wallet</p>

@@ -44,10 +44,13 @@
 
                 <li class="lh-sb-item-separator"></li>
                 <li class="lh-sb-title condense">Finance</li>
-                <x-navigation.lux-group icon="ri-line-chart-line" label="ROI Management" :open="request()->routeIs('admin.finance.roi-history', 'admin.finance.roi-plans', 'admin.finance.roi-schedule')">
+                <x-navigation.lux-group icon="ri-line-chart-line" label="ROI Management" :open="request()->routeIs('admin.finance.roi-history', 'admin.finance.roi-plans', 'admin.finance.roi-schedule', 'admin.finance.income-test')">
                     <x-navigation.lux-link :href="route('admin.finance.roi-plans')" :active="request()->routeIs('admin.finance.roi-plans')">ROI Plans</x-navigation.lux-link>
-                    <x-navigation.lux-link :href="route('admin.finance.roi-schedule')" :active="request()->routeIs('admin.finance.roi-schedule')">ROI Schedule</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.finance.roi-schedule')" :active="request()->routeIs('admin.finance.roi-schedule')">Income Control</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.finance.roi-history')" :active="request()->routeIs('admin.finance.roi-history')">ROI History</x-navigation.lux-link>
+                    @unless (app()->environment('production'))
+                        <x-navigation.lux-link :href="route('admin.finance.income-test')" :active="request()->routeIs('admin.finance.income-test')">Income Scheduler Testing</x-navigation.lux-link>
+                    @endunless
                 </x-navigation.lux-group>
                 <x-navigation.lux-group icon="ri-node-tree" label="Level Income" :open="request()->routeIs('admin.finance.level-income', 'admin.finance.eligibility', 'admin.finance.commission-settings', 'admin.finance.level-unlock-rules')">
                     <x-navigation.lux-link :href="route('admin.finance.commission-settings')" :active="request()->routeIs('admin.finance.commission-settings')">Commission Settings</x-navigation.lux-link>

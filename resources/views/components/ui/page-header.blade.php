@@ -1,19 +1,30 @@
-@props(['title', 'kicker' => null, 'lead' => null])
+@props(['title' => null, 'kicker' => null, 'lead' => null, 'heading' => false])
 
+@php
+    $showHeading = $heading && filled($title);
+    $hasLead = filled($lead);
+    $hasActions = isset($actions) && ! $actions->isEmpty();
+    $hasBreadcrumb = isset($breadcrumb) && ! $breadcrumb->isEmpty();
+@endphp
+
+@if ($showHeading || $hasLead || $hasActions || $hasBreadcrumb)
 <header {{ $attributes->merge(['class' => 'ds-page-head']) }}>
     <div class="ds-page-head-copy">
-        @isset($breadcrumb)
+        @if ($hasBreadcrumb)
             {{ $breadcrumb }}
-        @endisset
-        @if ($kicker)
-            <p class="ds-kicker">{{ $kicker }}</p>
         @endif
-        <h1>{{ $title }}</h1>
-        @if ($lead)
+        @if ($showHeading)
+            @if ($kicker)
+                <p class="ds-kicker">{{ $kicker }}</p>
+            @endif
+            <h2>{{ $title }}</h2>
+        @endif
+        @if ($hasLead)
             <p class="ds-lead">{{ $lead }}</p>
         @endif
     </div>
-    @isset($actions)
+    @if ($hasActions)
         <div class="ds-actions">{{ $actions }}</div>
-    @endisset
+    @endif
 </header>
+@endif

@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 class CommissionPlan
 {
     /**
-     * Approved chart for a future engine. Stored inactive and not read by ROI or commission generation.
+     * Approved 20-level chart. Package accrual reads these rates. Stored plan rows stay inactive.
      *
      * @var array<int, string>
      */

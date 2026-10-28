@@ -28,9 +28,9 @@
                     </td>
                 @endif
                 <td>{{ $row->reference }}</td>
-                <td>{{ $kind === 'roi' ? $row->roi_date?->format('d M Y') : ($row->business_date?->format('d M Y') ?? $row->created_at?->format('d M Y')) }}</td>
+                <td>{{ $kind === 'roi' ? ($row->roi_date instanceof \DateTimeInterface ? $row->roi_date->format('d M Y') : ($row->roi_date ? \Carbon\CarbonImmutable::parse(substr((string) $row->roi_date, 0, 10))->format('d M Y') : '')) : ($row->business_date instanceof \DateTimeInterface ? $row->business_date->format('d M Y') : ($row->business_date ? \Carbon\CarbonImmutable::parse(substr((string) $row->business_date, 0, 10))->format('d M Y') : ($row->created_at?->format('d M Y') ?? ''))) }}</td>
                 <td class="ds-money">{{ \App\Support\MoneyDisplay::usdt($row->income_amount) }}</td>
-                <td>Not linked to a package</td>
+                <td>{{ $row->package_label ?? 'Not linked to a package' }}</td>
                 <td>
                     @php($statusLabel = $kind === 'roi' ? ucfirst((string) ($row->status ?: 'recorded')) : 'Recorded')
                     <x-ui.badge :tone="$statusLabel === 'Recorded' ? 'brand' : 'muted'">{{ $statusLabel }}</x-ui.badge>
@@ -43,7 +43,7 @@
         @empty
             <tr>
                 <td class="ds-empty-cell" colspan="{{ ($audience === 'admin' ? 6 : 5) + ($kind === 'level' ? 2 : 0) }}">
-                    {{ $kind === 'roi' ? 'No ROI records yet.' : 'No level income records yet.' }}
+                    <span>{{ $kind === 'roi' ? 'No ROI records found.' : 'No level income records found.' }}</span>
                 </td>
             </tr>
         @endforelse

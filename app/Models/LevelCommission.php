@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Retained historical 32-level rate table. It is not read by the Delta Support 20-level plan.
+ */
 class LevelCommission extends Model
 {
     use HasFactory;

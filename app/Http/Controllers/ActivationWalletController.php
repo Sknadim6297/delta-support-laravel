@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivationWalletTransaction;
 use App\Models\Member;
+use App\Services\WalletLedgerPoster;
+use App\Support\WalletLedgerDirection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ActivationWalletController extends Controller
@@ -60,13 +63,24 @@ class ActivationWalletController extends Controller
             $member->activation_wallet_amount = $activationBalance + $amount;
             $member->save();
 
+            $reference = $this->generateReference('AW');
+            app(WalletLedgerPoster::class)->append(
+                WalletLedgerDirection::DEBIT,
+                $member->member_id,
+                'working',
+                number_format($amount, 4, '.', ''),
+                $reference,
+                (string) Str::uuid(),
+                'Transfer to Activation Wallet'
+            );
+
             return ActivationWalletTransaction::create([
                 'member_id' => $member->member_id,
                 'member_name' => $member->member_name,
                 'amount' => $amount,
                 'type' => 'credit',
                 'remarks' => 'Transfer from Working Wallet',
-                'reference' => $this->generateReference('AW'),
+                'reference' => $reference,
             ]);
         });
 

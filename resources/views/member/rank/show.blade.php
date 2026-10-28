@@ -1,14 +1,11 @@
 @extends('member.layouts.app')
 
 @section('title', 'My Rank')
+@section('page-title', 'My Rank')
 
 @section('content')
     <main>
         <div>
-            <div>
-                <h4>My Rank</h4>
-            </div>
-
             <div>
                 <div>
                     <div>

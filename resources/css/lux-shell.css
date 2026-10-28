@@ -150,15 +150,22 @@
     cursor: pointer;
 }
 
-.ds-lux-title {
-    margin: 0;
-    overflow: hidden;
+.wrapper .lh-page-title {
+    align-items: flex-end;
+    padding-bottom: 8px;
+}
+
+.wrapper .lh-page-title .lh-breadcrumb h1 {
+    margin: 0 0 2px;
     color: #1d2531;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
     line-height: 1.3;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+}
+
+.wrapper .lh-main-content .ds-content {
+    padding-top: 8px;
 }
 
 .ds-lux-menu {

@@ -1,5 +1,6 @@
 @extends('member.layouts.app')
 @section('title', 'Withdraw USDT')
+@section('page-title', 'Withdraw USDT')
 @section('content')
 @php
     $walletLabels = ['roi' => 'ROI Wallet', 'working' => 'Working Wallet', 'activation' => 'Activation Wallet'];
@@ -11,10 +12,7 @@
     };
 @endphp
 <div>
-    <header>
-        <h1>Withdraw USDT</h1>
-        <p>Balances are stored USDT amounts. This screen does not send a request, reserve funds, or calculate a payout.</p>
-    </header>
+    <p class="ds-lead">Balances are stored USDT amounts. This screen does not send a request, reserve funds, or calculate a payout.</p>
     <div>
         @foreach (['roi' => $member->roi_wallet_amount, 'working' => $member->working_wallet_amount, 'activation' => $member->activation_wallet_amount] as $wallet => $balance)
             <article>

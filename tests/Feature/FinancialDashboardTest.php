@@ -34,13 +34,13 @@ class FinancialDashboardTest extends TestCase
         $this->withSession(['member_context_id' => $member->member_id])
             ->get(route('member.income.roi'))
             ->assertOk()
-            ->assertSeeText('No ROI records yet.')
+            ->assertSeeText('No ROI records found.')
             ->assertDontSeeText('ROI-OTHER-1');
 
         $this->withSession(['member_context_id' => $member->member_id])
             ->get(route('member.income.level'))
             ->assertOk()
-            ->assertSeeText('No level income records yet.');
+            ->assertSeeText('No level income records found.');
 
         $member->refresh();
         $this->assertSame('1.5000', $member->activation_wallet_amount);

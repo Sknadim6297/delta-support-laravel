@@ -11,7 +11,6 @@
     use App\Http\Controllers\genealogyController;
     use App\Http\Controllers\SupportController;
     use App\Http\Controllers\ReportController;
-    use App\Http\Controllers\LevelCommissionController;
     use App\Http\Controllers\RankController;
     use App\Http\Controllers\AdminComingSoonController;
     use App\Http\Controllers\Admin\CompanySettingController;
@@ -245,8 +244,20 @@
             Route::get('/admin/finance/eligibility', 'eligibility')->name('admin.finance.eligibility');
             Route::get('/admin/wallets/{wallet}', 'wallet')->where('wallet', 'roi|working|activation')->name('admin.wallets.show');
             Route::get('/admin/tours', 'tours')->name('admin.tours.index');
-            Route::get('/admin/catalog-reports/{report}', 'reports')->where('report', 'members|packages|payments|earnings')->name('admin.catalog-reports.show');
         });
+
+        Route::get('/admin/catalog-reports/{report}/export', [\App\Http\Controllers\Admin\CatalogReportController::class, 'export'])
+            ->where('report', 'members|packages|payments|earnings')
+            ->middleware('throttle:10,1')
+            ->name('admin.catalog-reports.export');
+        Route::get('/admin/catalog-reports/members/{member}', [\App\Http\Controllers\Admin\CatalogReportController::class, 'member'])
+            ->name('admin.catalog-reports.members.show');
+        Route::get('/admin/catalog-reports/{report}', [\App\Http\Controllers\Admin\CatalogReportController::class, 'show'])
+            ->where('report', 'members|packages|payments|earnings')
+            ->name('admin.catalog-reports.show');
+
+        Route::get('/admin/finance/income-test', [\App\Http\Controllers\Admin\IncomeSchedulerTestController::class, 'index'])->name('admin.finance.income-test');
+        Route::post('/admin/finance/income-test', [\App\Http\Controllers\Admin\IncomeSchedulerTestController::class, 'preview'])->name('admin.finance.income-test.preview');
 
         /*
         |--------------------------------------------------------------------------
@@ -553,16 +564,6 @@
                     'exportAppliedTickets'
                 )->name('applied-tickets.export');
             });
-
-        Route::get(
-            '/admin/level-commission/statement',
-            [LevelCommissionController::class, 'statement']
-        )->name('admin.level-commission.statement');
-
-        Route::post(
-            '/admin/level-commission/statement/{levelCommission}',
-            [LevelCommissionController::class, 'update']
-        )->middleware('legacy.financial')->name('admin.level-commission.statement.update');
 
             /* 
         |--------------------------------------------------------------------------

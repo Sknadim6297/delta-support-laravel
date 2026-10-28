@@ -64,8 +64,10 @@
                 </x-ui.card>
             @endif
 
-            @if($package->reservesFutureIncome())
-                <x-ui.alert type="warning">ROI and level commission are reserved for a later review. This package does not credit income.</x-ui.alert>
+            @if($incomeRule && $incomeRule['commission_days'])
+                <x-ui.alert type="warning">Daily ROI {{ $incomeRule['roi_daily'] }} USDT for {{ $incomeRule['roi_days'] }} days. Level commission pool {{ $incomeRule['commission_pool'] }} USDT for {{ $incomeRule['commission_days'] }} days. The first accrual is 10 calendar days after approval. Generation is disabled, so this page does not credit a wallet.</x-ui.alert>
+            @elseif($package->reservesFutureIncome())
+                <x-ui.alert type="warning">No daily ROI or level-commission amount is stored for this package. It does not credit income.</x-ui.alert>
             @endif
         </div>
 

@@ -1,5 +1,4 @@
 @php
-    $pageTitle = $luxTitle ?? ($luxFallback ?? 'Panel');
     $initial = strtoupper(substr((string) ($luxName ?? 'U'), 0, 1));
 @endphp
 <header class="lh-header ds-lux-bar">
@@ -8,7 +7,6 @@
             <button type="button" class="lh-toggle-sidebar" aria-label="Toggle navigation">
                 <i class="ri-menu-line"></i>
             </button>
-            <p class="ds-lux-title">{{ $pageTitle }}</p>
         </div>
         <div class="ds-lux-bar-end">
             <div class="ds-lux-menu" data-lux-drop>

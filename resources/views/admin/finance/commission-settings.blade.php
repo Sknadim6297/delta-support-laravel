@@ -6,7 +6,7 @@
     <x-ui.page-header
         kicker="Level Income"
         title="Commission Settings"
-        lead="Stored Delta Support plan only. The plan stays inactive, and this page does not generate level income."
+        lead="Stored Delta Support plan only. The plan stays inactive. Hill Station Retreat commission duration is 400 days. This page does not generate level income."
     />
     <div class="ds-stat-grid">
         <x-ui.stat label="Levels stored" :value="$levels->count()" hint="Rows in the stored plan" />
@@ -42,5 +42,34 @@
             </tbody>
         </table>
     </x-ui.table>
+    @foreach ($pools as $pool)
+        <x-ui.card :title="$pool['name'].' daily distribution'" subtitle="Pool {{ $pool['pool'] }} USDT for {{ $pool['days'] }} days. Full pool {{ $pool['duration_total'] }} USDT. Actual payouts still require an eligible sponsor and unlocked levels. Generation is disabled.">
+            <x-ui.table>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Level</th>
+                            <th class="ds-money">Rate</th>
+                            <th class="ds-money">Daily USDT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach ($pool['levels'] as $level)
+                        <tr>
+                            <td>{{ $level['level'] }}</td>
+                            <td class="ds-money">{{ $level['rate'] }}%</td>
+                            <td class="ds-money">{{ $level['amount'] }}</td>
+                        </tr>
+                    @endforeach
+                        <tr>
+                            <td>Total</td>
+                            <td class="ds-money">100.0000%</td>
+                            <td class="ds-money">{{ $pool['sum'] }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </x-ui.table>
+        </x-ui.card>
+    @endforeach
 </div>
 @endsection

@@ -1,11 +1,9 @@
 @extends('member.layouts.app')
 @section('title', 'My Referral Eligibility')
+@section('page-title', 'My Referral Eligibility')
 @section('content')
 <div>
-    <header>
-        <h1>My Referral Eligibility</h1>
-        <p>Levels follow your qualifying direct members. Commission is not being credited.</p>
-    </header>
+    <p class="ds-lead">Levels follow your qualifying direct members. Commission is not being credited.</p>
     <div>
         <article><p>Direct referrals</p><p>{{ $directCount }}</p></article>
         <article><p>Qualifying directs</p><p>{{ $qualifyingCount }}</p></article>
@@ -37,7 +35,7 @@
                     <td>{{ in_array($direct->member_id, $qualifyingIds, true) ? 'Yes' : 'No' }}</td>
                 </tr>
             @empty
-                <tr><td colspan="3">No direct referrals yet.</td></tr>
+                <tr><td class="ds-empty-cell" colspan="3">No direct referrals yet.</td></tr>
             @endforelse
             </tbody>
         </table>

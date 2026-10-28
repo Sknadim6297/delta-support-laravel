@@ -129,13 +129,27 @@ class ReferralLevelEligibility
         return $unlockedLevels.' of 20 levels unlocked';
     }
 
-    private function qualifyingPurchaseConstraint($query): void
+    public function qualifyingPurchaseConstraint($query): void
     {
+        $codes = array_keys(config('deltasupport.package_income.packages', []));
         $query->selectRaw('1')
             ->from('package_purchases')
             ->whereColumn('package_purchases.member_id', 'members.member_id')
             ->where('package_purchases.status', PackagePurchase::APPROVED)
-            ->whereIn('package_purchases.package_type', self::QUALIFYING_PACKAGE_TYPES);
+            ->where(function ($purchase) use ($codes): void {
+                $purchase->whereIn('package_purchases.package_type', self::QUALIFYING_PACKAGE_TYPES);
+                if ($codes !== []) {
+                    $purchase->orWhere(function ($named) use ($codes): void {
+                        $named->whereIn('package_purchases.package_code', $codes)
+                            ->whereExists(function ($package): void {
+                                $package->selectRaw('1')
+                                    ->from('packages')
+                                    ->whereColumn('packages.id', 'package_purchases.package_id')
+                                    ->where('packages.level_commission_eligible', true);
+                            });
+                    });
+                }
+            });
     }
 
     public function levelsForCount(int $qualifyingDirectCount): int

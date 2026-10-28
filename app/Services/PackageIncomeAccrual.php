@@ -1,0 +1,337 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Member;
+use App\Models\Package;
+use App\Models\PackageLevelAccrual;
+use App\Models\PackagePurchase;
+use App\Models\PackageRoiAccrual;
+use App\Support\WalletLedgerDirection;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use RuntimeException;
+
+class PackageIncomeAccrual
+{
+    public function __construct(
+        private readonly PackageIncomePolicy $policy,
+        private readonly ReferralLevelEligibility $eligibility,
+        private readonly CommissionPlan $plan,
+        private readonly WalletLedgerPoster $ledger,
+    ) {
+    }
+
+    /**
+     * Preview one business date. This never writes.
+     *
+     * @return array{date: string, enabled: bool, roi: list<array<string, string>>, commissions: list<array<string, string>>, skipped: list<string>}
+     */
+    public function preview(string $businessDate): array
+    {
+        $date = $this->date($businessDate);
+        $plan = $this->plan($date);
+
+        return [
+            'date' => $date->toDateString(),
+            'enabled' => $this->policy->enabled(),
+            'roi' => $plan['roi'],
+            'commissions' => $plan['commissions'],
+            'skipped' => $plan['skipped'],
+        ];
+    }
+
+    /**
+     * Credit one business date. Refuses while package income is disabled.
+     * It does not walk earlier dates.
+     *
+     * @return array{credited_roi: int, credited_commissions: int, skipped: list<string>}
+     */
+    public function accrue(string $businessDate): array
+    {
+        if (! $this->policy->enabled()) {
+            throw new RuntimeException('Package income generation is disabled. No wallet was credited.');
+        }
+
+        $lock = Cache::lock('package-income-'.$businessDate, 120);
+        if (! $lock->get()) {
+            throw new RuntimeException('Package income for '.$businessDate.' is already running.');
+        }
+
+        try {
+            $plan = $this->plan($this->date($businessDate));
+            $roi = 0;
+            $commissions = 0;
+            $chunk = max(1, (int) config('deltasupport.package_income.chunk_size', 100));
+            foreach (array_chunk($plan['roi'], $chunk) as $rows) {
+                foreach ($rows as $row) {
+                    if ($this->creditRoi($row)) {
+                        $roi++;
+                    }
+                }
+            }
+            foreach (array_chunk($plan['commissions'], $chunk) as $rows) {
+                foreach ($rows as $row) {
+                    if ($this->creditCommission($row)) {
+                        $commissions++;
+                    }
+                }
+            }
+
+            return [
+                'credited_roi' => $roi,
+                'credited_commissions' => $commissions,
+                'skipped' => $plan['skipped'],
+            ];
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * @return array{roi: list<array<string, string>>, commissions: list<array<string, string>>, skipped: list<string>}
+     */
+    private function plan(CarbonImmutable $date): array
+    {
+        $roi = [];
+        $commissions = [];
+        $skipped = [];
+        if ($this->plan->integrityErrors() !== []) {
+            $skipped[] = 'The 20-level rate chart failed its integrity check, so no commission was planned.';
+        }
+        $ratesReady = $this->plan->integrityErrors() === [];
+
+        $recipients = [];
+        $chunk = max(1, (int) config('deltasupport.package_income.chunk_size', 100));
+
+        PackagePurchase::query()
+            ->where('status', PackagePurchase::APPROVED)
+            ->whereNotNull('reviewed_at')
+            ->chunkById($chunk, function ($purchases) use (&$roi, &$commissions, &$skipped, &$recipients, $date, $ratesReady): void {
+                $packages = Package::query()->whereIn('id', $purchases->pluck('package_id')->filter()->all())->get()->keyBy('id');
+                foreach ($purchases as $purchase) {
+                    $this->planPurchase($purchase, $packages->get($purchase->package_id), $date, $ratesReady, $roi, $commissions, $skipped, $recipients);
+                }
+            });
+
+        return ['roi' => $roi, 'commissions' => $commissions, 'skipped' => array_values(array_unique($skipped))];
+    }
+
+    /**
+     * @param  list<array<string, string>>  $roi
+     * @param  list<array<string, string>>  $commissions
+     * @param  list<string>  $skipped
+     * @param  array<string, bool>  $recipients
+     */
+    private function planPurchase(PackagePurchase $purchase, ?Package $package, CarbonImmutable $date, bool $ratesReady, array &$roi, array &$commissions, array &$skipped, array &$recipients): void
+    {
+        $definition = $this->policy->definition($purchase->package_code);
+        $first = $this->policy->firstAccrualDate($purchase);
+        if ($definition === null || $first === null) {
+            return;
+        }
+
+        if ($this->policy->roiEligible($purchase, $package) && $this->policy->withinWindow($date, $first, $definition['roi_days'])) {
+            $count = PackageRoiAccrual::query()->where('package_purchase_id', $purchase->id)->count();
+            if ($count >= $definition['roi_days']) {
+                $skipped[] = $purchase->reference.' has already reached its ROI duration.';
+            } else {
+                $roi[] = [
+                    'purchase_id' => (string) $purchase->id,
+                    'reference' => 'PROI-'.$purchase->id.'-'.$date->format('Ymd'),
+                    'member_id' => $purchase->member_id,
+                    'package_code' => $purchase->package_code,
+                    'package_name' => $purchase->package_name,
+                    'business_date' => $date->toDateString(),
+                    'amount' => $definition['roi_daily'],
+                ];
+            }
+        }
+
+        if (! $ratesReady || ! $this->policy->levelSourceEligible($purchase, $package)) {
+            if ($definition['commission_days'] === null && $package?->level_commission_eligible) {
+                $skipped[] = $purchase->package_name.' commission duration is not approved.';
+            }
+
+            return;
+        }
+        if (! $this->policy->withinWindow($date, $first, (int) $definition['commission_days'])) {
+            return;
+        }
+
+        $source = Member::query()->where('member_id', $purchase->member_id)->first();
+        if (! $source) {
+            $skipped[] = $purchase->reference.' has no source member record.';
+
+            return;
+        }
+        $this->commissionPlan($source, $purchase, $definition['commission_pool'], $date, $commissions, $skipped, $recipients);
+    }
+
+    /**
+     * @param  list<array<string, string>>  $commissions
+     * @param  list<string>  $skipped
+     * @param  array<string, bool>  $recipients
+     */
+    private function commissionPlan(Member $source, PackagePurchase $purchase, string $pool, CarbonImmutable $date, array &$commissions, array &$skipped, array &$recipients): void
+    {
+        $cursor = $source->sponsor_id;
+        $seen = [$source->member_id => true];
+
+        for ($level = 1; $level <= ReferralLevelEligibility::MAX_LEVELS; $level++) {
+            if (! filled($cursor) || isset($seen[$cursor])) {
+                $skipped[] = 'Sponsor chain stopped at '.$source->member_id.' before level '.$level.'.';
+                break;
+            }
+            $seen[$cursor] = true;
+            if ($cursor === $this->policy->adminRootId()) {
+                $skipped[] = 'Admin root receives no commission.';
+                break;
+            }
+            $sponsor = Member::query()->where('member_id', $cursor)->first();
+            if (! $sponsor) {
+                $skipped[] = 'Sponsor '.$cursor.' has no member record, so no further level was paid.';
+                break;
+            }
+            $next = $sponsor->sponsor_id;
+            $unlocked = $this->eligibility->forMember($sponsor->member_id)['unlocked_levels'];
+            $eligible = $recipients[$sponsor->member_id] ??= $this->recipientEligible($sponsor->member_id);
+            if ($eligible && $unlocked >= $level && $sponsor->member_id !== $this->policy->adminRootId()) {
+                $amount = $this->policy->levelAmount($pool, $level);
+                if ($amount !== null && bccomp($amount, '0', 4) === 1) {
+                    $commissions[] = [
+                        'purchase_id' => (string) $purchase->id,
+                        'reference' => 'PLVL-'.$purchase->id.'-'.$sponsor->member_id.'-'.$date->format('Ymd'),
+                        'member_id' => $sponsor->member_id,
+                        'from_member_id' => $source->member_id,
+                        'from_member_name' => $source->member_name,
+                        'level' => (string) $level,
+                        'package_code' => $purchase->package_code,
+                        'package_name' => $purchase->package_name,
+                        'business_date' => $date->toDateString(),
+                        'pool' => $pool,
+                        'rate' => CommissionPlan::RATE_BY_LEVEL[$level],
+                        'amount' => $amount,
+                    ];
+                }
+            } else {
+                $skipped[] = $sponsor->member_id.' was not paid at level '.$level.'.';
+            }
+            $cursor = $next;
+        }
+    }
+
+    private function recipientEligible(string $memberId): bool
+    {
+        if ($memberId === $this->policy->adminRootId()) {
+            return false;
+        }
+
+        return Member::query()
+            ->where('member_id', $memberId)
+            ->whereExists(function ($query): void {
+                $this->eligibility->qualifyingPurchaseConstraint($query);
+            })
+            ->exists();
+    }
+
+    /**
+     * @param  array<string, string>  $row
+     */
+    private function creditRoi(array $row): bool
+    {
+        return DB::transaction(function () use ($row): bool {
+            $member = Member::query()->where('member_id', $row['member_id'])->lockForUpdate()->first();
+            if (! $member) {
+                return false;
+            }
+            $inserted = DB::table('package_roi_accruals')->insertOrIgnore([
+                'reference' => $row['reference'],
+                'idempotency_key' => $row['purchase_id'].'|'.$row['business_date'],
+                'package_purchase_id' => $row['purchase_id'],
+                'member_id' => $member->member_id,
+                'member_name' => $member->member_name,
+                'package_code' => $row['package_code'],
+                'package_name' => $row['package_name'],
+                'business_date' => $row['business_date'],
+                'amount' => $row['amount'],
+                'status' => 'accrued',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            if ($inserted !== 1) {
+                return false;
+            }
+            $member->roi_wallet_amount = bcadd((string) ($member->roi_wallet_amount ?? '0'), $row['amount'], 4);
+            $member->save();
+            $this->ledger->append(
+                WalletLedgerDirection::CREDIT,
+                $member->member_id,
+                'roi',
+                $row['amount'],
+                $row['reference'],
+                (string) Str::uuid(),
+                'Package ROI accrual',
+                (int) $row['purchase_id']
+            );
+
+            return true;
+        });
+    }
+
+    /**
+     * @param  array<string, string>  $row
+     */
+    private function creditCommission(array $row): bool
+    {
+        return DB::transaction(function () use ($row): bool {
+            $member = Member::query()->where('member_id', $row['member_id'])->lockForUpdate()->first();
+            if (! $member || $member->member_id === $this->policy->adminRootId()) {
+                return false;
+            }
+            $inserted = DB::table('package_level_accruals')->insertOrIgnore([
+                'reference' => $row['reference'],
+                'idempotency_key' => $row['purchase_id'].'|'.$row['member_id'].'|'.$row['business_date'],
+                'package_purchase_id' => $row['purchase_id'],
+                'member_id' => $member->member_id,
+                'member_name' => $member->member_name,
+                'from_member_id' => $row['from_member_id'],
+                'from_member_name' => $row['from_member_name'],
+                'level' => $row['level'],
+                'package_code' => $row['package_code'],
+                'package_name' => $row['package_name'],
+                'business_date' => $row['business_date'],
+                'pool_amount' => $row['pool'],
+                'rate_percentage' => $row['rate'],
+                'amount' => $row['amount'],
+                'status' => 'accrued',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            if ($inserted !== 1) {
+                return false;
+            }
+            $member->working_wallet_amount = bcadd((string) ($member->working_wallet_amount ?? '0'), $row['amount'], 4);
+            $member->save();
+            $this->ledger->append(
+                WalletLedgerDirection::CREDIT,
+                $member->member_id,
+                'working',
+                $row['amount'],
+                $row['reference'],
+                (string) Str::uuid(),
+                'Package level commission accrual',
+                (int) $row['purchase_id']
+            );
+
+            return true;
+        });
+    }
+
+    private function date(string $businessDate): CarbonImmutable
+    {
+        return CarbonImmutable::parse($businessDate, config('deltasupport.package_income.timezone'))->startOfDay();
+    }
+}

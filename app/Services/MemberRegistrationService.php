@@ -13,6 +13,11 @@ class MemberRegistrationService
 {
     public const ADMIN_SPONSOR_ID = 'ST666666';
 
+    public function __construct(
+        private readonly ?SponsorChain $sponsors = null,
+    ) {
+    }
+
     /**
      * @param  array<string, mixed>  $input
      * @param  array{require_pan?: bool, allow_admin_sponsor?: bool, blank_sponsor_uses_admin?: bool, locked_sponsor?: ?Member, generate_password?: bool}  $options
@@ -92,13 +97,15 @@ class MemberRegistrationService
             ];
         }
 
+        $chain = $this->sponsors ?? new SponsorChain;
+
         if ($requested === '' && ($options['blank_sponsor_uses_admin'] ?? false)) {
-            $requested = self::ADMIN_SPONSOR_ID;
+            $requested = $chain->rootId();
         }
 
-        if ($requested === self::ADMIN_SPONSOR_ID && ($options['allow_admin_sponsor'] ?? false)) {
+        if ($chain->isRoot($requested) && ($options['allow_admin_sponsor'] ?? false)) {
             return [
-                'id' => self::ADMIN_SPONSOR_ID,
+                'id' => $chain->rootId(),
                 'name' => 'Admin',
             ];
         }
@@ -113,6 +120,8 @@ class MemberRegistrationService
                 'sponsor_id' => $message,
             ]);
         }
+
+        ($this->sponsors ?? new SponsorChain)->assertChainEnds($sponsor->member_id);
 
         return [
             'id' => $sponsor->member_id,

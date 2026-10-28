@@ -19,7 +19,7 @@ use Symfony\Component\Console\Output\BufferedOutput;
  */
 class FinancialCycleService
 {
-    public const STAGES = ['roi' => 'roi:generate', 'commission' => 'commission:generate-level', 'rank' => 'rank:advance'];
+    public const STAGES = ['roi' => 'roi:generate', 'rank' => 'rank:advance'];
 
     public const STATUS_SKIPPED_LOCKED = 'skipped_locked';
 

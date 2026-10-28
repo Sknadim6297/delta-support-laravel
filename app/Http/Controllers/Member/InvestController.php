@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Member;
 use App\Http\Controllers\Controller;
 use App\Models\Investment;
 use App\Models\Member;
-use App\Services\LevelCommissionGenerationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,11 +12,6 @@ use Illuminate\View\View;
 
 class InvestController extends Controller
 {
-	public function __construct(
-		private readonly LevelCommissionGenerationService $levelCommissionGenerationService
-	) {
-	}
-
 	public function entry(Request $request): View
 	{
 		return view('member.invesment.investment-entry', [
@@ -50,8 +44,6 @@ class InvestController extends Controller
 			if ($member->status !== 'active') {
 				$member->update(['status' => 'active']);
 			}
-
-			$this->levelCommissionGenerationService->generateForInvestment($investment);
 		});
 
 		return redirect()->route('member.investments.entry')

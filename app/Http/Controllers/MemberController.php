@@ -6,6 +6,8 @@ use App\Models\Member;
 use App\Models\Investment;
 use App\Models\InvestmentWithdrawal;
 use App\Models\LevelCommissionTransaction;
+use App\Models\PackageLevelAccrual;
+use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
 use App\Services\MemberRegistrationService;
 use App\Services\RankService;
@@ -254,8 +256,16 @@ class MemberController extends Controller
                 'workingWallet' => (float) $member->working_wallet_amount,
                 'salaryWallet' => (float) ($member->salary_wallet_amount ?? 0),
                 'activationWallet' => (float) $member->activation_wallet_amount,
-                'roiIncome' => (float) RoiTransaction::where('member_id', $member->member_id)->sum('income_amount'),
-                'levelIncome' => (float) LevelCommissionTransaction::where('member_id', $member->member_id)->sum('income_amount'),
+                'roiIncome' => (float) bcadd(
+                    (string) RoiTransaction::where('member_id', $member->member_id)->sum('income_amount'),
+                    (string) PackageRoiAccrual::where('member_id', $member->member_id)->sum('amount'),
+                    4
+                ),
+                'levelIncome' => (float) bcadd(
+                    (string) LevelCommissionTransaction::where('member_id', $member->member_id)->sum('income_amount'),
+                    (string) PackageLevelAccrual::where('member_id', $member->member_id)->sum('amount'),
+                    4
+                ),
                 'salaryIncome' => 0,
                 'activeMembers' => Member::where('sponsor_id', $member->member_id)->where('status', 'active')->count(),
                 'inactiveMembers' => Member::where('sponsor_id', $member->member_id)->where('status', 'inactive')->count(),

@@ -38,7 +38,7 @@
                 @endif
                 <div class="lh-page-title">
                     <div class="lh-breadcrumb">
-                        <h5>@yield('page-title', 'Member')</h5>
+                        <h1>@yield('page-title', 'Member')</h1>
                         <ul>
                             <li><a href="{{ route('member.dashboard') }}">Home</a></li>
                             <li>@yield('page-title', 'Member')</li>

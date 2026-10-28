@@ -9,6 +9,7 @@ use App\Models\Member;
 use App\Models\Package;
 use App\Models\PackagePurchase;
 use App\Models\PaymentSetting;
+use App\Services\PackageIncomePolicy;
 use App\Services\PackagePurchaseService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,7 +29,7 @@ class CatalogController extends Controller
         ]);
     }
 
-    public function show(Package $package): View
+    public function show(Package $package, PackageIncomePolicy $policy): View
     {
         abort_unless($package->is_active, 404);
 
@@ -36,6 +37,7 @@ class CatalogController extends Controller
             'package' => $package,
             'settings' => PaymentSetting::current(),
             'idempotencyKey' => (string) \Illuminate\Support\Str::uuid(),
+            'incomeRule' => $policy->definition($package->code),
         ]);
     }
 
