@@ -17,6 +17,9 @@
         :title="'Welcome back, '.$member->member_name.'!'"
         :lead="$member->member_id.' · Sponsor '.$member->sponsor_id.' · '.$member->sponsor_name"
     />
+    @if (str_ends_with(strtolower((string) $member->email), '@local-test.invalid'))
+        <x-ui.alert type="warning">Local test data. Production payout generation remains disabled.</x-ui.alert>
+    @endif
 
     @if (! $accountActive)
         <section class="ds-activation-banner" role="status">
@@ -180,7 +183,8 @@
                 <p>Withdrawal submissions stay closed. The poster lists a $20 minimum, ROI withdrawals from the 1st to the 5th, and working-wallet withdrawals on Mondays. Those rules are not enabled.</p>
             </x-ui.card>
             <x-ui.card title="Rewards">
-                <p>Rewards depend on company performance. No reward thresholds or automatic rewards are active.</p>
+                <p>Reward campaigns use approved USDT team business. A gift is confirmed only after it is selected.</p>
+                <p><a href="{{ route('member.rewards.index') }}">My Rewards</a></p>
             </x-ui.card>
         </div>
     </section>

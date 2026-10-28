@@ -33,7 +33,7 @@
             @forelse($members as $member)
                 <tr>
                     <td>{{ $member->member_id }}</td>
-                    <td>{{ $member->member_name }}</td>
+                    <td>{{ $member->member_name }} @if (str_ends_with(strtolower((string) $member->email), '@local-test.invalid'))<x-ui.badge tone="warning">Local test</x-ui.badge>@endif</td>
                     <td>{{ $member->email }}</td>
                     <td>{{ $member->mobile_no }}</td>
                     <td>{{ $member->sponsor_id }}</td>

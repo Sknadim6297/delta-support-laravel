@@ -45,7 +45,7 @@
             @forelse($members as $member)
                 <tr>
                     <td>{{ $member->member_id }}</td>
-                    <td>{{ $member->member_name }}</td>
+                    <td>{{ $member->member_name }} @if (str_ends_with(strtolower((string) $member->email), '@local-test.invalid'))<x-ui.badge tone="warning">Local test</x-ui.badge>@endif</td>
                     <td>
                         <x-ui.badge :tone="$member->status === 'active' ? 'success' : 'muted'">{{ ucfirst((string) $member->status) }}</x-ui.badge>
                     </td>

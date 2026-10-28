@@ -31,9 +31,12 @@
                 <td>{{ $kind === 'roi' ? ($row->roi_date instanceof \DateTimeInterface ? $row->roi_date->format('d M Y') : ($row->roi_date ? \Carbon\CarbonImmutable::parse(substr((string) $row->roi_date, 0, 10))->format('d M Y') : '')) : ($row->business_date instanceof \DateTimeInterface ? $row->business_date->format('d M Y') : ($row->business_date ? \Carbon\CarbonImmutable::parse(substr((string) $row->business_date, 0, 10))->format('d M Y') : ($row->created_at?->format('d M Y') ?? ''))) }}</td>
                 <td class="ds-money">{{ \App\Support\MoneyDisplay::usdt($row->income_amount) }}</td>
                 <td>{{ $row->package_label ?? 'Not linked to a package' }}</td>
-                <td>
+                    <td>
                     @php($statusLabel = $kind === 'roi' ? ucfirst((string) ($row->status ?: 'recorded')) : 'Recorded')
                     <x-ui.badge :tone="$statusLabel === 'Recorded' ? 'brand' : 'muted'">{{ $statusLabel }}</x-ui.badge>
+                    @if (($row->origin_label ?? '') === 'Local test')
+                        <x-ui.badge tone="warning">Local test</x-ui.badge>
+                    @endif
                 </td>
                 @if($kind === 'level')
                     <td>{{ $row->level }}</td>

@@ -445,7 +445,7 @@ class CatalogReport
             'created_at as credited_at',
             'reference',
             'status',
-            DB::raw("'Package purchase' as ledger"),
+            DB::raw("CASE WHEN EXISTS (SELECT 1 FROM members WHERE members.member_id = package_roi_accruals.member_id AND members.email LIKE '%@local-test.invalid') THEN 'Local test' ELSE 'Package purchase' END as ledger"),
         ]);
         $this->packageEarningConstraints($query, $filters);
 
@@ -468,7 +468,7 @@ class CatalogReport
             'created_at as credited_at',
             'reference',
             'status',
-            DB::raw("'Package purchase' as ledger"),
+            DB::raw("CASE WHEN EXISTS (SELECT 1 FROM members WHERE members.member_id = package_level_accruals.member_id AND members.email LIKE '%@local-test.invalid') THEN 'Local test' ELSE 'Package purchase' END as ledger"),
         ]);
         $this->packageEarningConstraints($query, $filters);
 

@@ -80,6 +80,49 @@ class PackageIncomeAccrual
                 }
             }
 
+        return [
+            'credited_roi' => $roi,
+            'credited_commissions' => $commissions,
+            'skipped' => $plan['skipped'],
+        ];
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Credit one date for local-test purchases while production generation stays disabled.
+     * An unmarked purchase or recipient refuses the whole run before any wallet write.
+     *
+     * @param  list<int>  $purchaseIds
+     * @return array{credited_roi: int, credited_commissions: int, skipped: list<string>}
+     */
+    public function accruePurchases(string $businessDate, array $purchaseIds): array
+    {
+        $purchaseIds = $this->assertLocalPurchases($purchaseIds);
+        $lock = Cache::lock('package-income-'.$businessDate, 120);
+        if (! $lock->get()) {
+            throw new RuntimeException('Package income for '.$businessDate.' is already running.');
+        }
+
+        try {
+            $plan = $this->plan($this->date($businessDate), function ($query) use ($purchaseIds): void {
+                $query->whereIn('id', $purchaseIds);
+            });
+            $this->assertPlannedRows($plan, $purchaseIds);
+            $roi = 0;
+            $commissions = 0;
+            foreach ($plan['roi'] as $row) {
+                if ($this->creditRoi($row, 'Local test package ROI accrual')) {
+                    $roi++;
+                }
+            }
+            foreach ($plan['commissions'] as $row) {
+                if ($this->creditCommission($row, 'Local test package level commission accrual')) {
+                    $commissions++;
+                }
+            }
+
             return [
                 'credited_roi' => $roi,
                 'credited_commissions' => $commissions,
@@ -91,9 +134,77 @@ class PackageIncomeAccrual
     }
 
     /**
+     * @param  list<int>  $purchaseIds
+     * @return array{date: string, roi: list<array<string, string>>, commissions: list<array<string, string>>, skipped: list<string>}
+     */
+    public function previewPurchases(string $businessDate, array $purchaseIds): array
+    {
+        $purchaseIds = $this->assertLocalPurchases($purchaseIds);
+        $date = $this->date($businessDate);
+        $plan = $this->plan($date, function ($query) use ($purchaseIds): void {
+            $query->whereIn('id', $purchaseIds);
+        });
+        $this->assertPlannedRows($plan, $purchaseIds);
+
+        return [
+            'date' => $date->toDateString(),
+            'roi' => $plan['roi'],
+            'commissions' => $plan['commissions'],
+            'skipped' => $plan['skipped'],
+        ];
+    }
+
+    /**
+     * @param  list<int>  $purchaseIds
+     * @return list<int>
+     */
+    private function assertLocalPurchases(array $purchaseIds): array
+    {
+        $purchaseIds = array_values(array_unique(array_map(intval(...), $purchaseIds)));
+        if ($purchaseIds === []) {
+            throw new RuntimeException('No local test purchase was selected. No wallet was credited.');
+        }
+
+        $marker = app(LocalTestMarker::class);
+        $found = PackagePurchase::query()->whereIn('id', $purchaseIds)->get();
+        if ($found->count() !== count($purchaseIds)) {
+            throw new RuntimeException('A selected purchase does not exist. No wallet was credited.');
+        }
+        foreach ($found as $purchase) {
+            if (! $marker->isPurchase($purchase)) {
+                throw new RuntimeException('Refused. '.$purchase->member_id.' is not local test data. No wallet was credited.');
+            }
+        }
+
+        return $purchaseIds;
+    }
+
+    /**
+     * @param  array{roi: list<array<string, string>>, commissions: list<array<string, string>>, skipped: list<string>}  $plan
+     * @param  list<int>  $purchaseIds
+     */
+    private function assertPlannedRows(array $plan, array $purchaseIds): void
+    {
+        $marker = app(LocalTestMarker::class);
+        $allowed = array_flip($marker->memberIds());
+        foreach ([...$plan['roi'], ...$plan['commissions']] as $row) {
+            if (! in_array((int) $row['purchase_id'], $purchaseIds, true)) {
+                throw new RuntimeException('Refused. A purchase outside the local test set was planned. No wallet was credited.');
+            }
+            $email = Member::query()->where('member_id', $row['member_id'])->value('email');
+            if (! isset($allowed[$row['member_id']]) || ! $marker->isEmail(is_string($email) ? $email : null)) {
+                throw new RuntimeException('Refused. '.$row['member_id'].' is not a local test member. No wallet was credited.');
+            }
+            if (isset($row['from_member_id']) && ! isset($allowed[$row['from_member_id']])) {
+                throw new RuntimeException('Refused. Source member '.$row['from_member_id'].' is not local test data. No wallet was credited.');
+            }
+        }
+    }
+
+    /**
      * @return array{roi: list<array<string, string>>, commissions: list<array<string, string>>, skipped: list<string>}
      */
-    private function plan(CarbonImmutable $date): array
+    private function plan(CarbonImmutable $date, ?callable $constrain = null): array
     {
         $roi = [];
         $commissions = [];
@@ -106,10 +217,13 @@ class PackageIncomeAccrual
         $recipients = [];
         $chunk = max(1, (int) config('deltasupport.package_income.chunk_size', 100));
 
-        PackagePurchase::query()
+        $query = PackagePurchase::query()
             ->where('status', PackagePurchase::APPROVED)
-            ->whereNotNull('reviewed_at')
-            ->chunkById($chunk, function ($purchases) use (&$roi, &$commissions, &$skipped, &$recipients, $date, $ratesReady): void {
+            ->whereNotNull('reviewed_at');
+        if ($constrain !== null) {
+            $constrain($query);
+        }
+        $query->chunkById($chunk, function ($purchases) use (&$roi, &$commissions, &$skipped, &$recipients, $date, $ratesReady): void {
                 $packages = Package::query()->whereIn('id', $purchases->pluck('package_id')->filter()->all())->get()->keyBy('id');
                 foreach ($purchases as $purchase) {
                     $this->planPurchase($purchase, $packages->get($purchase->package_id), $date, $ratesReady, $roi, $commissions, $skipped, $recipients);
@@ -240,9 +354,9 @@ class PackageIncomeAccrual
     /**
      * @param  array<string, string>  $row
      */
-    private function creditRoi(array $row): bool
+    private function creditRoi(array $row, string $reason = 'Package ROI accrual'): bool
     {
-        return DB::transaction(function () use ($row): bool {
+        return DB::transaction(function () use ($row, $reason): bool {
             $member = Member::query()->where('member_id', $row['member_id'])->lockForUpdate()->first();
             if (! $member) {
                 return false;
@@ -273,7 +387,7 @@ class PackageIncomeAccrual
                 $row['amount'],
                 $row['reference'],
                 (string) Str::uuid(),
-                'Package ROI accrual',
+                $reason,
                 (int) $row['purchase_id']
             );
 
@@ -284,9 +398,9 @@ class PackageIncomeAccrual
     /**
      * @param  array<string, string>  $row
      */
-    private function creditCommission(array $row): bool
+    private function creditCommission(array $row, string $reason = 'Package level commission accrual'): bool
     {
-        return DB::transaction(function () use ($row): bool {
+        return DB::transaction(function () use ($row, $reason): bool {
             $member = Member::query()->where('member_id', $row['member_id'])->lockForUpdate()->first();
             if (! $member || $member->member_id === $this->policy->adminRootId()) {
                 return false;
@@ -322,7 +436,7 @@ class PackageIncomeAccrual
                 $row['amount'],
                 $row['reference'],
                 (string) Str::uuid(),
-                'Package level commission accrual',
+                $reason,
                 (int) $row['purchase_id']
             );
 

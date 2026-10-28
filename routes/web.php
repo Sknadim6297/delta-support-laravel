@@ -13,6 +13,10 @@
     use App\Http\Controllers\ReportController;
     use App\Http\Controllers\RankController;
     use App\Http\Controllers\AdminComingSoonController;
+    use App\Http\Controllers\Admin\RewardCampaignController;
+    use App\Http\Controllers\Admin\RewardEligibilityController;
+    use App\Http\Controllers\Admin\RewardReportController;
+    use App\Http\Controllers\Member\RewardController as MemberRewardController;
     use App\Http\Controllers\Admin\CompanySettingController;
     use App\Http\Controllers\Admin\InvoiceController;
     use App\Http\Controllers\Admin\MemberDirectoryController;
@@ -287,6 +291,11 @@
                 'recentMembers' => \App\Models\Member::query()->latest()->limit(5)->get(['member_id', 'member_name', 'status', 'created_at']),
                 'recentPurchases' => \App\Models\PackagePurchase::query()->latest()->limit(5)->get($purchaseColumns),
                 'recentReviews' => \App\Models\PackagePurchase::query()->whereNotNull('reviewed_at')->latest('reviewed_at')->limit(5)->get($purchaseColumns),
+                'rewardActive' => \App\Models\RewardCampaign::query()->where('status', 'active')->count(),
+                'rewardQualified' => \App\Models\RewardQualification::query()->whereIn('status', ['qualified', 'selected'])->count(),
+                'rewardPending' => \App\Models\RewardDelivery::query()->whereIn('status', ['pending', 'approved', 'processing'])->count(),
+                'rewardDispatched' => \App\Models\RewardDelivery::query()->where('status', 'shipped')->count(),
+                'rewardDelivered' => \App\Models\RewardDelivery::query()->where('status', 'delivered')->count(),
             ]);
         })->name('dashboard');
 
@@ -618,6 +627,26 @@
                 )->name('rank-achievement');
                 
             });
+
+        Route::controller(RewardCampaignController::class)->prefix('admin/rewards')->name('admin.rewards.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/eligible', [RewardEligibilityController::class, 'index'])->name('eligible');
+            Route::get('/reports', [RewardReportController::class, 'index'])->name('reports');
+            Route::get('/export', [RewardReportController::class, 'export'])->name('export');
+            Route::get('/qualifications/{qualification}', [RewardEligibilityController::class, 'show'])->name('qualifications.show');
+            Route::post('/qualifications/{qualification}/delivery', [RewardEligibilityController::class, 'updateDelivery'])->name('deliveries.update');
+            Route::get('/{campaign}', 'show')->name('show');
+            Route::get('/{campaign}/edit', 'edit')->name('edit');
+            Route::put('/{campaign}', 'update')->name('update');
+            Route::post('/{campaign}/publish', 'publish')->name('publish');
+            Route::post('/{campaign}/pause', 'pause')->name('pause');
+            Route::post('/{campaign}/close', 'close')->name('close');
+            Route::post('/{campaign}/cancel', 'cancel')->name('cancel');
+            Route::post('/{campaign}/evaluate', 'evaluate')->name('evaluate');
+            Route::get('/{campaign}/image', 'image')->name('image');
+        });
         
         
     });
@@ -641,6 +670,9 @@
 
         Route::get('/member/rank', [MemberRankController::class, 'show'])
             ->name('member.rank');
+
+        Route::get('/member/rewards', [MemberRewardController::class, 'index'])->name('member.rewards.index');
+        Route::get('/member/rewards/{campaign}/image', [MemberRewardController::class, 'image'])->name('member.rewards.image');
 
         Route::controller(CatalogController::class)->group(function () {
             Route::get('/member/packages', 'explore')->name('member.packages.explore');

@@ -61,8 +61,8 @@
 
                 <li class="lh-sb-item-separator"></li>
                 <li class="lh-sb-title condense">More</li>
-                <x-navigation.lux-group icon="ri-gift-line" label="Rewards" :open="request()->routeIs('member.coming-soon') && request()->route('feature') === 'my-rewards'">
-                    <x-navigation.lux-link :href="route('member.coming-soon', ['feature' => 'my-rewards'])" :active="request()->route('feature') === 'my-rewards'">My Rewards</x-navigation.lux-link>
+                <x-navigation.lux-group icon="ri-gift-line" label="Rewards" :open="request()->routeIs('member.rewards.*')">
+                    <x-navigation.lux-link :href="route('member.rewards.index')" :active="request()->routeIs('member.rewards.*')">My Rewards</x-navigation.lux-link>
                 </x-navigation.lux-group>
                 <x-navigation.lux-group icon="ri-customer-service-2-line" label="Support" :open="request()->routeIs('member.support')">
                     <x-navigation.lux-link :href="route('member.support')" :active="request()->routeIs('member.support')">Help & Support</x-navigation.lux-link>

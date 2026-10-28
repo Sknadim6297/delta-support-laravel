@@ -50,6 +50,33 @@
 </div>
 
 <div class="row">
+    @foreach ([
+        ['Active Campaigns', $rewardActive, route('admin.rewards.index'), 'ri-gift-line'],
+        ['Qualified Members', $rewardQualified, route('admin.rewards.eligible'), 'ri-medal-line'],
+        ['Pending Fulfillment', $rewardPending, route('admin.rewards.eligible', ['status' => 'selected']), 'ri-time-line'],
+        ['Dispatched Gifts', $rewardDispatched, route('admin.rewards.reports'), 'ri-truck-line'],
+        ['Delivered Gifts', $rewardDelivered, route('admin.rewards.reports'), 'ri-checkbox-circle-line'],
+    ] as [$label, $value, $href, $icon])
+        <div class="col-xl-4 col-md-6">
+            <a href="{{ $href }}">
+                <div class="lh-card lh-card-1">
+                    <div class="lh-card-content label-card">
+                        <div class="title">
+                            <div class="growth-numbers">
+                                <h4>{{ $label }}</h4>
+                                <h5>{{ $value }}</h5>
+                            </div>
+                            <span class="icon"><i class="{{ $icon }}"></i></span>
+                        </div>
+                        <p class="card-groth"><span>Reward records</span></p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    @endforeach
+</div>
+
+<div class="row">
     <div class="col-xl-4 col-md-6">
         <div class="lh-card">
             <div class="lh-card-header">

@@ -31,7 +31,7 @@ class OperationsController extends Controller
     {
         $members = $this->memberSearch($request)
             ->orderBy('member_id')
-            ->paginate(20, ['member_id', 'member_name', 'status', 'roi_wallet_amount', 'working_wallet_amount', 'activation_wallet_amount'])
+            ->paginate(20, ['member_id', 'member_name', 'email', 'status', 'roi_wallet_amount', 'working_wallet_amount', 'activation_wallet_amount'])
             ->withQueryString();
 
         return view('admin.wallets.overview', [
@@ -40,6 +40,7 @@ class OperationsController extends Controller
             'roiCount' => RoiTransaction::query()->count() + PackageRoiAccrual::query()->count(),
             'levelCount' => LevelCommissionTransaction::query()->count() + PackageLevelAccrual::query()->count(),
             'notices' => app(WalletBalanceReconciliation::class)->notices(),
+            'localTest' => Member::query()->where('email', 'like', '%@local-test.invalid')->exists(),
         ]);
     }
 
@@ -53,7 +54,7 @@ class OperationsController extends Controller
         };
         $members = $this->memberSearch($request)
             ->orderByDesc($column)
-            ->paginate(20, ['member_id', 'member_name', 'status', $column])
+            ->paginate(20, ['member_id', 'member_name', 'email', 'status', $column])
             ->withQueryString();
 
         return view('admin.wallets.index', [

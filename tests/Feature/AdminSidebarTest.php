@@ -30,7 +30,7 @@ class AdminSidebarTest extends TestCase
             ->assertSee('admin/catalog-reports/earnings', false)
             ->assertDontSee('admin/coming-soon/roi-plans', false)
             ->assertDontSee('admin/coming-soon/commission-settings', false)
-            ->assertSee('admin/coming-soon/reward-plans', false)
+            ->assertSee('admin/rewards', false)
             ->assertSeeText('All Packages')
             ->assertSeeText('Add Package')
             ->assertDontSeeText('Tour Packages')

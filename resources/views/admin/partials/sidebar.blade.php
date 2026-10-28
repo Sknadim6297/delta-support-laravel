@@ -73,9 +73,10 @@
 
                 <li class="lh-sb-item-separator"></li>
                 <li class="lh-sb-title condense">Insights</li>
-                <x-navigation.lux-group icon="ri-gift-line" label="Rewards" :open="request()->routeIs('admin.coming-soon') && in_array(request()->route('feature'), ['reward-plans', 'reward-achievements'], true)">
-                    <x-navigation.lux-link :href="route('admin.coming-soon', ['feature' => 'reward-plans'])" :active="request()->route('feature') === 'reward-plans'">Reward Plans</x-navigation.lux-link>
-                    <x-navigation.lux-link :href="route('admin.coming-soon', ['feature' => 'reward-achievements'])" :active="request()->route('feature') === 'reward-achievements'">Achievements</x-navigation.lux-link>
+                <x-navigation.lux-group icon="ri-gift-line" label="Rewards" :open="request()->routeIs('admin.rewards.*')">
+                    <x-navigation.lux-link :href="route('admin.rewards.index')" :active="request()->routeIs('admin.rewards.index', 'admin.rewards.show', 'admin.rewards.create', 'admin.rewards.edit')">Reward Campaigns</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.rewards.eligible')" :active="request()->routeIs('admin.rewards.eligible', 'admin.rewards.qualifications.*')">Eligible Members</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.rewards.reports')" :active="request()->routeIs('admin.rewards.reports')">Reward Reports</x-navigation.lux-link>
                 </x-navigation.lux-group>
                 <x-navigation.lux-group icon="ri-bar-chart-box-line" label="Reports" :open="request()->routeIs('admin.catalog-reports.*')">
                     <x-navigation.lux-link :href="route('admin.catalog-reports.show', ['report' => 'members'])" :active="request()->routeIs('admin.catalog-reports.show') && request()->route('report') === 'members'">Member Reports</x-navigation.lux-link>

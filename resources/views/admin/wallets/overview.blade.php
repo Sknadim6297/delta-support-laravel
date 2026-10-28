@@ -15,6 +15,9 @@
     @foreach($notices as $notice)
         <x-ui.alert type="warning">{{ $notice }}</x-ui.alert>
     @endforeach
+    @if ($localTest)
+        <x-ui.alert type="warning">Local test balances are included. Production payout generation remains disabled.</x-ui.alert>
+    @endif
     <div class="ds-stat-grid">
         <a class="ds-stat-link" href="{{ route('admin.wallets.show', ['wallet' => 'roi']) }}">
             <x-ui.stat label="ROI Wallet" :value="\App\Support\MoneyDisplay::usdt($totals['roi'])" hint="Open member balances" />
@@ -54,7 +57,7 @@
             @forelse($members as $member)
                 <tr>
                     <td>{{ $member->member_id }}</td>
-                    <td>{{ $member->member_name }}</td>
+                    <td>{{ $member->member_name }} @if (str_ends_with(strtolower((string) $member->email), '@local-test.invalid'))<x-ui.badge tone="warning">Local test</x-ui.badge>@endif</td>
                     <td class="ds-money">{{ \App\Support\MoneyDisplay::usdt($member->roi_wallet_amount) }}</td>
                     <td class="ds-money">{{ \App\Support\MoneyDisplay::usdt($member->working_wallet_amount) }}</td>
                     <td class="ds-money">{{ \App\Support\MoneyDisplay::usdt($member->activation_wallet_amount) }}</td>

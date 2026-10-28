@@ -31,7 +31,7 @@ class MemberSidebarTest extends TestCase
             ->assertSee(route('member.registration'), false)
             ->assertSeeText('Referral Tree')
             ->assertSee('member/genealogy/tree-view', false)
-            ->assertSee('member/coming-soon/my-rewards', false)
+            ->assertSee('member/rewards', false)
             ->assertSeeText('Explore Packages')
             ->assertSeeText('My Payments')
             ->assertSeeText('My Invoices')

@@ -13,7 +13,7 @@
         <table>
             <tbody>
                 <tr><th>Member ID</th><td>{{ $member->member_id }}</td></tr>
-                <tr><th>Full name</th><td>{{ $member->member_name }}</td></tr>
+                <tr><th>Full name</th><td>{{ $member->member_name }} @if (str_ends_with(strtolower((string) $member->email), '@local-test.invalid'))<x-ui.badge tone="warning">Local test</x-ui.badge>@endif</td></tr>
                 <tr><th>Email</th><td>{{ $member->email }}</td></tr>
                 <tr><th>Mobile</th><td>{{ $member->mobile_no }}</td></tr>
                 <tr><th>Sponsor</th><td>{{ $member->sponsor_id }} · {{ $member->sponsor_name }}</td></tr>

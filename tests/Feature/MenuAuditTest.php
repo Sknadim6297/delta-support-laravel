@@ -51,9 +51,9 @@ class MenuAuditTest extends TestCase
             ->assertSeeText('not calculated')
             ->assertSeeText('Stored ROI records');
 
-        $this->actingAs($admin)->get(route('admin.coming-soon', ['feature' => 'reward-plans']))
+        $this->actingAs($admin)->get(route('admin.rewards.index'))
             ->assertOk()
-            ->assertSeeText('Coming Soon');
+            ->assertSeeText('No reward campaigns yet.');
 
         $this->actingAs($admin)->post(route('admin.finance.commission-settings'))->assertStatus(405);
         $this->assertFalse(CommissionPlanLevel::query()->where('is_active', true)->exists());
@@ -92,9 +92,10 @@ class MenuAuditTest extends TestCase
             ->assertSeeText($member->member_id);
 
         $this->withSession(['member_context_id' => $member->member_id])
-            ->get(route('member.coming-soon', ['feature' => 'my-rewards']))
+            ->get(route('member.rewards.index'))
             ->assertOk()
-            ->assertSeeText('Coming Soon');
+            ->assertSeeText('My Rewards')
+            ->assertSeeText('No reward campaigns are open.');
 
         $this->withSession(['member_context_id' => $member->member_id])
             ->get(route('admin.finance.roi-plans'))
