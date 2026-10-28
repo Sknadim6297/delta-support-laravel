@@ -627,6 +627,7 @@
             ->name('member.genealogy.')
             ->group(function () {
                 Route::get('/tree-view', 'treeView')->name('tree-view');
+                Route::get('/tree-view/children', 'treeChildren')->name('tree-children');
                 Route::get('/level-view', 'levelView')->name('level-view');
                 Route::get('/level-view/members', 'levelMembers')->name('level-view.members');
             });
@@ -704,6 +705,7 @@
             ->name('member.profile.edit');
 
         Route::put('/member/profile', [ProfileController::class, 'update'])
+            ->middleware('throttle:6,1')
             ->name('member.profile.update');
 
         Route::get('/member/team/direct', [TeamController::class, 'direct'])

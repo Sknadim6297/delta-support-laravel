@@ -1,4 +1,134 @@
 document.addEventListener('DOMContentLoaded', function () {
+    function copyText(text) {
+        function legacyCopy() {
+            return new Promise(function (resolve, reject) {
+                const area = document.createElement('textarea');
+                area.value = text;
+                area.setAttribute('readonly', '');
+                area.style.position = 'fixed';
+                area.style.top = '0';
+                area.style.left = '0';
+                area.style.opacity = '0';
+                document.body.appendChild(area);
+                area.focus();
+                area.select();
+                area.setSelectionRange(0, area.value.length);
+
+                try {
+                    if (document.execCommand('copy')) {
+                        resolve();
+                    } else {
+                        reject(new Error('Copy failed'));
+                    }
+                } catch (error) {
+                    reject(error);
+                } finally {
+                    area.remove();
+                }
+            });
+        }
+
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text).catch(legacyCopy);
+        }
+
+        return legacyCopy();
+    }
+
+    function showCopyStatus(message) {
+        const status = document.querySelector('[data-copy-status]');
+        if (!status) {
+            return;
+        }
+
+        status.hidden = false;
+        status.textContent = message;
+    }
+
+    document.querySelectorAll('[data-copy-text]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const text = button.getAttribute('data-copy-text') || '';
+            copyText(text).then(function () {
+                showCopyStatus('Referral link copied.');
+            }).catch(function () {
+                const link = document.getElementById('referral-link');
+                if (link) {
+                    const selection = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(link);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+                showCopyStatus('The referral link is selected. Press Ctrl+C to copy it.');
+            });
+        });
+    });
+
+    document.querySelectorAll('[data-share-url]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const url = button.getAttribute('data-share-url') || '';
+            const payload = {
+                title: button.getAttribute('data-share-title') || 'Referral link',
+                text: button.getAttribute('data-share-text') || url,
+                url: url,
+            };
+
+            if (navigator.share) {
+                navigator.share(payload).catch(function (error) {
+                    if (error && error.name === 'AbortError') {
+                        return;
+                    }
+
+                    copyText(url).then(function () {
+                        showCopyStatus('The referral link was copied so you can share it.');
+                    }).catch(function () {
+                        showCopyStatus('Sharing is unavailable in this browser.');
+                    });
+                });
+                return;
+            }
+
+            copyText(url).then(function () {
+                showCopyStatus('Sharing is not available in this browser. The referral link was copied instead.');
+            }).catch(function () {
+                showCopyStatus('Sharing is unavailable in this browser.');
+            });
+        });
+    });
+
+    document.querySelectorAll('.wrapper [data-toggle-password]').forEach(function (button) {
+        button.remove();
+    });
+
+    document.querySelectorAll('.wrapper input[type="password"]').forEach(function (input) {
+        if (input.closest('.ds-password')) {
+            return;
+        }
+
+        const wrap = document.createElement('span');
+        wrap.className = 'ds-password';
+        input.parentNode.insertBefore(wrap, input);
+        wrap.appendChild(input);
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'ds-password-toggle';
+        toggle.setAttribute('aria-label', 'Show password');
+        toggle.innerHTML = '<i class="ri-eye-line" aria-hidden="true"></i>';
+        wrap.appendChild(toggle);
+
+        toggle.addEventListener('click', function () {
+            const showing = input.type === 'text';
+            input.type = showing ? 'password' : 'text';
+            toggle.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+            const icon = toggle.querySelector('i');
+            if (icon) {
+                icon.className = showing ? 'ri-eye-line' : 'ri-eye-off-line';
+            }
+            input.focus();
+        });
+    });
+
     document.querySelectorAll('[data-error-for]').forEach(function (error) {
         if (error.matches('input, select, textarea, button')) {
             return;
@@ -170,12 +300,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const headerTitle = document.querySelector('.ds-header-title');
+    const headerTitle = document.querySelector('.ds-lux-title, .ds-header-title');
     const pageHeading = document.querySelector('.ds-content h1, .ds-content h4');
     if (pageHeading) {
         pageHeading.classList.add('ds-page-title');
-        if (headerTitle && ['Admin', 'Member'].includes(headerTitle.textContent.trim())) {
-            headerTitle.textContent = pageHeading.textContent.trim();
+        const heading = pageHeading.textContent.trim();
+        if (headerTitle && ['Admin', 'Member', 'Panel'].includes(headerTitle.textContent.trim())) {
+            headerTitle.textContent = heading;
+        }
+        const crumb = document.querySelector('.lh-breadcrumb ul li:last-child');
+        if (crumb && ['Admin', 'Member', 'Panel'].includes(crumb.textContent.trim())) {
+            crumb.textContent = heading;
         }
     }
 
@@ -298,6 +433,33 @@ function initializeGenealogyWorkspace() {
         });
     }
 
+    function loadLazy(node) {
+        if (!node) {
+            return Promise.resolve();
+        }
+        const list = node.querySelector(':scope > .tree-children[data-tree-lazy]');
+        const endpoint = workspace.dataset.treeChildren;
+        if (!list || !endpoint || list.dataset.treeLoaded === 'true' || list.dataset.treeLoaded === 'pending') {
+            return Promise.resolve();
+        }
+        list.dataset.treeLoaded = 'pending';
+        const url = endpoint + (endpoint.indexOf('?') === -1 ? '?' : '&') + 'member_id=' + encodeURIComponent(list.dataset.treeLazy || '');
+        return fetch(url, {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('Unable to load this branch.');
+            }
+            return response.json();
+        }).then(function (data) {
+            list.innerHTML = data.html || '';
+            list.dataset.treeLoaded = 'true';
+            list.removeAttribute('data-tree-lazy');
+        }).catch(function () {
+            list.dataset.treeLoaded = '';
+        });
+    }
+
     function setExpanded(node, expanded) {
         if (!node) {
             return;
@@ -316,9 +478,27 @@ function initializeGenealogyWorkspace() {
     }
 
     function expandAll(expanded) {
-        allNodes().forEach(function (node) {
-            setExpanded(node, expanded);
-        });
+        if (!expanded) {
+            allNodes().forEach(function (node) {
+                setExpanded(node, false);
+            });
+            return;
+        }
+        const loadNext = function (guard) {
+            const pending = Array.prototype.map.call(tree.querySelectorAll('[data-tree-lazy]'), function (list) {
+                return loadLazy(list.closest('[data-member-node]'));
+            });
+            if (pending.length === 0 || guard > 32) {
+                allNodes().forEach(function (node) {
+                    setExpanded(node, true);
+                });
+                return;
+            }
+            Promise.all(pending).then(function () {
+                loadNext(guard + 1);
+            });
+        };
+        loadNext(0);
     }
 
     function centerTree() {
@@ -352,7 +532,11 @@ function initializeGenealogyWorkspace() {
         }
         event.preventDefault();
         const node = toggle.closest('[data-member-node]');
-        setExpanded(node, toggle.getAttribute('aria-expanded') !== 'true');
+        const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+        const ready = expanded ? loadLazy(node) : Promise.resolve();
+        ready.then(function () {
+            setExpanded(node, expanded);
+        });
     });
 
     workspace.querySelectorAll('[data-tree-action]').forEach(function (button) {

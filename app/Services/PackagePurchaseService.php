@@ -39,7 +39,7 @@ class PackagePurchaseService
         }
 
         $reference = trim($paymentReference);
-        $this->assertReferenceShape($settings, $reference);
+        $this->assertReferenceShape($reference);
 
         return DB::transaction(function () use ($member, $package, $settings, $reference, $idempotencyKey): PackagePurchase {
             $lockedPackage = Package::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
@@ -191,18 +191,23 @@ class PackagePurchaseService
         return $lines === [] ? null : implode("\n", $lines);
     }
 
-    private function assertReferenceShape(PaymentSetting $settings, string $reference): void
+    private function assertReferenceShape(string $reference): void
     {
-        if (! preg_match('/^[A-Za-z0-9:_\-\.]{6,128}$/', $reference)) {
+        if ($reference === '') {
             throw ValidationException::withMessages([
-                'payment_reference' => 'Enter the transaction reference using 6 to 128 letters, numbers, or . : _ -',
+                'payment_reference' => 'Enter a transaction reference.',
             ]);
         }
 
-        $pattern = trim((string) $settings->reference_pattern);
-        if ($pattern !== '' && @preg_match('/' . str_replace('/', '\/', $pattern) . '/', $reference) !== 1) {
+        if (mb_strlen($reference) > 255) {
             throw ValidationException::withMessages([
-                'payment_reference' => 'The transaction reference does not match the configured payment format.',
+                'payment_reference' => 'The transaction reference must be 255 characters or fewer.',
+            ]);
+        }
+
+        if (preg_match('/[\x00-\x1F\x7F]/', $reference) === 1 || str_contains($reference, '<') || str_contains($reference, '>')) {
+            throw ValidationException::withMessages([
+                'payment_reference' => 'The transaction reference contains characters that cannot be stored.',
             ]);
         }
     }

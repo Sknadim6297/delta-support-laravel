@@ -26,10 +26,13 @@
                     @if($package->image_path)
                         <img src="{{ route('member.packages.image', $package) }}" alt="{{ $package->name }}">
                     @else
-                        <div class="ds-package-media" aria-hidden="true">{{ $package->typeLabel() }}</div>
+                        <div class="ds-package-media">Package image</div>
                     @endif
                     <div class="ds-package-body">
-                        <x-ui.badge>{{ $package->typeLabel() }}</x-ui.badge>
+                        <div class="ds-package-badges">
+                            <x-ui.badge>{{ $package->typeLabel() }}</x-ui.badge>
+                            <x-ui.badge tone="success">Available</x-ui.badge>
+                        </div>
                         <h2>{{ $package->name }}</h2>
                         <p class="ds-package-code">{{ $package->code }}</p>
                         <p class="ds-package-price">{{ \App\Support\MoneyDisplay::format($package->price_usd, $package->denomination) }}</p>
@@ -46,7 +49,10 @@
                         @if($package->benefits)
                             <p class="ds-package-benefits">{{ $package->benefits }}</p>
                         @endif
-                        <x-ui.button href="{{ route('member.packages.show', $package) }}">View package</x-ui.button>
+                        <div class="ds-package-actions">
+                            <x-ui.button href="{{ route('member.packages.show', $package) }}" variant="secondary">View Details</x-ui.button>
+                            <x-ui.button href="{{ route('member.packages.show', $package) }}#purchase">Buy Package</x-ui.button>
+                        </div>
                     </div>
                 </article>
             @endforeach

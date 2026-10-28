@@ -16,6 +16,7 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/css/panel.css',
                 'resources/css/lux-shell.css',
+                'resources/css/lux-pages.css',
                 'resources/css/site.css',
                 'resources/css/auth-portal.css',
                 'resources/css/register.css',

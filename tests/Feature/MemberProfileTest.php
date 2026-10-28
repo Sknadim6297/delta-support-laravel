@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Member;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class MemberProfileTest extends TestCase
@@ -30,15 +31,20 @@ class MemberProfileTest extends TestCase
         $member = $this->createMember('ST100001', 'Rahul Das', 'rahul@example.com');
         $this->memberSession($member);
 
+        $member->update(['password' => Hash::make('secret-secret')]);
+
         $this->get(route('member.profile.edit'))
             ->assertOk()
-            ->assertSee('Enter your BEP20 wallet address', false);
+            ->assertSee('BEP20 Wallet Address', false)
+            ->assertSee('until wallet verification is available', false);
 
         $this->put(route('member.profile.update'), [
             'member_name' => 'Rahul Updated',
             'email' => 'updated@example.com',
             'mobile_no' => '9876543212',
-            'wallet_address' => '0xupdated',
+            'current_password' => 'secret-secret',
+            'pan_card_no' => $member->pan_card_no,
+            'wallet_address' => $member->wallet_address,
         ])->assertRedirect(route('member.profile'));
 
         $this->assertDatabaseHas('members', [
@@ -46,7 +52,7 @@ class MemberProfileTest extends TestCase
             'member_name' => 'Rahul Updated',
             'email' => 'updated@example.com',
             'mobile_no' => '9876543212',
-            'wallet_address' => '0xupdated',
+            'wallet_address' => null,
         ]);
     }
 
@@ -60,7 +66,6 @@ class MemberProfileTest extends TestCase
             'member_name' => 'Rahul Updated',
             'email' => 'rahul@example.com',
             'mobile_no' => '9876543210',
-            'wallet_address' => '0xupdated',
             'sponsor_id' => 'ST999998',
             'sponsor_name' => 'Forged Sponsor',
             'status' => 'active',

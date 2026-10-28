@@ -179,8 +179,13 @@
                 return false;
             }
 
-            if (!/^[A-Za-z ]+$/.test(value)) {
-                setError('member_name', 'Member name can contain only letters and spaces.');
+            if (value.length > 100) {
+                setError('member_name', 'Member name must be 100 characters or fewer.');
+                return false;
+            }
+
+            if (!/^[\p{L}\p{M}][\p{L}\p{M} .'\u2019-]*$/u.test(value)) {
+                setError('member_name', 'Enter a valid member name.');
                 return false;
             }
 
@@ -376,6 +381,7 @@
         });
 
         memberNameInput.addEventListener('blur', function () {
+            this.value = this.value.trim();
             markTouched('member_name');
             validateMemberName(true);
         });

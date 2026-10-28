@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./scrollbars.css";
 @import "../../public/site/css/login.css";
 
 @source "../views/public/auth/login.blade.php";

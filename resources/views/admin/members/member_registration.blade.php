@@ -1,18 +1,17 @@
 @extends('admin.layouts.app')
+@section('title', 'Member Registration')
+@section('page-title', 'Member Registration')
 
 @section('content')
     <main>
         <div>
+            <x-ui.page-header title="Member Registration" lead="The new member starts inactive. Registration does not purchase a package or create commission." />
             @if(session('success'))
                 <div>{{ session('success') }}</div>
             @endif
 
-            <form method="POST" action="{{ route('admin.members.store') }}">
+            <form method="POST" action="{{ route('admin.members.store') }}" class="ds-settings-form">
                 @csrf
-
-                <div>
-                    <h4>Member Registration</h4>
-                </div>
 
                 <div>
                     <div>
@@ -78,7 +77,6 @@
                         <label>Password</label>
                         <div>
                             <input type="password" id="registrationPassword" name="password" placeholder="Optional password" autocomplete="new-password">
-                            <button type="button" data-toggle-password="registrationPassword" aria-label="Show password">Show password</button>
                         </div>
                         <div class="validation-message" data-error-for="password" hidden>
                             @error('password'){{ $message }}@enderror
@@ -89,7 +87,6 @@
                         <label>Confirm Password</label>
                         <div>
                             <input type="password" id="registrationPasswordConfirmation" name="password_confirmation" placeholder="Confirm password" autocomplete="new-password">
-                            <button type="button" data-toggle-password="registrationPasswordConfirmation" aria-label="Show password confirmation">Show password</button>
                         </div>
                     </div>
                 </div>
@@ -105,19 +102,6 @@
     </main>
 
     <script>
-        document.querySelectorAll('[data-toggle-password]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                const input = document.getElementById(button.getAttribute('data-toggle-password'));
-                if (!input) {
-                    return;
-                }
-                const showing = input.type === 'text';
-                input.type = showing ? 'password' : 'text';
-                button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-                button.textContent = showing ? 'Show password' : 'Hide password';
-            });
-        });
-
         const sponsorIdInput = document.querySelector('input[name="sponsor_id"]');
         const sponsorNameInput = document.querySelector('input[name="sponsor_name"]');
         const memberNameInput = document.querySelector('input[name="member_name"]');
@@ -164,8 +148,13 @@
                 return false;
             }
 
-            if (!/^[A-Za-z ]+$/.test(value)) {
-                setError('member_name', 'Member name can contain only letters and spaces.');
+            if (value.length > 100) {
+                setError('member_name', 'Member name must be 100 characters or fewer.');
+                return false;
+            }
+
+            if (!/^[\p{L}\p{M}][\p{L}\p{M} .'\u2019-]*$/u.test(value)) {
+                setError('member_name', 'Enter a valid member name.');
                 return false;
             }
 
@@ -323,14 +312,12 @@
         }
 
         memberNameInput?.addEventListener('input', function () {
-            const value = this.value;
-            if (value !== value.trim()) {
-                this.value = value.trim();
-            }
+            this.value = this.value.replace(/^\s+/, '');
             markTouched('member_name');
             validateMemberName();
         });
         memberNameInput?.addEventListener('blur', function () {
+            this.value = this.value.trim();
             markTouched('member_name');
             validateMemberName(true);
         });

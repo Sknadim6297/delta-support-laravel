@@ -25,6 +25,29 @@ class PackagePurchase extends Model
         };
     }
 
+    public function paymentStatusLabel(): string
+    {
+        return match ($this->status) {
+            self::APPROVED => 'Approved',
+            self::REJECTED => 'Rejected',
+            default => 'Pending',
+        };
+    }
+
+    public function activationLabel(): string
+    {
+        return $this->status === self::APPROVED ? 'Active' : 'Not active';
+    }
+
+    public function statusTone(): string
+    {
+        return match ($this->status) {
+            self::APPROVED => 'success',
+            self::REJECTED => 'danger',
+            default => 'warning',
+        };
+    }
+
     protected $fillable = [
         'reference',
         'idempotency_key',

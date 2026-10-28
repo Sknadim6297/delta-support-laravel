@@ -9,34 +9,60 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    @vite(['resources/css/panel.css', 'resources/js/panel.js'])
+    <link href="{{ asset('lux/assets/css/vendor/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="{{ asset('lux/assets/css/style.css') }}" rel="stylesheet">
+    @vite(['resources/css/panel.css', 'resources/css/lux-shell.css', 'resources/css/lux-pages.css', 'resources/js/panel.js', 'resources/js/lux-shell.js'])
     @include('partials.brand-tokens')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body>
-    <div class="ds-app">
+<body data-lh-mode="light">
+    <main class="wrapper sb-default">
+        @include('partials.lux-bar', [
+            'luxTitle' => trim($__env->yieldContent('page-title')) ?: 'Member',
+            'luxName' => isset($member) ? $member->member_name : 'Member',
+            'luxMeta' => isset($member) ? $member->member_id : null,
+            'luxProfile' => route('member.profile'),
+            'luxProfileLabel' => 'My Profile',
+            'luxPassword' => route('member.change-password'),
+            'luxLogout' => route('member.logout'),
+        ])
+
         @include('member.partials.sidebar')
-        <div class="ds-sidebar-backdrop" hidden></div>
 
-        <div class="ds-main">
-            @if (session()->has('impersonator_id') && isset($member))
-                @include('member.partials.impersonation-banner')
-            @endif
-            @include('member.partials.topbar')
-
-            <main class="ds-content">
-                @if (session('success'))
-                    <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+        <div class="lh-main-content">
+            <div class="container-fluid">
+                @if (session()->has('impersonator_id') && isset($member))
+                    @include('member.partials.impersonation-banner')
                 @endif
-                @yield('content')
-            </main>
-
-            <footer class="ds-footer">
-                <p>Copyright © {{ date('Y') }} Delta Support</p>
-            </footer>
+                <div class="lh-page-title">
+                    <div class="lh-breadcrumb">
+                        <h5>@yield('page-title', 'Member')</h5>
+                        <ul>
+                            <li><a href="{{ route('member.dashboard') }}">Home</a></li>
+                            <li>@yield('page-title', 'Member')</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="ds-content @yield('content-class')">
+                    @if (session('success'))
+                        <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+                    @endif
+                    @yield('content')
+                </div>
+            </div>
         </div>
-    </div>
+
+        <footer>
+            <div class="container-fluid">
+                <div class="copyright">
+                    <p>© {{ date('Y') }} Delta Support</p>
+                    <p>Member</p>
+                </div>
+            </div>
+        </footer>
+    </main>
 
     <script>
         (function () {

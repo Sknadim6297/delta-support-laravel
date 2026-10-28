@@ -21,6 +21,7 @@ class MemberController extends Controller
             ->map(function (Member $member, $index) {
                 return [
                     'serial' => $index + 1,
+                    'id' => $member->id,
                     'member_id' => $member->member_id,
                     'name' => $member->member_name,
                     'joining_date' => $member->created_at ? $member->created_at->format('d-M-Y') : 'N/A',
@@ -224,8 +225,27 @@ class MemberController extends Controller
 
         $request->session()->put('member_context_id', $member->member_id);
 
+        $approvedPackage = \App\Models\PackagePurchase::query()
+            ->where('member_id', $member->member_id)
+            ->where('status', \App\Models\PackagePurchase::APPROVED)
+            ->latest('reviewed_at')
+            ->first();
+        $recentPurchases = \App\Models\PackagePurchase::query()
+            ->where('member_id', $member->member_id)
+            ->latest('submitted_at')
+            ->limit(5)
+            ->get();
+
         return view('member.dashboard', [
             'member' => $member,
+            'approvedPackage' => $approvedPackage,
+            'recentPurchases' => $recentPurchases,
+            'packageOptions' => \App\Models\Package::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
+            'directReferrals' => Member::where('sponsor_id', $member->member_id)->count(),
             'metrics' => [
                 'totalInvestment' => $totalInvestment,
                 'activeInvestment' => $activeInvestment,
@@ -411,7 +431,7 @@ class MemberController extends Controller
     protected function memberValidationRules(?Member $member = null): array
     {
         return [
-            'member_name' => ['required', 'string', 'min:3', 'regex:/^[A-Za-z ]+$/'],
+            'member_name' => Member::nameRules(),
             'sponsor_id' => ['nullable', 'string'],
             'wallet_address' => ['nullable', 'string', 'max:255'],
             'mobile_no' => ['required', 'string', 'regex:/^[0-9+\-\s]+$/', 'min:10', 'max:15'],
@@ -532,6 +552,16 @@ class MemberController extends Controller
 
     public function store(Request $request)
     {
+        $wallet = trim((string) $request->input('wallet_address'));
+        $request->merge([
+            'member_name' => trim((string) $request->input('member_name')),
+            'sponsor_id' => strtoupper(trim((string) $request->input('sponsor_id'))),
+            'email' => trim((string) $request->input('email')),
+            'mobile_no' => trim((string) $request->input('mobile_no')),
+            'pan_card_no' => strtoupper(trim((string) $request->input('pan_card_no'))),
+            'wallet_address' => $wallet === '' ? null : $wallet,
+        ]);
+
         $validated = $request->validate($this->memberValidationRules());
 
         $result = app(MemberRegistrationService::class)->register($validated, [
@@ -554,7 +584,15 @@ class MemberController extends Controller
     public function updateMember(Request $request)
     {
         $memberId = trim((string) $request->input('member_id'));
-        $request->merge(['member_id' => $memberId]);
+        $wallet = trim((string) $request->input('wallet_address'));
+        $request->merge([
+            'member_id' => $memberId,
+            'member_name' => trim((string) $request->input('member_name')),
+            'email' => trim((string) $request->input('email')),
+            'mobile_no' => trim((string) $request->input('mobile_no')),
+            'pan_card_no' => strtoupper(trim((string) $request->input('pan_card_no'))),
+            'wallet_address' => $wallet === '' ? null : $wallet,
+        ]);
 
         $request->validate([
             'member_id' => ['required', 'string', 'min:6', 'exists:members,member_id'],

@@ -1,11 +1,11 @@
 @extends('admin.layouts.app')
+@section('title', 'All Invoices')
+@section('page-title', 'All Invoices')
+
 @section('content')
-<div>
-    <header>
-        <h1>All Invoices</h1>
-        <p>Each approved purchase has one invoice. The amount and denomination are the values saved at approval.</p>
-    </header>
-    <form method="GET">
+<div class="ds-catalog">
+    <x-ui.page-header title="All Invoices" lead="Each approved purchase has one invoice. The amount and denomination are the values saved at approval. Issued invoices are not edited or deleted here." />
+    <form class="ds-filter-form" method="GET">
         <input name="q" value="{{ request('q') }}" placeholder="Invoice, member, or package" aria-label="Search invoices">
         <input type="date" name="from" value="{{ request('from') }}" aria-label="From date">
         <input type="date" name="to" value="{{ request('to') }}" aria-label="To date">
@@ -15,7 +15,7 @@
         </select>
         <button>Search</button>
     </form>
-    <div>
+    <div class="ds-table-wrap">
         <table>
             <thead>
                 <tr>

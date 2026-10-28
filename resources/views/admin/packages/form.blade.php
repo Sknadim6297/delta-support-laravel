@@ -1,14 +1,17 @@
 @extends('admin.layouts.app')
+@section('title', $package->exists ? 'Edit Package' : 'Add Package')
+@section('page-title', $package->exists ? 'Edit Package' : 'Add Package')
+
 @section('content')
-<div>
-    <header>
-        <h1>{{ $package->exists ? 'Edit Package' : 'Add Package' }}</h1>
-        <p>New packages are priced in USDT. Saving an existing package keeps its stored denomination and does not convert the amount. Earlier purchases keep their own snapshot. ROI and level commission stay inactive.</p>
-    </header>
-    <form method="POST" action="{{ $package->exists ? route('admin.packages.update', $package) : route('admin.packages.store') }}" enctype="multipart/form-data">
+<div class="ds-catalog">
+    <x-ui.page-header
+        :title="$package->exists ? 'Edit Package' : 'Add Package'"
+        lead="New packages are priced in USDT. Saving an existing package keeps its stored denomination. Earlier purchases keep their own snapshot. ROI and level commission stay inactive."
+    />
+    <form class="ds-settings-form" method="POST" action="{{ $package->exists ? route('admin.packages.update', $package) : route('admin.packages.store') }}" enctype="multipart/form-data">
         @csrf
         @if($package->exists) @method('PUT') @endif
-        <div>
+        <div class="ds-field-grid">
             <label><span>Package code</span><input name="code" value="{{ old('code', $package->code) }}" required maxlength="32"></label>
             <label><span>Package name</span><input name="name" value="{{ old('name', $package->name) }}" required maxlength="120"></label>
             <label>
@@ -30,7 +33,17 @@
             <label><span>Package benefits</span><textarea name="benefits" rows="4">{{ old('benefits', $package->benefits) }}</textarea></label>
             <label><span>Inclusions</span><textarea name="inclusions" rows="3">{{ old('inclusions', $package->inclusions) }}</textarea></label>
             <label><span>Exclusions</span><textarea name="exclusions" rows="3">{{ old('exclusions', $package->exclusions) }}</textarea></label>
-            <label><span>Package image</span><input type="file" name="image" accept="image/jpeg,image/png,image/webp"></label>
+            <label class="ds-field-span"><span>Package image</span>
+                @if($package->exists && $package->image_path)
+                    <img class="ds-package-thumb" src="{{ route('admin.packages.image', $package) }}" alt="Current package image">
+                @else
+                    <span class="ds-package-media">No package image yet</span>
+                @endif
+                <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
+            </label>
+            @if($package->exists && $package->image_path)
+                <label class="ds-check"><input type="checkbox" name="remove_image" value="1"> Remove current image</label>
+            @endif
             <label><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $package->is_active))> Active</label>
             <p>Tour + ROI and Premium types only reserve future ROI and level-commission metadata. They do not credit income.</p>
             @if($errors->any())<div>{{ $errors->first() }}</div>@endif

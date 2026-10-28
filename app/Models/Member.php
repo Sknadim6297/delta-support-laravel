@@ -11,6 +11,16 @@ class Member extends Model
 {
     use HasFactory;
 
+    public const NAME_PATTERN = '/^[\p{L}\p{M}][\p{L}\p{M} .\'\x{2019}-]*$/u';
+
+    /**
+     * @return array<int, string>
+     */
+    public static function nameRules(): array
+    {
+        return ['required', 'string', 'min:3', 'max:100', 'regex:'.self::NAME_PATTERN];
+    }
+
     protected $hidden = [
         'password',
     ];

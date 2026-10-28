@@ -80,6 +80,28 @@ class MemberGenealogyTest extends TestCase
             ->assertDontSeeText($otherRoot->member_id);
     }
 
+    public function test_tree_children_load_only_the_next_downline_level(): void
+    {
+        $member = $this->member('ST100020', 'Root Member', 'ST666666');
+        $child = $this->member('ST100021', 'Child Member', $member->member_id);
+        $grandchild = $this->member('ST100022', 'Grandchild Member', $child->member_id);
+        $other = $this->member('ST100023', 'Other Root', 'ST666666');
+        $this->memberSession($member);
+
+        $this->get(route('member.genealogy.tree-view'))
+            ->assertOk()
+            ->assertSeeText($child->member_id)
+            ->assertDontSeeText($grandchild->member_id);
+
+        $this->getJson(route('member.genealogy.tree-children', ['member_id' => $child->member_id]))
+            ->assertOk()
+            ->assertSee($grandchild->member_id, false)
+            ->assertDontSee($grandchild->email, false);
+
+        $this->getJson(route('member.genealogy.tree-children', ['member_id' => $other->member_id]))
+            ->assertNotFound();
+    }
+
     public function test_member_genealogy_routes_require_member_context(): void
     {
         $this->get(route('member.genealogy.tree-view'))->assertForbidden();

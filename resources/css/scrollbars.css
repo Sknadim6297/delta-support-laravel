@@ -1,0 +1,157 @@
+/*
+ * Slim scrollbars for the document and the site's own scroll containers.
+ * Higher-contrast users keep the browser scrollbar so this does not override
+ * an accessibility preference.
+ */
+html,
+body {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+@media not (prefers-contrast: more) {
+    @supports not selector(::-webkit-scrollbar) {
+        :where(
+            html,
+            .wrapper,
+            .ds-content,
+            .ds-table-wrap,
+            .ds-content div:has(> table),
+            .lh-scroll,
+            .table-responsive,
+            .tbl-800,
+            .tbl-1200,
+            .modal-body,
+            .modal-dialog-scrollable .modal-body,
+            .tree-canvas,
+            textarea,
+            .lh-sidebar .lh-sb-wrapper,
+            .lh-notify-bar .lh-bar-content .tab-content,
+            .lh-tools-sidebar .lh-tools-detail
+        ) {
+            scrollbar-width: thin;
+            scrollbar-color: #9aabbb #f3f6f9;
+        }
+    }
+
+    :where(
+        html,
+        .wrapper,
+        .ds-content,
+        .ds-table-wrap,
+        .ds-content div:has(> table),
+        .lh-scroll,
+        .table-responsive,
+        .tbl-800,
+        .tbl-1200,
+        .modal-body,
+        .modal-dialog-scrollable .modal-body,
+        .tree-canvas,
+        textarea,
+        .lh-sidebar .lh-sb-wrapper,
+        .lh-notify-bar .lh-bar-content .tab-content,
+        .lh-tools-sidebar .lh-tools-detail
+    )::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    :where(
+        html,
+        .wrapper,
+        .ds-content,
+        .ds-table-wrap,
+        .ds-content div:has(> table),
+        .lh-scroll,
+        .table-responsive,
+        .tbl-800,
+        .tbl-1200,
+        .modal-body,
+        .modal-dialog-scrollable .modal-body,
+        .tree-canvas,
+        textarea,
+        .lh-sidebar .lh-sb-wrapper,
+        .lh-notify-bar .lh-bar-content .tab-content,
+        .lh-tools-sidebar .lh-tools-detail
+    )::-webkit-scrollbar-track {
+        background: #f3f6f9;
+        border-radius: 999px;
+    }
+
+    :where(
+        html,
+        .wrapper,
+        .ds-content,
+        .ds-table-wrap,
+        .ds-content div:has(> table),
+        .lh-scroll,
+        .table-responsive,
+        .tbl-800,
+        .tbl-1200,
+        .modal-body,
+        .modal-dialog-scrollable .modal-body,
+        .tree-canvas,
+        textarea,
+        .lh-sidebar .lh-sb-wrapper,
+        .lh-notify-bar .lh-bar-content .tab-content,
+        .lh-tools-sidebar .lh-tools-detail
+    )::-webkit-scrollbar-thumb {
+        background: #b7c3d0;
+        border-radius: 999px;
+    }
+
+    :where(
+        html,
+        .wrapper,
+        .ds-content,
+        .ds-table-wrap,
+        .ds-content div:has(> table),
+        .lh-scroll,
+        .table-responsive,
+        .tbl-800,
+        .tbl-1200,
+        .modal-body,
+        .modal-dialog-scrollable .modal-body,
+        .tree-canvas,
+        textarea,
+        .lh-sidebar .lh-sb-wrapper,
+        .lh-notify-bar .lh-bar-content .tab-content,
+        .lh-tools-sidebar .lh-tools-detail
+    )::-webkit-scrollbar-thumb:hover {
+        background: #7d8ea0;
+    }
+
+    :where(
+        html,
+        .wrapper,
+        .ds-content,
+        .ds-table-wrap,
+        .ds-content div:has(> table),
+        .lh-scroll,
+        .table-responsive,
+        .tbl-800,
+        .tbl-1200,
+        .modal-body,
+        .modal-dialog-scrollable .modal-body,
+        .tree-canvas,
+        textarea,
+        .lh-sidebar .lh-sb-wrapper,
+        .lh-notify-bar .lh-bar-content .tab-content,
+        .lh-tools-sidebar .lh-tools-detail
+    )::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        :where(
+            html,
+            .ds-table-wrap,
+            .lh-scroll,
+            .table-responsive,
+            .tree-canvas,
+            .lh-sidebar .lh-sb-wrapper
+        )::-webkit-scrollbar-thumb {
+            transition: background-color 0.2s ease;
+        }
+    }
+}

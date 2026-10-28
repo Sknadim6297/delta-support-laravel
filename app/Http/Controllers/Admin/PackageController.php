@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -42,7 +43,12 @@ class PackageController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $package = Package::query()->create($this->validated($request) + ['denomination' => 'USDT']);
-        $this->storeImage($request, $package);
+        try {
+            $this->storeImage($request, $package);
+        } catch (ValidationException $exception) {
+            $package->delete();
+            throw $exception;
+        }
 
         return redirect()->route('admin.packages.index')->with('success', 'Package saved.');
     }
@@ -99,7 +105,7 @@ class PackageController extends Controller
             'benefits' => ['nullable', 'string', 'max:5000'],
             'inclusions' => ['nullable', 'string', 'max:5000'],
             'exclusions' => ['nullable', 'string', 'max:5000'],
-            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'mimetypes:image/jpeg,image/png,image/webp', 'max:2048'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:100000'],
             'is_active' => ['nullable', 'boolean'],
             'roi_eligible' => ['nullable', 'boolean'],
@@ -118,23 +124,58 @@ class PackageController extends Controller
 
     private function storeImage(Request $request, Package $package): void
     {
+        if ($request->boolean('remove_image') && ! $request->hasFile('image')) {
+            $previous = $package->image_path;
+            $package->forceFill(['image_path' => null])->save();
+            $this->deleteStoredPackageImage($previous);
+
+            return;
+        }
+
         if (! $request->hasFile('image')) {
             return;
         }
 
-        if ($package->image_path) {
-            Storage::disk('local')->delete($package->image_path);
+        $file = $request->file('image');
+        $path = $file->store('packages', 'local');
+        $storedMime = is_string($path) ? mime_content_type(Storage::disk('local')->path($path)) : false;
+        if (! is_string($path) || ! in_array($storedMime, ['image/jpeg', 'image/png', 'image/webp'], true) || ! $this->isPackageImagePath($path)) {
+            if (is_string($path)) {
+                Storage::disk('local')->delete($path);
+            }
+            throw ValidationException::withMessages([
+                'image' => 'Upload a JPG, PNG, or WebP image.',
+            ]);
         }
 
-        $path = $request->file('image')->store('packages', 'local');
+        $previous = $package->image_path;
         $package->forceFill(['image_path' => $path])->save();
+        $this->deleteStoredPackageImage($previous, $path);
+    }
+
+    private function deleteStoredPackageImage(?string $path, ?string $except = null): void
+    {
+        if ($path === null || $path === '' || $path === $except || ! $this->isPackageImagePath($path)) {
+            return;
+        }
+
+        Storage::disk('local')->delete($path);
+    }
+
+    private function isPackageImagePath(string $path): bool
+    {
+        return (str_starts_with($path, 'packages/') || str_starts_with($path, 'package-images/'))
+            && ! str_contains($path, '..')
+            && ! str_contains($path, '\\')
+            && ! str_starts_with($path, '/');
     }
 
     private function imageResponse(Package $package, bool $activeOnly): BinaryFileResponse
     {
         abort_unless(
             (! $activeOnly || $package->is_active)
-                && $package->image_path
+                && is_string($package->image_path)
+                && $this->isPackageImagePath($package->image_path)
                 && Storage::disk('local')->exists($package->image_path),
             404
         );

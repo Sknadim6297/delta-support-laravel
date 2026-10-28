@@ -23,4 +23,13 @@
     --ds-space-6: 24px;
     --ds-control-height: 42px;
     --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+    --brand-primary: var(--ds-primary);
+    --brand-primary-hover: var(--ds-primary-hover);
+    --brand-navy: var(--ds-foreground);
+    --surface: var(--ds-surface);
+    --text-primary: var(--ds-foreground);
+    --text-secondary: #344054;
+    --text-placeholder: #8795a8;
+    --input-border: #d8e2ee;
+    --focus-ring: var(--ds-focus);
 }

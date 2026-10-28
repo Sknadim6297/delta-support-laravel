@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Member;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class GenealogyController extends Controller
@@ -35,6 +36,41 @@ class GenealogyController extends Controller
             'selectedMemberId' => $selectedMember->member_id,
             'memberNotFound' => false,
         ]);
+    }
+
+    public function treeChildren(Request $request): JsonResponse
+    {
+        $root = $this->currentMember($request);
+        $parentId = strtoupper(trim((string) $request->query('member_id', '')));
+        abort_unless($this->isInDownline($root, $parentId), 404);
+
+        $children = Member::query()
+            ->where('sponsor_id', $parentId)
+            ->orderBy('member_name')
+            ->get(['member_id', 'member_name', 'status']);
+        $counts = $children->isEmpty()
+            ? collect()
+            : Member::query()
+                ->select('sponsor_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('sponsor_id', $children->pluck('member_id'))
+                ->groupBy('sponsor_id')
+                ->pluck('aggregate', 'sponsor_id');
+
+        $html = $children->map(function (Member $child) use ($counts, $root) {
+            return view('shared.genealogy-node', [
+                'node' => [
+                    'id' => $child->member_id,
+                    'name' => $child->member_name,
+                    'status' => $child->status,
+                    'children' => [],
+                    'child_count' => (int) ($counts[$child->member_id] ?? 0),
+                ],
+                'ownProfileUrl' => route('member.profile'),
+                'profileFor' => $root->member_id,
+            ])->render();
+        })->implode('');
+
+        return response()->json(['html' => $html]);
     }
 
     public function levelView(Request $request): View
@@ -98,7 +134,37 @@ class GenealogyController extends Controller
         return Member::where('member_id', $request->session()->get('member_context_id'))->firstOrFail();
     }
 
-    private function buildTreeNode(Member $member, array &$visited = []): array
+    private function isInDownline(Member $root, string $memberId): bool
+    {
+        if ($memberId === '' || $memberId === $root->member_id) {
+            return $memberId === $root->member_id;
+        }
+
+        $current = $memberId;
+        $seen = [];
+
+        for ($depth = 0; $depth < 64; $depth++) {
+            if (isset($seen[$current])) {
+                return false;
+            }
+
+            $seen[$current] = true;
+            $row = Member::query()->where('member_id', $current)->first(['member_id', 'sponsor_id']);
+            if ($row === null) {
+                return false;
+            }
+
+            if ($row->sponsor_id === $root->member_id) {
+                return true;
+            }
+
+            $current = (string) $row->sponsor_id;
+        }
+
+        return false;
+    }
+
+    private function buildTreeNode(Member $member, array &$visited = [], int $depth = 0): array
     {
         if (isset($visited[$member->member_id])) {
             return [
@@ -106,6 +172,7 @@ class GenealogyController extends Controller
                 'name' => $member->member_name,
                 'status' => $member->status,
                 'children' => [],
+                'child_count' => 0,
             ];
         }
 
@@ -113,13 +180,24 @@ class GenealogyController extends Controller
         $children = Member::query()
             ->where('sponsor_id', $member->member_id)
             ->orderBy('member_name')
-            ->get();
+            ->get(['member_id', 'member_name', 'status']);
+
+        if ($depth >= 1) {
+            return [
+                'id' => $member->member_id,
+                'name' => $member->member_name,
+                'status' => $member->status,
+                'children' => [],
+                'child_count' => $children->count(),
+            ];
+        }
 
         return [
             'id' => $member->member_id,
             'name' => $member->member_name,
             'status' => $member->status,
-            'children' => $children->map(fn (Member $child) => $this->buildTreeNode($child, $visited))->values()->all(),
+            'child_count' => $children->count(),
+            'children' => $children->map(fn (Member $child) => $this->buildTreeNode($child, $visited, $depth + 1))->values()->all(),
         ];
     }
 }

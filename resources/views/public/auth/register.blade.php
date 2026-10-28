@@ -56,15 +56,15 @@
                         <label for="sponsorId" class="form-label">Sponsor ID *</label>
                         <div class="input-wrap">
                             <i class="bi bi-diagram-3 input-icon"></i>
-                            <input type="text" class="form-control" id="sponsorId" name="sponsor_id" value="{{ old('sponsor_id', request('sponsor_id')) }}" placeholder="Enter sponsor ID" required>
+                            <input type="text" class="form-control" id="sponsorId" name="sponsor_id" value="{{ old('sponsor_id', $prefillSponsorId ?? request('sponsor_id')) }}" placeholder="Enter sponsor ID" @if(!empty($sponsorLocked)) readonly aria-readonly="true" @endif required>
                         </div>
-                        <div class="form-message text-red-600" data-error-for="sponsor_id">@error('sponsor_id'){{ $message }}@enderror</div>
+                        <div class="form-message text-red-600" data-error-for="sponsor_id">@error('sponsor_id'){{ $message }}@enderror @if(!empty($sponsorError) && !$errors->has('sponsor_id')){{ $sponsorError }}@endif</div>
                     </div>
                     <div>
                         <label for="sponsorName" class="form-label">Sponsor Name</label>
                         <div class="input-wrap">
                             <i class="bi bi-people input-icon"></i>
-                            <input type="text" class="form-control" id="sponsorName" placeholder="Sponsor name will auto-fill" readonly>
+                            <input type="text" class="form-control" id="sponsorName" value="{{ $lockedSponsorName ?? '' }}" placeholder="Sponsor name will auto-fill" readonly>
                         </div>
                     </div>
                 </div>
@@ -106,8 +106,8 @@
     const sponsorName = document.getElementById('sponsorName');
     const form = document.getElementById('registrationForm');
     const sponsorError = document.querySelector('[data-error-for="sponsor_id"]');
-    let sponsorValid = false;
-    let validatedSponsor = '';
+    let sponsorValid = @json((bool) ($sponsorLocked ?? false));
+    let validatedSponsor = @json(!empty($sponsorLocked) ? ($prefillSponsorId ?? '') : '');
     let timer;
 
     function showSponsorError(message) {
@@ -116,10 +116,13 @@
 
     async function lookupSponsor() {
         const value = sponsorId.value.trim().toUpperCase();
+        const locked = sponsorId.readOnly;
         sponsorId.value = value;
-        sponsorValid = false;
-        validatedSponsor = '';
-        sponsorName.value = '';
+        if (!locked) {
+            sponsorValid = false;
+            validatedSponsor = '';
+            sponsorName.value = '';
+        }
 
         if (!value) {
             showSponsorError('Sponsor ID is required.');
@@ -132,11 +135,15 @@
             });
             const data = await response.json();
             if (data.exists) {
-                sponsorName.value = data.sponsor_name || '';
+                sponsorName.value = data.sponsor_name || sponsorName.value;
                 sponsorValid = true;
                 validatedSponsor = value;
                 showSponsorError('');
+            } else if (!locked) {
+                showSponsorError(data.message || 'Invalid Sponsor ID.');
             } else {
+                sponsorValid = false;
+                validatedSponsor = '';
                 showSponsorError(data.message || 'Invalid Sponsor ID.');
             }
         } catch (error) {
@@ -150,7 +157,11 @@
         timer = setTimeout(lookupSponsor, 350);
     });
     sponsorId.addEventListener('blur', lookupSponsor);
-    if (sponsorId.value.trim() !== '') {
+    if (sponsorId.readOnly && sponsorId.value.trim() !== '') {
+        sponsorValid = true;
+        validatedSponsor = sponsorId.value.trim().toUpperCase();
+        lookupSponsor();
+    } else if (sponsorId.value.trim() !== '') {
         lookupSponsor();
     }
 

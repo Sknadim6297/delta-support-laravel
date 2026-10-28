@@ -42,7 +42,7 @@ class CatalogController extends Controller
     public function purchase(Request $request, Package $package, PackagePurchaseService $purchases): RedirectResponse
     {
         $data = $request->validate([
-            'payment_reference' => ['required', 'string', 'max:128'],
+            'payment_reference' => ['required', 'string', 'max:255'],
             'idempotency_key' => ['required', 'uuid'],
         ]);
 
@@ -54,7 +54,11 @@ class CatalogController extends Controller
     public function mine(): View
     {
         $memberId = session('member_context_id');
-        $purchases = PackagePurchase::query()->where('member_id', $memberId)->latest('submitted_at')->paginate(15);
+        $purchases = PackagePurchase::query()
+            ->with(['package', 'invoice'])
+            ->where('member_id', $memberId)
+            ->latest('submitted_at')
+            ->paginate(15);
 
         return view('member.packages.mine', compact('purchases'));
     }
@@ -62,6 +66,7 @@ class CatalogController extends Controller
     public function payments(): View
     {
         $purchases = PackagePurchase::query()
+            ->with('invoice')
             ->where('member_id', session('member_context_id'))
             ->latest('submitted_at')
             ->paginate(15);
@@ -90,11 +95,30 @@ class CatalogController extends Controller
         return response()->file(Storage::disk('local')->path($settings->qr_image_path));
     }
 
-    public function packageImage(Package $package)
+    public function packageImage(Request $request, Package $package)
     {
-        abort_unless($package->is_active && $package->image_path && Storage::disk('local')->exists($package->image_path), 404);
+        $owned = PackagePurchase::query()
+            ->where('package_id', $package->id)
+            ->where('member_id', $request->session()->get('member_context_id'))
+            ->exists();
+
+        abort_unless(
+            ($package->is_active || $owned)
+                && $package->image_path
+                && $this->isPackageImagePath($package->image_path)
+                && Storage::disk('local')->exists($package->image_path),
+            404
+        );
 
         return response()->file(Storage::disk('local')->path($package->image_path));
+    }
+
+    private function isPackageImagePath(string $path): bool
+    {
+        return (str_starts_with($path, 'packages/') || str_starts_with($path, 'package-images/'))
+            && ! str_contains($path, '..')
+            && ! str_contains($path, '\\')
+            && ! str_starts_with($path, '/');
     }
 
     public function invoices(): View
@@ -132,6 +156,7 @@ class CatalogController extends Controller
         return view('member.network.referral', [
             'link' => route('member.register', ['sponsor_id' => $member->member_id]),
             'member' => $member,
+            'directCount' => Member::query()->where('sponsor_id', $member->member_id)->count(),
         ]);
     }
 

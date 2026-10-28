@@ -47,8 +47,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const open = drop.classList.contains('is-open');
             document.querySelectorAll('[data-lux-drop].is-open').forEach(function (other) {
                 other.classList.remove('is-open');
+                const otherButton = other.querySelector('[data-lux-drop-button]');
+                if (otherButton) {
+                    otherButton.setAttribute('aria-expanded', 'false');
+                }
             });
             drop.classList.toggle('is-open', !open);
+            button.setAttribute('aria-expanded', !open ? 'true' : 'false');
         });
     });
 

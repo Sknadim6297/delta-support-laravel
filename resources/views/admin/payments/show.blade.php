@@ -26,7 +26,10 @@
         <dl class="ds-review-grid">
             <div>
                 <dt>Status</dt>
-                <dd><x-ui.badge :tone="$tone">{{ $purchase->statusLabel() }}</x-ui.badge></dd>
+                <dd>
+                    <x-ui.badge :tone="$tone">{{ $purchase->paymentStatusLabel() }}</x-ui.badge>
+                    <x-ui.badge :tone="$purchase->status === \App\Models\PackagePurchase::APPROVED ? 'success' : 'muted'">{{ $purchase->activationLabel() }}</x-ui.badge>
+                </dd>
             </div>
             <div>
                 <dt>Member</dt>

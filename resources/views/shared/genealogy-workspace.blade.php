@@ -4,20 +4,13 @@
     $showReset = $showReset ?? false;
 @endphp
 
-<div class="ds-stack" data-genealogy>
-    <x-ui.page-header
-        title="Referral Network"
-        lead="View sponsor relationships and direct member hierarchy."
-    >
-        <x-slot:breadcrumb>
-            <x-ui.breadcrumb :items="[
-                ['label' => $crumbParent, 'href' => $crumbParentUrl],
-                ['label' => 'Referral Tree'],
-            ]" />
-        </x-slot:breadcrumb>
-    </x-ui.page-header>
-
-    <form method="GET" action="{{ $formAction }}" id="{{ $formId }}" class="ds-searchbar" data-genealogy-search>
+<div class="lh-native-tree" data-genealogy @if (! empty($childrenUrl)) data-tree-children="{{ $childrenUrl }}" @endif>
+    <div class="lh-card">
+        <div class="lh-card-header">
+            <h4 class="lh-card-title">Referral Tree</h4>
+        </div>
+        <div class="lh-card-content">
+    <form method="GET" action="{{ $formAction }}" id="{{ $formId }}" class="lh-filter" data-genealogy-search>
         <label for="{{ $inputId }}">Member ID</label>
         <input
             type="text"
@@ -29,7 +22,7 @@
             autocomplete="off"
             @if ($memberNotFound) aria-invalid="true" aria-describedby="{{ $inputId }}-error" @endif
         >
-        <button type="submit">
+        <button type="submit" class="lh-primary-btn">
             <svg class="ds-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <span>Search</span>
         </button>
@@ -42,8 +35,10 @@
             <p class="ds-hint">{{ $searchHint }}</p>
         @endif
     </form>
+        </div>
+    </div>
 
-    <section class="tree-workspace" aria-label="Referral network">
+    <section class="tree-workspace lh-card" aria-label="Referral network">
         @include('shared.genealogy-controls')
 
         <div id="treeContainer" class="tree-canvas" tabindex="0" aria-label="Referral tree canvas">

@@ -21,7 +21,6 @@
             <label><span>Blockchain network</span><input name="network" value="{{ old('network', $settings->network) }}" maxlength="80" placeholder="Enter the network. None is assumed." autocomplete="off"></label>
             <label><span>Receiving wallet address</span><input name="receiving_address" value="{{ old('receiving_address', $settings->receiving_address) }}" maxlength="255" autocomplete="off"></label>
             <label class="ds-field-span"><span>Payment instructions</span><textarea name="instructions" rows="4" maxlength="5000" placeholder="{{ \App\Models\PaymentSetting::USDT_INSTRUCTION }}">{{ old('instructions', $settings->instructions) }}</textarea></label>
-            <label class="ds-field-span"><span>Transaction ID pattern</span><textarea name="reference_pattern" rows="2" maxlength="120" placeholder="Optional regular expression, for example ^[A-F0-9]{64}$">{{ old('reference_pattern', $settings->reference_pattern) }}</textarea></label>
             <label><span>Payment QR image</span><input type="file" name="qr_image" accept="image/jpeg,image/png,image/webp"></label>
         </div>
 
@@ -33,7 +32,7 @@
             @endif
         </div>
 
-        <p>Members must send USDT on the exact network entered here. Enter only the public receiving address and a JPG, PNG, or WebP QR. Do not store a private key or seed phrase.</p>
+        <p>Members must send USDT on the exact network entered here. A transaction reference can be any non-empty claim. It is not proof of payment, and this application does not match it to a blockchain hash. Enter only the public receiving address and a JPG, PNG, or WebP QR. Do not store a private key or seed phrase.</p>
 
         <label class="ds-check">
             <input type="checkbox" name="is_enabled" value="1" @checked(old('is_enabled', $settings->is_enabled))>

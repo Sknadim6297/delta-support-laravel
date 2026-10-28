@@ -104,7 +104,7 @@ class PackageCommerceTest extends TestCase
         $this->withSession(['member_context_id' => $owner->member_id])
             ->from(route('member.packages.show', $package))
             ->post(route('member.packages.purchase', $package), [
-                'payment_reference' => 'bad',
+                'payment_reference' => '<bad>',
                 'idempotency_key' => (string) Str::uuid(),
             ])->assertSessionHasErrors('payment_reference');
 
@@ -372,7 +372,8 @@ class PackageCommerceTest extends TestCase
             ->get(route('member.packages.mine'))
             ->assertOk()
             ->assertSeeText($original->reference)
-            ->assertSeeText('Pending Verification')
+            ->assertSeeText('Pending')
+            ->assertSeeText('Not active')
             ->assertSeeText('USD 40.0000');
 
         $this->withSession(['member_context_id' => $other->member_id])
@@ -490,7 +491,7 @@ class PackageCommerceTest extends TestCase
         $this->withSession(['member_context_id' => $owner->member_id])
             ->from(route('member.packages.show', $package))
             ->post(route('member.packages.purchase', $package), [
-                'payment_reference' => '  short  ',
+                'payment_reference' => '   ',
                 'idempotency_key' => (string) Str::uuid(),
             ])->assertSessionHasErrors('payment_reference');
 
@@ -656,6 +657,119 @@ class PackageCommerceTest extends TestCase
         $this->actingAs($admin)->post(route('admin.payments.reject', $rejected), ['reason' => 'Not matched.'])->assertRedirect();
         $this->assertSame(1, Invoice::query()->count());
         $this->assertSame(0, RoiTransaction::query()->count());
+    }
+
+    public function test_any_non_empty_reference_stays_pending_and_oversized_values_are_rejected(): void
+    {
+        $owner = $this->member('STPKG0040');
+        $package = Package::query()->create([
+            'code' => 'PKG-REF',
+            'name' => 'Reference Tour',
+            'price_usd' => '18.0000',
+            'denomination' => 'USDT',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $this->enablePayments();
+        PaymentSetting::current()->update(['reference_pattern' => '^[A-F0-9]{64}$']);
+
+        $this->withSession(['member_context_id' => $owner->member_id])
+            ->post(route('member.packages.purchase', $package), [
+                'payment_reference' => '  paid via desk #12  ',
+                'idempotency_key' => (string) Str::uuid(),
+            ])->assertRedirect();
+
+        $purchase = PackagePurchase::query()->firstOrFail();
+        $this->assertSame(PackagePurchase::PENDING, $purchase->status);
+        $this->assertSame('paid via desk #12', $purchase->payment_reference);
+        $this->assertNull($purchase->invoice);
+
+        $this->withSession(['member_context_id' => $owner->member_id])
+            ->from(route('member.packages.show', $package))
+            ->post(route('member.packages.purchase', $package), [
+                'payment_reference' => str_repeat('A', 256),
+                'idempotency_key' => (string) Str::uuid(),
+            ])->assertSessionHasErrors('payment_reference');
+        $this->assertSame(1, PackagePurchase::query()->count());
+    }
+
+    public function test_admin_can_replace_and_remove_a_package_image(): void
+    {
+        Storage::fake('local');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $package = Package::query()->create([
+            'code' => 'PKG-IMG',
+            'name' => 'Image Tour',
+            'price_usd' => '20.0000',
+            'denomination' => 'USDT',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->actingAs($admin)->put(route('admin.packages.update', $package), [
+            'code' => 'PKG-IMG',
+            'name' => 'Image Tour',
+            'package_type' => Package::TYPE_TOUR,
+            'price_usd' => '20.0000',
+            'sort_order' => 1,
+            'is_active' => '1',
+            'image' => UploadedFile::fake()->image('cover.jpg', 40, 40),
+        ])->assertRedirect();
+
+        $package->refresh();
+        $first = $package->image_path;
+        Storage::disk('local')->assertExists($first);
+
+        $owner = $this->member('STPKG0041');
+        $this->withSession(['member_context_id' => $owner->member_id])
+            ->get(route('member.packages.explore'))
+            ->assertOk()
+            ->assertSee(route('member.packages.image', $package), false);
+        $this->withSession(['member_context_id' => $owner->member_id])
+            ->get(route('member.packages.image', $package))
+            ->assertOk();
+
+        $this->actingAs($admin)->put(route('admin.packages.update', $package), [
+            'code' => 'PKG-IMG',
+            'name' => 'Image Tour',
+            'package_type' => Package::TYPE_TOUR,
+            'price_usd' => '20.0000',
+            'sort_order' => 1,
+            'is_active' => '1',
+            'image' => UploadedFile::fake()->image('replacement.png', 40, 40),
+        ])->assertRedirect();
+
+        $package->refresh();
+        $this->assertNotSame($first, $package->image_path);
+        Storage::disk('local')->assertMissing($first);
+        Storage::disk('local')->assertExists($package->image_path);
+
+        $this->actingAs($admin)->from(route('admin.packages.edit', $package))->put(route('admin.packages.update', $package), [
+            'code' => 'PKG-IMG',
+            'name' => 'Image Tour',
+            'package_type' => Package::TYPE_TOUR,
+            'price_usd' => '20.0000',
+            'sort_order' => 1,
+            'is_active' => '1',
+            'image' => UploadedFile::fake()->create('notes.txt', 10, 'text/plain'),
+        ])->assertSessionHasErrors('image');
+        $this->assertNotNull($package->fresh()->image_path);
+
+        $this->actingAs($admin)->put(route('admin.packages.update', $package), [
+            'code' => 'PKG-IMG',
+            'name' => 'Image Tour',
+            'package_type' => Package::TYPE_TOUR,
+            'price_usd' => '20.0000',
+            'sort_order' => 1,
+            'is_active' => '1',
+            'remove_image' => '1',
+        ])->assertRedirect();
+
+        $this->assertNull($package->fresh()->image_path);
+        $this->withSession(['member_context_id' => $owner->member_id])
+            ->get(route('member.packages.explore'))
+            ->assertOk()
+            ->assertSeeText('Package image');
     }
 
     private function enablePayments(): void

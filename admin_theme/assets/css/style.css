@@ -38,117 +38,12 @@
 
 
 -----------------------------------------------------------------------------------*/
-/*=== Typography ===*/
-/*--  Poppins font  --*/
-@font-face {
-  font-family: "Poppins, sans-serif";
-  src: url("../fonts/poppins/Poppins-Thin.ttf") format("truetype");
-  font-weight: 100;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Poppins, sans-serif";
-  src: url("../fonts/poppins/Poppins-ExtraLight.ttf") format("truetype");
-  font-weight: 200;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Poppins, sans-serif";
-  src: url("../fonts/poppins/Poppins-Light.ttf");
-  font-weight: 300;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Poppins, sans-serif";
-  src: url("../fonts/poppins/Poppins-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Poppins, sans-serif";
-  src: url("../fonts/poppins/Poppins-Medium.ttf") format("truetype");
-  font-weight: 500;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Poppins, sans-serif";
-  src: url("../fonts/poppins/Poppins-SemiBold.ttf") format("truetype");
-  font-weight: 600;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Poppins, sans-serif";
-  src: url("../fonts/poppins/Poppins-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Poppins, sans-serif";
-  src: url("../fonts/poppins/Poppins-ExtraBold.ttf") format("truetype");
-  font-weight: 800;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Poppins, sans-serif";
-  src: url("../fonts/poppins/Poppins-Black.ttf") format("truetype");
-  font-weight: 900;
-  font-style: normal;
-}
-/*--  Nunito font  --*/
-@font-face {
-  font-family: "Nunito", sans-serif;
-  src: url("../fonts/nunito/Nunito-ExtraLight.ttf") format("truetype");
-  font-weight: 200;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Nunito", sans-serif;
-  src: url("../fonts/nunito/Nunito-Light.ttf") format("truetype");
-  font-weight: 300;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Nunito", sans-serif;
-  src: url("../fonts/nunito/Nunito-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Nunito", sans-serif;
-  src: url("../fonts/nunito/Nunito-Medium.ttf") format("truetype");
-  font-weight: 500;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Nunito", sans-serif;
-  src: url("../fonts/nunito/Nunito-SemiBold.ttf") format("truetype");
-  font-weight: 600;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Nunito", sans-serif;
-  src: url("../fonts/nunito/Nunito-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Nunito", sans-serif;
-  src: url("../fonts/nunito/Nunito-ExtraBold.ttf") format("truetype");
-  font-weight: 800;
-  font-style: normal;
-}
-@font-face {
-  font-family: "Nunito", sans-serif;
-  src: url("../fonts/nunito/Nunito-Black.ttf") format("truetype");
-  font-weight: 900;
-  font-style: normal;
-}
-/** General **/
+/* Typography uses Inter, loaded by the panel layouts. */
 body {
   margin: 0;
   background-color: rgba(223, 230, 237, 0.2);
-  font-family: "Poppins, sans-serif";
-  letter-spacing: 0.03rem;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
 }
 
 h1,
@@ -157,8 +52,8 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: "Nunito", sans-serif;
-  letter-spacing: 0.03rem;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
 }
 
 a {
@@ -945,7 +840,7 @@ label {
   font-size: 26px;
 }
 .lh-remix-icons .lh-icon-block h4 {
-  font-family: "Poppins, sans-serif";
+  font-family: Inter, sans-serif;
   font-size: 14px;
   color: #777;
   font-size: 13px;
@@ -1272,7 +1167,7 @@ label {
   text-overflow: ellipsis;
 }
 .sb-collapse .lh-sidebar .lh-sb-wrapper .lh-sb-list .sb-drop-item.active .lh-sb-drop {
-  display: none !important;
+  display: none;
 }
 .sb-collapse .lh-sidebar .lh-sb-wrapper .lh-sb-list .lh-sb-item > a {
   display: -webkit-box;
@@ -1345,7 +1240,10 @@ label {
   display: block;
 }
 .sb-collapse .lh-sidebar:hover .lh-sb-logo .sb-full img {
-  width: 150px;
+  width: auto;
+  max-width: 100%;
+  max-height: 48px;
+  object-fit: contain;
 }
 .sb-collapse .lh-sidebar:hover .lh-sb-logo .sb-collapse {
   display: none;
@@ -1379,8 +1277,8 @@ label {
   display: none;
 }
 .lh-sidebar .lh-sb-logo {
-  height: 70px;
-  padding: 0 15px;
+  height: 68px;
+  padding: 8px 16px;
   background-color: #181e28;
   display: -webkit-box;
   display: -ms-flexbox;
@@ -1393,17 +1291,19 @@ label {
           justify-content: flex-start;
   overflow: hidden;
 }
-.lh-sidebar .lh-sb-logo .sb-full img {
-  width: 150px;
-}
+.lh-sidebar .lh-sb-logo .sb-full img,
 .lh-sidebar .lh-sb-logo .sb-collapse img {
-  width: 33px;
+  width: auto;
+  max-width: 100%;
+  max-height: 48px;
+  height: auto;
+  object-fit: contain;
 }
 .lh-sidebar .lh-sb-wrapper {
   -webkit-transition: all 0.3s ease-in-out;
   transition: all 0.3s ease-in-out;
-  height: calc(100vh - 70px);
-  overflow-Y: scroll;
+  height: calc(100vh - 68px);
+  overflow-y: auto;
   overflow-x: hidden;
   padding: 24px 15px 24px 24px;
 }
@@ -1603,7 +1503,7 @@ label {
   color: #ccc;
 }
 [data-mode=light] .lh-sb-wrapper .lh-sb-list .lh-sb-item.load-active > a {
-  color: #799ffe !important;
+  color: var(--ds-primary, #0878d1) !important;
 }
 [data-mode=light] .lh-sb-wrapper .lh-sb-list .lh-sb-drop .active-link {
   color: #484d54 !important;
@@ -1612,7 +1512,7 @@ label {
   color: #484d54 !important;
 }
 [data-mode=light] .lh-sb-wrapper .lh-sb-list .lh-sb-item a {
-  padding: 10px 0;
+  padding: 10px 12px;
   color: #484d54;
 }
 [data-mode=light] .lh-sb-wrapper .lh-sb-list .lh-sb-item a:hover {
@@ -1832,7 +1732,10 @@ label {
     display: block !important;
   }
   .sb-collapse .lh-sidebar:hover .lh-sb-logo .sb-full img {
-    width: 150px;
+    width: auto;
+    max-width: 100%;
+    max-height: 48px;
+    object-fit: contain;
   }
   .sb-collapse .lh-sidebar:hover .lh-sb-logo .sb-collapse {
     display: none;
@@ -1875,9 +1778,9 @@ label {
   -webkit-transition: all 0.1s ease-in-out;
   transition: all 0.1s ease-in-out;
   width: calc(100% - 270px);
-  height: 70px;
+  height: 68px;
   margin-left: 270px;
-  padding: 0 12px;
+  padding: 0 16px;
   position: fixed;
   top: 0;
   right: 0;
@@ -1892,7 +1795,7 @@ label {
           align-items: center;
   -webkit-box-pack: center;
       -ms-flex-pack: center;
-          justify-content: center;
+          justify-content: flex-start;
   border-bottom: 1px solid #eee;
   z-index: 15;
 }
@@ -2054,7 +1957,7 @@ label {
 }
 .lh-header .lh-header-items .right-header .lh-hover-drop .lh-hover-drop-panel .details h6, [data-header-mode-tool=light] .lh-header-items .right-header .lh-hover-drop .lh-hover-drop-panel .details h6 {
   margin-bottom: 0;
-  font-family: "Poppins, sans-serif";
+  font-family: Inter, sans-serif;
   font-size: 13px;
   font-weight: 500;
 }
@@ -2996,7 +2899,7 @@ Tools sidebar
   font-size: 14px;
   font-weight: 500;
   color: #484d54;
-  font-family: "Poppins, sans-serif";
+  font-family: Inter, sans-serif;
 }
 .lh-tools-sidebar .lh-tools-detail .lh-tools-block p {
   margin: 0;
@@ -3336,7 +3239,7 @@ Tools sidebar
   margin-bottom: 12px;
   color: #777;
   font-size: 15px;
-  font-family: "Poppins, sans-serif";
+  font-family: Inter, sans-serif;
   font-weight: 500;
 }
 .lh-card .label-card .title .growth-numbers h5 {
@@ -3469,7 +3372,7 @@ Tools sidebar
   background-color: #799ffe;
 }
 .daterangepicker .calendar-table table {
-  font-family: "Poppins, sans-serif";
+  font-family: Inter, sans-serif;
 }
 .daterangepicker .calendar-table table thead tr th {
   background-color: #fff;
@@ -4176,7 +4079,7 @@ div.dataTables_wrapper div.dataTables_info {
 .lh-role .lh-role-item .team-detail .info h6 {
   margin: 0 0 5px 0;
   font-size: 14px;
-  font-family: "Poppins, sans-serif";
+  font-family: Inter, sans-serif;
   font-weight: 500;
   color: #484d54;
 }

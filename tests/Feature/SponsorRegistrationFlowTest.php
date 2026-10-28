@@ -123,6 +123,7 @@ class SponsorRegistrationFlowTest extends TestCase
                 'sponsor_id' => $sponsor->member_id,
                 'email' => 'direct@example.com',
                 'mobile_no' => '9876543213',
+                'pan_card_no' => 'ABCDE1234F',
             ])
             ->assertRedirect(route('member.registration'));
 

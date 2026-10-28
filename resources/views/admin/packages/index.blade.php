@@ -2,7 +2,7 @@
 @section('title', 'All Packages')
 @section('page-title', 'All Packages')
 @section('content')
-<div>
+<div class="ds-catalog">
     <x-ui.page-header title="All Packages" lead="Tour details are stored on each package. Purchases keep their own price snapshot.">
         <x-slot:actions>
             <x-ui.button :href="route('admin.packages.create')">Add Package</x-ui.button>
@@ -17,10 +17,11 @@
         </select>
         <button>Search</button>
     </form>
-    <div>
+    <div class="ds-table-wrap">
         <table>
             <thead>
                 <tr>
+                    <th>Image</th>
                     <th>Code</th>
                     <th>Name</th>
                     <th>Type</th>
@@ -34,6 +35,13 @@
             <tbody>
             @forelse($packages as $package)
                 <tr>
+                    <td>
+                        @if($package->image_path)
+                            <img class="ds-package-thumb" src="{{ route('admin.packages.image', $package) }}" alt="">
+                        @else
+                            <span class="ds-package-media">No image</span>
+                        @endif
+                    </td>
                     <td>{{ $package->code }}</td>
                     <td>{{ $package->name }}</td>
                     <td>{{ $package->typeLabel() }}</td>
@@ -54,7 +62,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8">No packages yet. Add a package and set its USDT price.</td></tr>
+                <tr><td colspan="9">No packages yet. Add a package and set its USDT price.</td></tr>
             @endforelse
             </tbody>
         </table>

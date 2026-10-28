@@ -56,8 +56,10 @@ class MemberLoginTest extends TestCase
         $this->assertSame('inactive', $inactive->fresh()->status);
         $this->get(route('member.dashboard'))
             ->assertOk()
-            ->assertSeeText('Your account is currently inactive. Purchase a package to activate your membership.')
-            ->assertSeeText('Browse Packages');
+            ->assertSeeText('Account Inactive — No Active Package')
+            ->assertSeeText("Your account is currently inactive because you don't have an active package. Buy a package to unlock eligible benefits and start your membership journey.", false)
+            ->assertSeeText('Buy a Package')
+            ->assertSeeText('Explore Packages');
         $this->get(route('member.packages.mine'))->assertOk();
         $this->get(route('member.payments.index'))->assertOk();
         $this->get(route('member.invoices.index'))->assertOk();
@@ -110,6 +112,14 @@ class MemberLoginTest extends TestCase
         $this->assertTrue($invoice->is($repeat));
         $this->assertSame(1, Invoice::query()->count());
         $this->assertSame('active', $member->fresh()->status);
+        $this->assertSame(0, RoiTransaction::query()->count());
+        $this->assertSame(0, LevelCommissionTransaction::query()->count());
+
+        $this->get(route('member.dashboard'))
+            ->assertOk()
+            ->assertSeeText('Account Active')
+            ->assertSeeText('Login Tour')
+            ->assertSeeText('Opening this dashboard does not credit ROI or level income.');
         $this->assertSame(0, RoiTransaction::query()->count());
         $this->assertSame(0, LevelCommissionTransaction::query()->count());
     }

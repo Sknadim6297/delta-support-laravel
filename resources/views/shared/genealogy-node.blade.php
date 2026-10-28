@@ -1,7 +1,8 @@
 @php
     $children = $node['children'] ?? [];
-    $childCount = count($children);
+    $childCount = array_key_exists('child_count', $node) ? (int) $node['child_count'] : count($children);
     $hasChildren = $childCount > 0;
+    $lazy = $hasChildren && $children === [];
     $status = strtolower((string) ($node['status'] ?? 'inactive'));
     $name = trim((string) ($node['name'] ?? ''));
     $parts = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -56,7 +57,7 @@
     </div>
 
     @if ($hasChildren)
-        <ul class="tree-children">
+        <ul class="tree-children" @if ($lazy) data-tree-lazy="{{ $node['id'] }}" @endif>
             @foreach ($children as $child)
                 @include('shared.genealogy-node', [
                     'node' => $child,

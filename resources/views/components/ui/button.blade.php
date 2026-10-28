@@ -9,6 +9,8 @@
     $variantClass = match ($variant) {
         'secondary' => 'ds-btn ds-btn-secondary',
         'danger' => 'ds-btn ds-btn-danger',
+        'success' => 'ds-btn ds-btn-success',
+        'outline' => 'ds-btn ds-btn-outline',
         default => 'ds-btn',
     };
     if ($size === 'sm') {

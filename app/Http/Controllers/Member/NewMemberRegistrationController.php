@@ -49,20 +49,26 @@ class NewMemberRegistrationController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $wallet = trim((string) $request->input('wallet_address'));
         $request->merge([
             'sponsor_id' => strtoupper(trim((string) $request->input('sponsor_id'))),
             'member_name' => trim((string) $request->input('member_name')),
             'email' => trim((string) $request->input('email')),
             'mobile_no' => trim((string) $request->input('mobile_no')),
+            'pan_card_no' => strtoupper(trim((string) $request->input('pan_card_no'))),
+            'wallet_address' => $wallet === '' ? null : $wallet,
         ]);
 
         $currentMember = $this->currentMember($request);
 
         $validator = Validator::make($request->all(), [
-            'member_name' => ['required', 'string', 'min:3', 'regex:/^[A-Za-z ]+$/'],
+            'member_name' => Member::nameRules(),
             'sponsor_id' => ['required', 'string', Rule::in([$currentMember->member_id])],
             'email' => ['required', 'email', 'unique:members,email'],
             'mobile_no' => ['required', 'string', 'regex:/^[0-9+\-\s]+$/', 'min:10', 'max:15'],
+            'pan_card_no' => ['required', 'string', 'max:10'],
+            'wallet_address' => ['nullable', 'string', 'max:255'],
+            'password' => ['nullable', 'string', 'min:6', 'confirmed'],
         ], [
             'sponsor_id.in' => 'Unauthorized sponsor ID.',
         ]);
@@ -72,12 +78,20 @@ class NewMemberRegistrationController extends Controller
         }
 
         $result = app(MemberRegistrationService::class)->register($validator->validated(), [
+            'require_pan' => true,
             'locked_sponsor' => $currentMember,
         ]);
+        $member = $result['member'];
 
         return redirect()
             ->route('member.registration')
-            ->with('success', 'Member registered successfully. Member ID: ' . $result['member']->member_id . '. No password was set. The member can create one from Forgot Password.');
+            ->with('success', 'Registration successful. The new account is inactive. Share the Member ID so the member can log in. Package benefits stay locked until activation is verified.')
+            ->with('registration_receipt', [
+                'member_id' => $member->member_id,
+                'member_name' => $member->member_name,
+                'sponsor_id' => $member->sponsor_id,
+                'status' => 'Inactive',
+            ]);
     }
 
     private function currentMember(Request $request): Member

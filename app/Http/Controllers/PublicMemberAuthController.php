@@ -20,11 +20,39 @@ class PublicMemberAuthController extends Controller
     private const RESET_MEMBER = 'member_password_reset_member_id';
     private const RESET_OTP = 'member_password_reset_otp_id';
     private const RESET_VERIFIED = 'member_password_reset_verified';
+    private const REFERRAL_SPONSOR = 'public_referral_sponsor_id';
 
-    public function register(): View
+    public function register(Request $request): View
     {
+        $prefillSponsorId = '';
+        $lockedSponsorName = '';
+        $sponsorLocked = false;
+        $sponsorError = null;
+
+        if ($request->query->has('sponsor_id')) {
+            $requested = strtoupper(trim((string) $request->query('sponsor_id')));
+            $resolved = $requested === '' ? null : $this->publicSponsor($requested);
+
+            if ($resolved) {
+                $prefillSponsorId = $resolved['id'];
+                $lockedSponsorName = $resolved['name'];
+                $sponsorLocked = true;
+                $request->session()->put(self::REFERRAL_SPONSOR, $resolved['id']);
+            } else {
+                $prefillSponsorId = $requested;
+                $request->session()->forget(self::REFERRAL_SPONSOR);
+                $sponsorError = 'This referral link is invalid. Enter a valid Sponsor ID. No other sponsor was assigned.';
+            }
+        } else {
+            $request->session()->forget(self::REFERRAL_SPONSOR);
+        }
+
         return view('public.auth.register', [
             'generatedMemberId' => app(MemberRegistrationService::class)->previewMemberId(),
+            'prefillSponsorId' => $prefillSponsorId,
+            'lockedSponsorName' => $lockedSponsorName,
+            'sponsorLocked' => $sponsorLocked,
+            'sponsorError' => $sponsorError,
         ]);
     }
 
@@ -58,8 +86,15 @@ class PublicMemberAuthController extends Controller
             'email' => trim((string) $request->input('email')),
         ]);
 
+        $lockedSponsor = $request->session()->get(self::REFERRAL_SPONSOR);
+        if (is_string($lockedSponsor) && $lockedSponsor !== '' && $request->input('sponsor_id') !== $lockedSponsor) {
+            return back()
+                ->withErrors(['sponsor_id' => 'The sponsor from this referral link cannot be changed.'])
+                ->withInput();
+        }
+
         $validated = $request->validate([
-            'member_name' => ['required', 'string', 'min:3', 'regex:/^[A-Za-z ]+$/'],
+            'member_name' => Member::nameRules(),
             'sponsor_id' => ['required', 'string'],
             'mobile_no' => ['required', 'string', 'regex:/^[0-9+\-\s]+$/', 'min:10', 'max:15'],
             'email' => ['required', 'email', 'unique:members,email'],
@@ -256,6 +291,30 @@ class PublicMemberAuthController extends Controller
         ]);
 
         return redirect()->route('login')->with('success', 'Password reset successfully.');
+    }
+
+    /**
+     * @return array{id: string, name: string}|null
+     */
+    private function publicSponsor(string $sponsorId): ?array
+    {
+        if ($sponsorId === MemberRegistrationService::ADMIN_SPONSOR_ID) {
+            return [
+                'id' => MemberRegistrationService::ADMIN_SPONSOR_ID,
+                'name' => 'Admin',
+            ];
+        }
+
+        $sponsor = Member::query()->where('member_id', $sponsorId)->first();
+
+        if (! $sponsor) {
+            return null;
+        }
+
+        return [
+            'id' => $sponsor->member_id,
+            'name' => $sponsor->member_name,
+        ];
     }
 
     private function memberCanAuthenticate(Member $member): bool

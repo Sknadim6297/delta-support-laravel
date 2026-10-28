@@ -12,53 +12,22 @@
     <link href="{{ asset('lux/assets/css/vendor/bootstrap.min.css') }}" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link href="{{ asset('lux/assets/css/style.css') }}" rel="stylesheet">
-    @vite(['resources/css/panel.css', 'resources/css/lux-shell.css', 'resources/js/panel.js', 'resources/js/lux-shell.js'])
+    @vite(['resources/css/panel.css', 'resources/css/lux-shell.css', 'resources/css/lux-pages.css', 'resources/js/panel.js', 'resources/js/lux-shell.js'])
     @include('partials.brand-tokens')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body data-lh-mode="light">
     <main class="wrapper sb-default">
-        <header class="lh-header">
-            <div class="container-fluid">
-                <div class="lh-header-items">
-                    <div class="left-header">
-                        <a href="javascript:void(0)" class="lh-toggle-sidebar" aria-label="Toggle navigation">
-                            <span class="outer-ring"><span class="inner-ring"></span></span>
-                        </a>
-                        <p class="lh-header-context">@yield('page-title', 'Admin')</p>
-                    </div>
-                    <div class="right-header">
-                        <div class="lh-right-tool" data-lux-drop>
-                            <div class="lh-hover-drop">
-                                <a href="javascript:void(0)" class="lh-notify" data-lux-drop-button aria-label="Notifications">
-                                    <i class="ri-notification-2-line"></i>
-                                </a>
-                                <div class="lh-notify-panel">
-                                    <p>No new notifications</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="lh-right-tool lh-user-drop" data-lux-drop>
-                            <div class="lh-hover-drop">
-                                <a href="javascript:void(0)" class="lh-hover-tool" data-lux-drop-button aria-label="Account menu">
-                                    <span class="lh-header-context">{{ auth()->user()->name ?? 'Admin' }}</span>
-                                </a>
-                                <div class="lh-user-panel">
-                                    <p>{{ auth()->user()->email }}</p>
-                                    <a href="{{ route('admin.settings.profile') }}">Admin Profile</a>
-                                    <a href="{{ route('admin.change-password.index') }}">Change password</a>
-                                    <form action="{{ route('admin.logout') }}" method="POST">
-                                        @csrf
-                                        <button type="submit">Log out</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </header>
+        @include('partials.lux-bar', [
+            'luxTitle' => trim($__env->yieldContent('page-title')) ?: 'Admin',
+            'luxName' => auth()->user()->name ?? 'Admin',
+            'luxMeta' => auth()->user()->email,
+            'luxProfile' => route('admin.settings.profile'),
+            'luxProfileLabel' => 'Admin Profile',
+            'luxPassword' => route('admin.change-password.index'),
+            'luxLogout' => route('admin.logout'),
+        ])
 
         @include('admin.partials.sidebar')
 
@@ -73,7 +42,7 @@
                         </ul>
                     </div>
                 </div>
-                <div class="ds-content">
+                <div class="ds-content @yield('content-class')">
                     @if (session('success'))
                         <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
                     @endif
