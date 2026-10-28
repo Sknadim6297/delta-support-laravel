@@ -1,0 +1,81 @@
+.wrapper .lh-sb-drop {
+    display: none;
+}
+
+.wrapper .lh-sb-item.load-active > .lh-sb-drop,
+.wrapper .lh-sb-item.active > .lh-sb-drop {
+    display: block;
+}
+
+.lh-header .lh-header-items {
+    width: 100%;
+}
+
+.lh-header .lh-user-drop .lh-hover-drop {
+    width: auto;
+    min-width: 40px;
+    padding: 0 8px;
+}
+
+.lh-header-context {
+    margin: 0 0 0 14px;
+    color: #1d2531;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.lh-notify-panel,
+.lh-user-panel {
+    display: none;
+    position: absolute;
+    top: 46px;
+    right: 0;
+    z-index: 30;
+    min-width: 220px;
+    border-radius: 8px;
+    background: #fff;
+    padding: 10px;
+    box-shadow: 0 2px 7px rgba(58, 65, 74, 0.25);
+}
+
+.lh-hover-drop.is-open .lh-notify-panel,
+.lh-hover-drop.is-open .lh-user-panel {
+    display: block;
+}
+
+.lh-user-panel p,
+.lh-notify-panel p {
+    margin: 0 0 8px;
+    color: #777;
+    font-size: 12px;
+}
+
+.lh-user-panel a,
+.lh-user-panel button {
+    display: block;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 6px 4px;
+    color: #484d54;
+    font-size: 13px;
+    text-align: left;
+    text-decoration: none;
+}
+
+.lh-main-content .ds-content {
+    padding: 0 0 24px;
+}
+
+[data-mode="light"] .lh-sb-wrapper .lh-sb-list .lh-sb-item.load-active > a,
+.lh-sb-drop .active-link {
+    color: var(--ds-primary, #0878d1) !important;
+}
+
+.lh-btn-primary,
+.lh-primary-btn {
+    background-color: var(--ds-primary, #0878d1);
+    border-color: var(--ds-primary, #0878d1);
+}
