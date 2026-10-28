@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Rules\StrongPassword;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAdminPasswordRequest extends FormRequest
@@ -15,7 +16,7 @@ class UpdateAdminPasswordRequest extends FormRequest
     {
         return [
             'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'confirmed', new StrongPassword],
             'password_confirmation' => ['required', 'string'],
         ];
     }
@@ -25,7 +26,7 @@ class UpdateAdminPasswordRequest extends FormRequest
         return [
             'current_password.required' => 'Current Password is required.',
             'password.required' => 'New Password is required.',
-            'password.min' => 'New Password must be at least 8 characters.',
+            'password.min' => StrongPassword::MESSAGE,
             'password.confirmed' => 'New Password and Confirm New Password do not match.',
             'password_confirmation.required' => 'Confirm New Password is required.',
         ];

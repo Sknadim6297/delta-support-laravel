@@ -8,8 +8,11 @@
     <x-ui.page-header
         kicker="Security"
         title="Change Password"
-        lead="Enter the current password, then choose a new one."
+        lead="Use at least 12 characters with uppercase, lowercase, a number, and a symbol."
     />
+    @if (auth()->user()?->must_change_password)
+        <x-ui.alert type="warning">Choose a new password before using the admin panel.</x-ui.alert>
+    @endif
 
     @if ($errors->any())
         <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
@@ -93,8 +96,8 @@
                 setError('new_password', force ? 'New Password is required.' : '');
                 return false;
             }
-            if (value.length < 8) {
-                setError('new_password', 'New Password must be at least 8 characters.');
+            if (value.length < 12 || !/[a-z]/.test(value) || !/[A-Z]/.test(value) || !/\d/.test(value) || !/[^A-Za-z0-9]/.test(value) || value.toLowerCase() === 'admin@1234') {
+                setError('new_password', 'Use at least 12 characters with uppercase, lowercase, a number, and a symbol.');
                 return false;
             }
             setError('new_password', '');

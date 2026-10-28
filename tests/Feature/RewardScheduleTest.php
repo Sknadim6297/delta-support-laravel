@@ -15,21 +15,21 @@ class RewardScheduleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_rewards_run_every_two_minutes_and_financial_schedules_stay_empty(): void
+    public function test_rewards_run_every_fifteen_minutes_and_financial_schedules_stay_empty(): void
     {
-        $financial = new Schedule;
-        app(FinancialScheduleRegistrar::class)->register($financial);
-        $this->assertSame([], $financial->events());
+        $combined = new Schedule;
+        app(FinancialScheduleRegistrar::class)->register($combined);
+        app(RewardScheduleRegistrar::class)->register($combined);
+        $this->assertCount(1, $combined->events());
         $this->assertFalse(config('deltasupport.package_income.enabled'));
 
-        $rewards = new Schedule;
-        app(RewardScheduleRegistrar::class)->register($rewards);
-        $event = $rewards->events()[0];
+        $event = $combined->events()[0];
 
         $this->assertStringContainsString('rewards:evaluate', (string) $event->command);
-        $this->assertSame('*/2 * * * *', $event->expression);
+        $this->assertSame('*/15 * * * *', $event->expression);
         $this->assertSame('Asia/Kolkata', $event->timezone);
         $this->assertTrue($event->withoutOverlapping);
+        $this->assertSame(20, $event->expiresAt);
         $this->assertTrue($event->onOneServer);
         $this->assertStringNotContainsString('package-income', (string) $event->command);
     }
@@ -57,7 +57,7 @@ class RewardScheduleTest extends TestCase
         $this->assertSame('1.2500', $member->refresh()->roi_wallet_amount);
         $this->assertSame('2.5000', $member->working_wallet_amount);
 
-        $lock = Cache::lock('rewards-evaluate', 600);
+        $lock = Cache::lock('rewards-evaluate', 840);
         $this->assertTrue($lock->get());
         $this->artisan('rewards:evaluate')->assertSuccessful();
         $lock->release();

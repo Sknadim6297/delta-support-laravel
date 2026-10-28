@@ -8,6 +8,7 @@ use App\Http\Middleware\EnsureMemberContext;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\PreventImpersonatedMutations;
 use App\Http\Middleware\RedirectImpersonatingAdmins;
+use App\Http\Middleware\RequireAdminPasswordChange;
 use App\Http\Middleware\SecurityHeaders;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
+            'admin.password' => RequireAdminPasswordChange::class,
             'member.context' => EnsureMemberContext::class,
             'legacy.financial' => EnsureLegacyFinancialActionsEnabled::class,
             'impersonation.block' => RedirectImpersonatingAdmins::class,

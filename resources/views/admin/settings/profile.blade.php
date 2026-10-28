@@ -39,7 +39,7 @@
             </form>
         </x-ui.card>
 
-        <x-ui.card title="Change Password" subtitle="Use at least 8 characters. The current password is required.">
+        <x-ui.card title="Change Password" subtitle="Use at least 12 characters with uppercase, lowercase, a number, and a symbol.">
             <form class="ds-settings-form ds-password-form ds-account-form" method="POST" action="{{ route('admin.settings.profile.password') }}">
                 @csrf
                 @method('PUT')

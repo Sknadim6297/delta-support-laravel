@@ -10,9 +10,9 @@ class RewardScheduleRegistrar
     {
         $schedule->command('rewards:evaluate')
             ->name('rewards-evaluate')
-            ->everyTwoMinutes()
+            ->everyFifteenMinutes()
             ->timezone('Asia/Kolkata')
-            ->withoutOverlapping(10)
+            ->withoutOverlapping(20)
             ->onOneServer()
             ->appendOutputTo(storage_path('logs/rewards-evaluate.log'));
     }

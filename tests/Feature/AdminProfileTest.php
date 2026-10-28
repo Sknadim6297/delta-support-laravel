@@ -136,8 +136,8 @@ class AdminProfileTest extends TestCase
             ->from(route('admin.settings.profile'))
             ->put(route('admin.settings.profile.password'), [
                 'current_password' => 'wrong-password',
-                'password' => 'new-password-456',
-                'password_confirmation' => 'new-password-456',
+                'password' => 'New-Password-456',
+                'password_confirmation' => 'New-Password-456',
             ])
             ->assertSessionHasErrors('current_password');
 
@@ -154,7 +154,7 @@ class AdminProfileTest extends TestCase
         $this->from(route('admin.settings.profile'))
             ->put(route('admin.settings.profile.password'), [
                 'current_password' => 'current-password',
-                'password' => 'new-password-456',
+                'password' => 'New-Password-456',
                 'password_confirmation' => 'different-password',
             ])
             ->assertSessionHasErrors('password');
@@ -171,16 +171,16 @@ class AdminProfileTest extends TestCase
 
         $this->put(route('admin.settings.profile.password'), [
             'current_password' => 'current-password',
-            'password' => 'new-password-456',
-            'password_confirmation' => 'new-password-456',
+            'password' => 'New-Password-456',
+            'password_confirmation' => 'New-Password-456',
         ])
             ->assertRedirect(route('admin.settings.profile'))
             ->assertSessionHas('success', 'Password updated.');
 
         $admin->refresh();
-        $this->assertTrue(Hash::check('new-password-456', $admin->password));
+        $this->assertTrue(Hash::check('New-Password-456', $admin->password));
         $this->assertFalse(Hash::check('current-password', $admin->password));
-        $this->assertNotSame('new-password-456', $admin->password);
+        $this->assertNotSame('New-Password-456', $admin->password);
         $this->assertAuthenticatedAs($admin);
 
         auth()->logout();
@@ -192,7 +192,7 @@ class AdminProfileTest extends TestCase
 
         $this->post(route('login.submit'), [
             'member_id' => 'admin@example.test',
-            'password' => 'new-password-456',
+            'password' => 'New-Password-456',
         ])->assertRedirect('/dashboard');
     }
 
@@ -220,8 +220,8 @@ class AdminProfileTest extends TestCase
 
         $payload = [
             'current_password' => 'wrong-password',
-            'password' => 'new-password-456',
-            'password_confirmation' => 'new-password-456',
+            'password' => 'New-Password-456',
+            'password_confirmation' => 'New-Password-456',
         ];
 
         foreach (range(1, 6) as $attempt) {

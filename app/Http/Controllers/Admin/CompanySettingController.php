@@ -192,8 +192,18 @@ class CompanySettingController extends Controller
         }
 
         $user->password = Hash::make($request->string('password')->toString());
+        $user->must_change_password = false;
         $user->save();
         $request->session()->regenerate();
+        \App\Models\AdminActivityLog::query()->create([
+            'user_id' => $user->id,
+            'action' => 'admin_password_changed',
+            'subject' => 'admin',
+            'format' => null,
+            'scope' => 'admin',
+            'filters' => [],
+            'row_count' => 1,
+        ]);
 
         return redirect()
             ->route('admin.settings.profile')

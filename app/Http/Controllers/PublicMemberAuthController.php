@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\MemberPasswordOtpMail;
 use App\Mail\MemberWelcomeMail;
+use App\Models\AdminActivityLog;
 use App\Models\Member;
 use App\Models\User;
 use App\Services\MemberRegistrationService;
@@ -147,7 +148,7 @@ class PublicMemberAuthController extends Controller
                 $request->session()->regenerate();
                 $request->session()->forget('member_context_id');
 
-                return redirect()->intended('/dashboard');
+                return $this->adminHome($request);
             }
         }
 
@@ -163,7 +164,7 @@ class PublicMemberAuthController extends Controller
             $request->session()->regenerate();
             $request->session()->forget('member_context_id');
 
-            return redirect()->intended('/dashboard');
+            return $this->adminHome($request);
         }
 
         $errorKey = $request->filled('member_id') ? 'member_id' : 'email';
@@ -315,6 +316,28 @@ class PublicMemberAuthController extends Controller
             'id' => $sponsor->member_id,
             'name' => $sponsor->member_name,
         ];
+    }
+
+    private function adminHome(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        if ($user) {
+            AdminActivityLog::query()->create([
+                'user_id' => $user->id,
+                'action' => 'admin_login',
+                'subject' => 'admin',
+                'format' => null,
+                'scope' => 'admin',
+                'filters' => [],
+                'row_count' => 1,
+            ]);
+        }
+
+        if ($user?->must_change_password === true) {
+            return redirect()->route('admin.change-password.index');
+        }
+
+        return redirect()->intended('/dashboard');
     }
 
     private function memberCanAuthenticate(Member $member): bool

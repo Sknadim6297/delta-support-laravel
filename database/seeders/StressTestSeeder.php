@@ -20,6 +20,10 @@ class StressTestSeeder extends Seeder
 
     public function run(): void
     {
+        if (app()->environment('production')) {
+            throw new RuntimeException('Refused. The stress-test seeder does not run in production.');
+        }
+
         foreach (['members', 'investments', 'roi_transactions', 'level_commission_transactions'] as $table) {
             if (DB::table($table)->exists()) {
                 throw new RuntimeException("Refusing to seed: {$table} is not empty.");

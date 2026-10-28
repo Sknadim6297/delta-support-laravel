@@ -13,6 +13,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class DemoCatalogSeeder extends Seeder
 {
@@ -20,6 +21,10 @@ class DemoCatalogSeeder extends Seeder
 
     public function run(): void
     {
+        if (app()->environment('production')) {
+            throw new RuntimeException('Refused. The demo catalog seeder does not run in production.');
+        }
+
         $this->call(RankSeeder::class);
         $admin = $this->admin();
         $this->package('VERIFY-1', [

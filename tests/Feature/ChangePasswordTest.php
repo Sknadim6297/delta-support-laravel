@@ -46,14 +46,14 @@ class ChangePasswordTest extends TestCase
 
         $this->post(route('admin.change-password.update'), [
             'current_password' => 'old-password-123',
-            'new_password' => 'new-password-456',
-            'new_password_confirmation' => 'new-password-456',
+            'new_password' => 'New-Password-456',
+            'new_password_confirmation' => 'New-Password-456',
         ])->assertRedirect(route('dashboard'))
             ->assertSessionHas('success');
 
         $user->refresh();
 
-        $this->assertTrue(Hash::check('new-password-456', $user->password));
+        $this->assertTrue(Hash::check('New-Password-456', $user->password));
         $this->assertFalse(Hash::check('old-password-123', $user->password));
         $this->assertTrue(auth()->check());
     }
@@ -69,8 +69,8 @@ class ChangePasswordTest extends TestCase
         $this->from(route('admin.change-password.index'))
             ->post(route('admin.change-password.update'), [
                 'current_password' => 'wrong-old-password',
-                'new_password' => 'new-password-456',
-                'new_password_confirmation' => 'new-password-456',
+                'new_password' => 'New-Password-456',
+                'new_password_confirmation' => 'New-Password-456',
             ])
             ->assertRedirect(route('admin.change-password.index'))
             ->assertSessionHasErrors('current_password');
@@ -78,7 +78,7 @@ class ChangePasswordTest extends TestCase
         $user->refresh();
 
         $this->assertTrue(Hash::check('correct-old-password', $user->password));
-        $this->assertFalse(Hash::check('new-password-456', $user->password));
+        $this->assertFalse(Hash::check('New-Password-456', $user->password));
     }
 
     public function test_new_password_and_confirmation_must_match(): void
@@ -92,7 +92,7 @@ class ChangePasswordTest extends TestCase
         $this->from(route('admin.change-password.index'))
             ->post(route('admin.change-password.update'), [
                 'current_password' => 'old-password-123',
-                'new_password' => 'new-password-456',
+                'new_password' => 'New-Password-456',
                 'new_password_confirmation' => 'different-password',
             ])
             ->assertRedirect(route('admin.change-password.index'))
@@ -154,8 +154,8 @@ class ChangePasswordTest extends TestCase
 
         $this->post(route('admin.change-password.update'), [
             'current_password' => 'old-password-123',
-            'new_password' => 'new-password-456',
-            'new_password_confirmation' => 'new-password-456',
+            'new_password' => 'New-Password-456',
+            'new_password_confirmation' => 'New-Password-456',
         ]);
 
         $this->assertFalse(auth()->attempt([
@@ -165,7 +165,41 @@ class ChangePasswordTest extends TestCase
 
         $this->assertTrue(auth()->attempt([
             'email' => $user->email,
-            'password' => 'new-password-456',
+            'password' => 'New-Password-456',
         ]));
+    }
+
+    public function test_first_login_must_replace_a_weak_password_before_the_dashboard(): void
+    {
+        $user = User::factory()->create([
+            'is_admin' => true,
+            'must_change_password' => true,
+            'password' => Hash::make('Old-Password-123'),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('admin.change-password.index'));
+
+        $this->get(route('admin.change-password.index'))->assertOk();
+
+        $this->from(route('admin.change-password.index'))
+            ->post(route('admin.change-password.update'), [
+                'current_password' => 'Old-Password-123',
+                'new_password' => 'admin@1234',
+                'new_password_confirmation' => 'admin@1234',
+            ])
+            ->assertRedirect(route('admin.change-password.index'))
+            ->assertSessionHasErrors('new_password');
+
+        $this->post(route('admin.change-password.update'), [
+            'current_password' => 'Old-Password-123',
+            'new_password' => 'New-Password-456',
+            'new_password_confirmation' => 'New-Password-456',
+        ])->assertRedirect(route('dashboard'));
+
+        $user->refresh();
+        $this->assertFalse($user->must_change_password);
+        $this->get(route('dashboard'))->assertOk();
     }
 }

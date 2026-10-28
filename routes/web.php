@@ -158,7 +158,7 @@
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['auth', 'admin', 'impersonation.block'])->group(function () {
+    Route::middleware(['auth', 'admin', 'admin.password', 'impersonation.block'])->group(function () {
 
         Route::get('/member-panel/{member_id}', [MemberController::class, 'memberPanel'])
             ->name('admin.member-panel');
@@ -307,6 +307,17 @@
         */
 
         Route::post('/admin/logout', function (Request $request) {
+            if ($request->user()) {
+                \App\Models\AdminActivityLog::query()->create([
+                    'user_id' => $request->user()->id,
+                    'action' => 'admin_logout',
+                    'subject' => 'admin',
+                    'format' => null,
+                    'scope' => 'admin',
+                    'filters' => [],
+                    'row_count' => 1,
+                ]);
+            }
             app(MemberImpersonation::class)->finish($request);
             Auth::logout();
 

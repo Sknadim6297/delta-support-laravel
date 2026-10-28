@@ -25,6 +25,12 @@ class PackageIncomeTest extends Command
 
     public function handle(PackageIncomeIsolatedTest $isolated, PackageIncomeCalculationPreview $preview, WalletBalanceReconciliation $reconciliation): int
     {
+        if (app()->environment('production')) {
+            $this->error('Refused. This command is not available in production. No wallet was credited.');
+
+            return self::FAILURE;
+        }
+
         $action = (string) $this->argument('action');
         try {
             $isolated->assertConfigured();
