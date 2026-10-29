@@ -1,0 +1,89 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-V4ARsGXe.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/css/auth-portal.css": {
+    "file": "assets/auth-portal-20b7yDuF.css",
+    "src": "resources/css/auth-portal.css",
+    "isEntry": true,
+    "name": "auth-portal",
+    "names": [
+      "auth-portal.css"
+    ]
+  },
+  "resources/css/lux-pages.css": {
+    "file": "assets/lux-pages-CXt6Uto0.css",
+    "src": "resources/css/lux-pages.css",
+    "isEntry": true,
+    "name": "lux-pages",
+    "names": [
+      "lux-pages.css"
+    ]
+  },
+  "resources/css/lux-shell.css": {
+    "file": "assets/lux-shell-DfCYjprN.css",
+    "src": "resources/css/lux-shell.css",
+    "isEntry": true,
+    "name": "lux-shell",
+    "names": [
+      "lux-shell.css"
+    ]
+  },
+  "resources/css/panel.css": {
+    "file": "assets/panel-BkySl5o8.css",
+    "src": "resources/css/panel.css",
+    "isEntry": true,
+    "name": "panel",
+    "names": [
+      "panel.css"
+    ]
+  },
+  "resources/css/register.css": {
+    "file": "assets/register-DRr2QIwP.css",
+    "src": "resources/css/register.css",
+    "isEntry": true,
+    "name": "register",
+    "names": [
+      "register.css"
+    ]
+  },
+  "resources/css/site.css": {
+    "file": "assets/site-CjdsDNke.css",
+    "src": "resources/css/site.css",
+    "isEntry": true,
+    "name": "site",
+    "names": [
+      "site.css"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-DMsN-rLE.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/lux-shell.js": {
+    "file": "assets/lux-shell-BYXVsiIO.js",
+    "name": "lux-shell",
+    "src": "resources/js/lux-shell.js",
+    "isEntry": true
+  },
+  "resources/js/panel.js": {
+    "file": "assets/panel-BxzVTAGk.js",
+    "name": "panel",
+    "src": "resources/js/panel.js",
+    "isEntry": true
+  },
+  "resources/js/site.js": {
+    "file": "assets/site-Bqe3Ocop.js",
+    "name": "site",
+    "src": "resources/js/site.js",
+    "isEntry": true
+  }
+}

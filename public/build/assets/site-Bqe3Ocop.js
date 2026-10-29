@@ -1,0 +1,1 @@
+document.addEventListener("DOMContentLoaded",()=>{const e=document.querySelector("[data-nav-toggle]"),t=document.getElementById("mainNav");!e||!t||e.addEventListener("click",()=>{const n=t.classList.toggle("is-open");e.setAttribute("aria-expanded",n?"true":"false")})});
