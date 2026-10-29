@@ -2,13 +2,18 @@
 @section('title', $member->member_id.' Report')
 @section('page-title', $member->member_name)
 @section('content')
-<div class="ds-catalog">
+<div class="ds-reports">
     <x-ui.page-header lead="Member activity and linked purchase history. Passwords and wallet credentials are not shown.">
         <x-slot:actions>
             <a class="ds-btn" href="{{ route('admin.catalog-reports.show', ['report' => 'members']) }}">Back to member reports</a>
         </x-slot:actions>
     </x-ui.page-header>
 
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Member record</h2>
+            <p>Account details stored for this member.</p>
+        </header>
     <div class="ds-table-wrap">
         <table>
             <tbody>
@@ -25,8 +30,13 @@
             </tbody>
         </table>
     </div>
+    </section>
 
-    <h2>Purchase and payment history</h2>
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Purchase and payment history</h2>
+            <p>Purchase amounts are shown in USDT.</p>
+        </header>
     <div class="ds-table-wrap">
         <table>
             <thead>
@@ -48,7 +58,7 @@
                 <tr>
                     <td>{{ $purchase->reference }}</td>
                     <td>{{ $purchase->package_name }}</td>
-                    <td>{{ \App\Support\MoneyDisplay::amount($purchase->price_usd) }} {{ $purchase->denomination ?: 'Not stored' }}</td>
+                    <td>{{ \App\Support\MoneyDisplay::usdt($purchase->price_usd) }}</td>
                     <td>{{ $purchase->network ?: 'Not stored' }}</td>
                     <td>{{ $purchase->payment_reference }}</td>
                     <td>{{ $purchase->submitted_at?->timezone('Asia/Kolkata')->format('d M Y, H:i') }}</td>
@@ -64,8 +74,12 @@
         </table>
     </div>
     <div>{{ $purchases->links('pagination::bootstrap-5') }}</div>
+    </section>
 
-    <h2>Recorded activity</h2>
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Recorded activity</h2>
+        </header>
     <div class="ds-table-wrap">
         <table>
             <thead>
@@ -85,5 +99,6 @@
             </tbody>
         </table>
     </div>
+    </section>
 </div>
 @endsection

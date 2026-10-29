@@ -8,6 +8,7 @@ use App\Models\WithdrawalRequest;
 use App\Models\WithdrawalSetting;
 use App\Services\FinancialControls;
 use App\Services\WithdrawalWorkflow;
+use App\Support\SecurityPinInput;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -31,6 +32,8 @@ class WithdrawalController extends Controller
 
     public function store(Request $request, WithdrawalWorkflow $workflow): RedirectResponse
     {
+        SecurityPinInput::merge($request, 'security_pin');
+
         try {
             $workflow->submit($this->member($request), [
                 'wallet' => (string) $request->input('wallet'),
@@ -38,6 +41,7 @@ class WithdrawalController extends Controller
                 'network' => (string) $request->input('network'),
                 'address' => (string) $request->input('address'),
                 'idempotency_key' => (string) $request->input('idempotency_key'),
+                'security_pin' => (string) $request->input('security_pin', ''),
             ]);
         } catch (RuntimeException $exception) {
             abort(403, $exception->getMessage());

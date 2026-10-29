@@ -38,7 +38,7 @@ class MemberSidebarTest extends TestCase
             ->assertSeeText('My Packages')
             ->assertDontSeeText('My Tour Benefits')
             ->assertDontSeeText('Tour Packages')
-            ->assertSeeText('Help & Support', false)
+            ->assertSeeText('My Support Tickets', false)
             ->assertDontSeeText('Entry to Activation Wallet by Gateway')
             ->assertDontSeeText('Replied Ticket List')
             ->assertDontSee('admin.report.salary');

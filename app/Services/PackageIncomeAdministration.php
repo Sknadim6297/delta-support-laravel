@@ -34,6 +34,11 @@ class PackageIncomeAdministration
         $prepared = new Schedule;
         $this->scheduler->preparePackageIncome($prepared);
         $preview = $this->accrual->preview($businessDate);
+        $realPreview = $this->accrual->previewReal($businessDate);
+        $demonstrationPreview = $this->accrual->previewDemonstration($businessDate);
+        $controls = app(FinancialControls::class);
+        $dailySchedule = new Schedule;
+        app(DailyFinancialScheduleRegistrar::class)->register($dailySchedule);
         $reconciliation = $this->reconciliationSummary();
         $backup = $this->backup();
         $missingSponsors = $this->missingSponsors();
@@ -56,6 +61,16 @@ class PackageIncomeAdministration
             'last_refusal' => $this->latest(PackageIncomeRun::REFUSED),
             'pending_roi' => count($preview['roi']),
             'pending_commissions' => count($preview['commissions']),
+            'real_pending_roi' => count($realPreview['roi']),
+            'real_pending_commissions' => count($realPreview['commissions']),
+            'real_skipped' => array_slice($realPreview['skipped'], 0, 20),
+            'demonstration_pending_roi' => count($demonstrationPreview['roi']),
+            'demonstration_pending_commissions' => count($demonstrationPreview['commissions']),
+            'daily_cycle_registered' => count($dailySchedule->events()) > 0,
+            'roi_calculation_enabled' => $controls->enabled('roi_calculation_enabled'),
+            'roi_wallet_crediting_enabled' => $controls->enabled('roi_wallet_crediting_enabled'),
+            'level_calculation_enabled' => $controls->enabled('level_calculation_enabled'),
+            'level_wallet_crediting_enabled' => $controls->enabled('level_wallet_crediting_enabled'),
             'skipped' => array_slice($preview['skipped'], 0, 20),
             'skipped_count' => count($preview['skipped']),
             'reconciliation' => $reconciliation,

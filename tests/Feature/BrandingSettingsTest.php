@@ -29,9 +29,9 @@ class BrandingSettingsTest extends TestCase
             ->assertSeeText('Save Colors')
             ->assertSeeText('Reset to Default')
             ->assertDontSeeText('Remove Logo')
-            ->assertSee('#0878d1', false)
+            ->assertSee('#2563eb', false)
             ->assertSeeText('Navy')
-            ->assertSee('#092747', false)
+            ->assertSee('#0f172a', false)
             ->assertSee('site/img/logo.png', false);
 
         auth()->logout();
@@ -200,7 +200,7 @@ class BrandingSettingsTest extends TestCase
 
         auth()->logout();
 
-        $this->get(route('home'))->assertSee('--ds-primary: #0878d1', false)->assertSee('--ds-foreground: #092747', false);
+        $this->get(route('home'))->assertSee('--ds-primary: #2563eb', false)->assertSee('--ds-foreground: #0f172a', false);
     }
 
     public function test_guests_and_non_admins_cannot_update_branding(): void

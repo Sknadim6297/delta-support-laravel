@@ -28,11 +28,12 @@ class WithdrawalWorkflow
         private readonly FinancialControls $controls,
         private readonly WalletLedgerPoster $ledger,
         private readonly LocalTestMarker $marker,
+        private readonly MemberSecurityPin $pins,
     ) {
     }
 
     /**
-     * @param  array{wallet: string, amount: string, network: string, address: string, idempotency_key: string}  $input
+     * @param  array{wallet: string, amount: string, network: string, address: string, idempotency_key: string, security_pin?: string}  $input
      */
     public function submit(Member $member, array $input): WithdrawalRequest
     {
@@ -54,8 +55,12 @@ class WithdrawalWorkflow
             throw ValidationException::withMessages(['idempotency_key' => 'Submit the request once with a valid idempotency key.']);
         }
 
-        return DB::transaction(function () use ($member, $settings, $wallet, $amount, $network, $address, $key): WithdrawalRequest {
+        $pin = (string) ($input['security_pin'] ?? '');
+        $this->pins->authorizeTransaction($member, $pin);
+
+        return DB::transaction(function () use ($member, $settings, $wallet, $amount, $network, $address, $key, $pin): WithdrawalRequest {
             $locked = Member::query()->where('member_id', $member->member_id)->lockForUpdate()->firstOrFail();
+            $this->pins->assertCurrent($locked, $pin);
             $existing = WithdrawalRequest::query()->where('idempotency_key', $key)->first();
             if ($existing) {
                 if ($existing->member_id !== $locked->member_id) {

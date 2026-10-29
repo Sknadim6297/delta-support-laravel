@@ -19,6 +19,7 @@ use App\Support\WithdrawalStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Tests\TestCase;
@@ -133,6 +134,10 @@ class FinancialActivationTest extends TestCase
             'member_cancellation_policy' => 'An administrator can reject a pending request.',
         ])->save();
         $member = $this->member('STFIN0004', 'withdraw@example.test', '50.0000');
+        $member->forceFill([
+            'security_pin_hash' => Hash::make('482913'),
+            'security_pin_set_at' => now(),
+        ])->save();
         $admin = User::factory()->create(['is_admin' => true]);
         $workflow = app(WithdrawalWorkflow::class);
         $key = (string) Str::uuid();
@@ -255,6 +260,7 @@ class FinancialActivationTest extends TestCase
             'network' => 'TRC20',
             'address' => 'TPublicAddressOnly123',
             'idempotency_key' => $key,
+            'security_pin' => '482913',
         ];
     }
 }

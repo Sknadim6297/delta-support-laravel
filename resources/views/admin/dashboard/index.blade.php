@@ -20,20 +20,25 @@
         };
     };
     $kpis = [
-        ['Total Members', $memberCount, 'All member records', 'ri-group-line', 'lh-card-1'],
-        ['Active Members', $activeMembers, 'Status is active', 'ri-user-follow-line', 'lh-card-2'],
-        ['Inactive Members', $inactiveMembers, 'Status is inactive', 'ri-user-unfollow-line', 'lh-card-3'],
-        ['Total Packages', $packageCount, $activePackageCount.' active', 'ri-archive-line', 'lh-card-4'],
-        ['Pending Payments', $pendingCount, 'Awaiting review', 'ri-time-line', 'lh-card-1'],
-        ['Approved Payments', $approvedCount, 'Verified purchases', 'ri-checkbox-circle-line', 'lh-card-2'],
+        ['Total Members', $memberCount, 'All member records', 'ri-group-line', 'ds-kpi-blue'],
+        ['Active Members', $activeMembers, 'Status is active', 'ri-user-follow-line', 'ds-kpi-green'],
+        ['Inactive Members', $inactiveMembers, 'Status is inactive', 'ri-user-unfollow-line', 'ds-kpi-amber'],
+        ['Total Packages', $packageCount, $activePackageCount.' active', 'ri-archive-line', 'ds-kpi-teal'],
+        ['Pending Payments', $pendingCount, 'Awaiting review', 'ri-time-line', 'ds-kpi-orange'],
+        ['Approved Payments', $approvedCount, 'Verified purchases', 'ri-checkbox-circle-line', 'ds-kpi-green'],
     ];
 @endphp
 
 @section('content')
-<div class="row">
-    @foreach ($kpis as [$label, $value, $hint, $icon, $tone])
-        <div class="col-xl-4 col-md-6">
-            <div class="lh-card {{ $tone }}">
+<div class="ds-dash">
+<section class="ds-dash-block">
+    <header class="ds-dash-head">
+        <h2>Members and payments</h2>
+        <p>Stored member and package counts.</p>
+    </header>
+    <div class="ds-dash-kpis">
+        @foreach ($kpis as [$label, $value, $hint, $icon, $tone])
+            <div class="lh-card ds-kpi {{ $tone }}">
                 <div class="lh-card-content label-card">
                     <div class="title">
                         <div class="growth-numbers">
@@ -45,21 +50,25 @@
                     <p class="card-groth"><span>{{ $hint }}</span></p>
                 </div>
             </div>
-        </div>
-    @endforeach
-</div>
+        @endforeach
+    </div>
+</section>
 
-<div class="row">
-    @foreach ([
-        ['Active Campaigns', $rewardActive, route('admin.rewards.index'), 'ri-gift-line'],
-        ['Qualified Members', $rewardQualified, route('admin.rewards.eligible'), 'ri-medal-line'],
-        ['Pending Fulfillment', $rewardPending, route('admin.rewards.eligible', ['status' => 'selected']), 'ri-time-line'],
-        ['Dispatched Gifts', $rewardDispatched, route('admin.rewards.reports'), 'ri-truck-line'],
-        ['Delivered Gifts', $rewardDelivered, route('admin.rewards.reports'), 'ri-checkbox-circle-line'],
-    ] as [$label, $value, $href, $icon])
-        <div class="col-xl-4 col-md-6">
+<section class="ds-dash-block">
+    <header class="ds-dash-head">
+        <h2>Rewards</h2>
+        <p>Campaign and gift records.</p>
+    </header>
+    <div class="ds-dash-rewards">
+        @foreach ([
+            ['Active Campaigns', $rewardActive, route('admin.rewards.index'), 'ri-gift-line', 'ds-kpi-violet'],
+            ['Qualified Members', $rewardQualified, route('admin.rewards.eligible'), 'ri-medal-line', 'ds-kpi-blue'],
+            ['Pending Fulfillment', $rewardPending, route('admin.rewards.eligible', ['status' => 'selected']), 'ri-time-line', 'ds-kpi-orange'],
+            ['Dispatched Gifts', $rewardDispatched, route('admin.rewards.reports'), 'ri-truck-line', 'ds-kpi-teal'],
+            ['Delivered Gifts', $rewardDelivered, route('admin.rewards.reports'), 'ri-checkbox-circle-line', 'ds-kpi-green'],
+        ] as [$label, $value, $href, $icon, $tone])
             <a href="{{ $href }}">
-                <div class="lh-card lh-card-1">
+                <div class="lh-card ds-kpi {{ $tone }}">
                     <div class="lh-card-content label-card">
                         <div class="title">
                             <div class="growth-numbers">
@@ -72,13 +81,17 @@
                     </div>
                 </div>
             </a>
-        </div>
-    @endforeach
-</div>
+        @endforeach
+    </div>
+</section>
 
-<div class="row">
-    <div class="col-xl-4 col-md-6">
-        <div class="lh-card">
+<section class="ds-dash-block">
+    <header class="ds-dash-head">
+        <h2>Money</h2>
+        <p>USDT sales stay separate from historical USD. Wallet figures are stored balances.</p>
+    </header>
+    <div class="ds-dash-money">
+    <div class="lh-card ds-money ds-money-usdt">
             <div class="lh-card-header">
                 <h4 class="lh-card-title">USDT payments</h4>
             </div>
@@ -92,9 +105,7 @@
                 <p class="lh-note">New package sales. Not added to historical USD.</p>
             </div>
         </div>
-    </div>
-    <div class="col-xl-4 col-md-6">
-        <div class="lh-card">
+    <div class="lh-card ds-money ds-money-usd">
             <div class="lh-card-header">
                 <h4 class="lh-card-title">Historical USD</h4>
             </div>
@@ -108,9 +119,7 @@
                 <p class="lh-note">Older purchases only. Not added to USDT.</p>
             </div>
         </div>
-    </div>
-    <div class="col-xl-4 col-md-12">
-        <div class="lh-card">
+    <div class="lh-card ds-money ds-money-wallet">
             <div class="lh-card-header">
                 <h4 class="lh-card-title">Stored wallets</h4>
             </div>
@@ -128,11 +137,15 @@
             </div>
         </div>
     </div>
-</div>
+</section>
 
-<div class="row">
-    <div class="col-xl-8">
-        <div class="lh-card">
+<section class="ds-dash-block">
+    <header class="ds-dash-head">
+        <h2>Record mix</h2>
+        <p>Share of members and payment decisions.</p>
+    </header>
+    <div class="ds-dash-split">
+    <div class="lh-card ds-mix">
             <div class="lh-card-header">
                 <h4 class="lh-card-title">Record mix</h4>
             </div>
@@ -142,43 +155,44 @@
                 @else
                     <div class="lh-detail-list">
                         <div class="lh-label"><div><label>Active members</label></div><p>{{ $activeMembers }} · {{ $activeShare }}%</p></div>
-                        <div class="progress"><div class="progress-bar bg-primary" role="progressbar" style="width: {{ $activeShare }}%" aria-valuenow="{{ $activeShare }}" aria-valuemin="0" aria-valuemax="100"></div></div>
+                        <div class="progress"><div class="progress-bar ds-bar-green" role="progressbar" style="width: {{ $activeShare }}%" aria-valuenow="{{ $activeShare }}" aria-valuemin="0" aria-valuemax="100"></div></div>
                     </div>
                     <div class="lh-detail-list">
                         <div class="lh-label"><div><label>Inactive members</label></div><p>{{ $inactiveMembers }} · {{ $inactiveShare }}%</p></div>
-                        <div class="progress"><div class="progress-bar bg-secondary" role="progressbar" style="width: {{ $inactiveShare }}%" aria-valuenow="{{ $inactiveShare }}" aria-valuemin="0" aria-valuemax="100"></div></div>
+                        <div class="progress"><div class="progress-bar ds-bar-amber" role="progressbar" style="width: {{ $inactiveShare }}%" aria-valuenow="{{ $inactiveShare }}" aria-valuemin="0" aria-valuemax="100"></div></div>
                     </div>
                     <div class="lh-detail-list">
                         <div class="lh-label"><div><label>Approved payments</label></div><p>{{ $approvedCount }} · {{ $paymentShare((int) $approvedCount) }}%</p></div>
-                        <div class="progress"><div class="progress-bar bg-primary" role="progressbar" style="width: {{ $paymentShare((int) $approvedCount) }}%" aria-valuenow="{{ $paymentShare((int) $approvedCount) }}" aria-valuemin="0" aria-valuemax="100"></div></div>
+                        <div class="progress"><div class="progress-bar ds-bar-blue" role="progressbar" style="width: {{ $paymentShare((int) $approvedCount) }}%" aria-valuenow="{{ $paymentShare((int) $approvedCount) }}" aria-valuemin="0" aria-valuemax="100"></div></div>
                     </div>
                     <div class="lh-detail-list">
                         <div class="lh-label"><div><label>Pending payments</label></div><p>{{ $pendingCount }} · {{ $paymentShare((int) $pendingCount) }}%</p></div>
-                        <div class="progress"><div class="progress-bar bg-secondary" role="progressbar" style="width: {{ $paymentShare((int) $pendingCount) }}%" aria-valuenow="{{ $paymentShare((int) $pendingCount) }}" aria-valuemin="0" aria-valuemax="100"></div></div>
+                        <div class="progress"><div class="progress-bar ds-bar-orange" role="progressbar" style="width: {{ $paymentShare((int) $pendingCount) }}%" aria-valuenow="{{ $paymentShare((int) $pendingCount) }}" aria-valuemin="0" aria-valuemax="100"></div></div>
                     </div>
                     <div class="lh-detail-list">
                         <div class="lh-label"><div><label>Rejected payments</label></div><p>{{ $rejectedCount }} · {{ $paymentShare((int) $rejectedCount) }}%</p></div>
-                        <div class="progress"><div class="progress-bar bg-secondary" role="progressbar" style="width: {{ $paymentShare((int) $rejectedCount) }}%" aria-valuenow="{{ $paymentShare((int) $rejectedCount) }}" aria-valuemin="0" aria-valuemax="100"></div></div>
+                        <div class="progress"><div class="progress-bar ds-bar-rose" role="progressbar" style="width: {{ $paymentShare((int) $rejectedCount) }}%" aria-valuenow="{{ $paymentShare((int) $rejectedCount) }}" aria-valuemin="0" aria-valuemax="100"></div></div>
                     </div>
                 @endif
             </div>
         </div>
     </div>
-    <div class="col-xl-4">
-        <div class="row">
-            <div class="col-12"><a class="lh-shortcut" href="{{ route('admin.members.registration') }}"><i class="ri-user-add-line"></i><span>Add Member</span></a></div>
-            <div class="col-12"><a class="lh-shortcut" href="{{ route('admin.packages.create') }}"><i class="ri-add-box-line"></i><span>Add Package</span></a></div>
-            <div class="col-12"><a class="lh-shortcut" href="{{ route('admin.payments.index', ['status' => 'pending']) }}"><i class="ri-secure-payment-line"></i><span>Review Payments</span></a></div>
-            <div class="col-12"><a class="lh-shortcut" href="{{ route('admin.catalog-reports.show', ['report' => 'members']) }}"><i class="ri-bar-chart-2-line"></i><span>View Reports</span></a></div>
-        </div>
+    <div class="ds-dash-actions">
+            <a class="lh-shortcut ds-act-blue" href="{{ route('admin.members.registration') }}"><i class="ri-user-add-line"></i><span>Add Member</span></a>
+            <a class="lh-shortcut ds-act-teal" href="{{ route('admin.packages.create') }}"><i class="ri-add-box-line"></i><span>Add Package</span></a>
+            <a class="lh-shortcut ds-act-orange" href="{{ route('admin.payments.index', ['status' => 'pending']) }}"><i class="ri-secure-payment-line"></i><span>Review Payments</span></a>
+            <a class="lh-shortcut ds-act-violet" href="{{ route('admin.catalog-reports.show', ['report' => 'members']) }}"><i class="ri-bar-chart-2-line"></i><span>View Reports</span></a>
     </div>
-</div>
+</section>
 
-<div class="row">
-    <div class="col-12">
-        <div class="lh-card">
+<section class="ds-dash-block">
+    <header class="ds-dash-head">
+        <h2>Demonstration members</h2>
+        <p>A separate tree. These rows stay out of wallet credits and payment totals.</p>
+    </header>
+        <div class="lh-card ds-panel">
             <div class="lh-card-header">
-                <h4 class="lh-card-title">Demonstration members</h4>
+                <h4 class="lh-card-title">Referral preview</h4>
             </div>
             <div class="lh-card-content lh-scroll">
                 @if ($demoMembers === [])
@@ -203,12 +217,15 @@
                 @endif
             </div>
         </div>
-    </div>
-</div>
+</section>
 
-<div class="row">
-    <div class="col-xl-6">
-        <div class="lh-card">
+<section class="ds-dash-block">
+    <header class="ds-dash-head">
+        <h2>Recent activity</h2>
+        <p>Newest registrations, purchases, and reviews.</p>
+    </header>
+    <div class="ds-dash-recent">
+        <div class="lh-card ds-panel">
             <div class="lh-card-header"><h4 class="lh-card-title">Recent registrations</h4></div>
             <div class="lh-card-content lh-scroll">
                 @if ($recentMembers->isEmpty())
@@ -230,9 +247,7 @@
                 @endif
             </div>
         </div>
-    </div>
-    <div class="col-xl-6">
-        <div class="lh-card">
+        <div class="lh-card ds-panel">
             <div class="lh-card-header"><h4 class="lh-card-title">Recent purchases</h4></div>
             <div class="lh-card-content lh-scroll">
                 @if ($recentPurchases->isEmpty())
@@ -256,9 +271,7 @@
                 @endif
             </div>
         </div>
-    </div>
-    <div class="col-12">
-        <div class="lh-card">
+        <div class="lh-card ds-panel ds-panel-wide">
             <div class="lh-card-header"><h4 class="lh-card-title">Recent payment reviews</h4></div>
             <div class="lh-card-content lh-scroll">
                 @if ($recentReviews->isEmpty())
@@ -279,9 +292,10 @@
                         @endforeach
                         </tbody>
                     </table>
-        @endif
+                @endif
             </div>
         </div>
     </div>
-    </div>
+</section>
+</div>
 @endsection

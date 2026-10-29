@@ -42,7 +42,13 @@
                 </select>
             </label>
             <label><span>Public receiving wallet address</span><input name="address" value="{{ old('address') }}" maxlength="128" required></label>
-            <button type="submit">Submit Withdrawal Request</button>
+            @if ($member->hasSecurityPin())
+                <x-security.pin-input name="security_pin" label="Security PIN" />
+                <button type="submit">Submit Withdrawal Request</button>
+            @else
+                <p>Set a security PIN before a withdrawal can be reserved.</p>
+                <a href="{{ route('member.security-pin') }}">Set Security PIN</a>
+            @endif
         </form>
         @else
         <div>

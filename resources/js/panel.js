@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.querySelectorAll('.wrapper input[type="password"]').forEach(function (input) {
-        if (input.closest('.ds-password')) {
+        if (input.closest('.ds-password') || input.hasAttribute('data-pin-digit')) {
             return;
         }
 

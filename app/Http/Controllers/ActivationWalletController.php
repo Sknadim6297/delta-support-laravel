@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivationWalletTransaction;
 use App\Models\Member;
 use App\Services\WalletLedgerPoster;
+use App\Services\WorkingWalletFunds;
 use App\Support\WalletLedgerDirection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -49,18 +50,27 @@ class ActivationWalletController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $amount = $this->normalizeAmount($validated['amount']);
-            $workingBalance = $this->normalizeAmount($member->working_wallet_amount ?? 0);
-            $activationBalance = $this->normalizeAmount($member->activation_wallet_amount ?? 0);
-
-            if ($amount > $workingBalance) {
+            $amount = $this->decimalAmount($validated['amount']);
+            $funds = app(WorkingWalletFunds::class);
+            $available = $funds->available($member);
+            if (bccomp($amount, $available, 4) === 1) {
                 throw ValidationException::withMessages([
                     'amount' => 'Insufficient Working Wallet balance.',
                 ]);
             }
 
-            $member->working_wallet_amount = $workingBalance - $amount;
-            $member->activation_wallet_amount = $activationBalance + $amount;
+            $workingBalance = $funds->balance($member);
+            $activationBalance = bcadd((string) ($member->activation_wallet_amount ?? '0'), '0', 4);
+            $workingClosing = bcsub($workingBalance, $amount, 4);
+            $activationClosing = bcadd($activationBalance, $amount, 4);
+            if (bccomp($workingClosing, '0', 4) === -1) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Insufficient Working Wallet balance.',
+                ]);
+            }
+
+            $member->working_wallet_amount = $workingClosing;
+            $member->activation_wallet_amount = $activationClosing;
             $member->save();
 
             $reference = $this->generateReference('AW');
@@ -68,10 +78,13 @@ class ActivationWalletController extends Controller
                 WalletLedgerDirection::DEBIT,
                 $member->member_id,
                 'working',
-                number_format($amount, 4, '.', ''),
+                $amount,
                 $reference,
                 (string) Str::uuid(),
-                'Transfer to Activation Wallet'
+                'Transfer to Activation Wallet',
+                null,
+                $workingBalance,
+                $workingClosing
             );
 
             return ActivationWalletTransaction::create([
@@ -287,6 +300,24 @@ class ActivationWalletController extends Controller
     protected function normalizeAmount($amount): float
     {
         return round((float) $amount, 4);
+    }
+
+    protected function decimalAmount(mixed $amount): string
+    {
+        $raw = trim((string) $amount);
+        if (! preg_match('/^\d+(\.\d+)?$/', $raw)) {
+            throw ValidationException::withMessages([
+                'amount' => 'Transfer amount must be greater than 0.',
+            ]);
+        }
+        $normalized = bcadd($raw, '0', 4);
+        if (bccomp($normalized, '0', 4) !== 1) {
+            throw ValidationException::withMessages([
+                'amount' => 'Transfer amount must be greater than 0.',
+            ]);
+        }
+
+        return $normalized;
     }
 
     protected function formatUsdt($amount): string

@@ -212,6 +212,10 @@ class PackageIncomeCalculationPreview
             'labels' => array_values(array_unique($labels)),
             'reasons' => array_values(array_unique($reasons)),
             'levels' => $levels,
+            'purchase_id' => (string) $purchase->id,
+            'payment_reference' => (string) $purchase->payment_reference,
+            'demonstration' => str_starts_with((string) $purchase->payment_reference, LocalTestMarker::PAYMENT_PREFIX)
+                || str_ends_with(strtolower((string) ($member->email ?? '')), LocalTestMarker::EMAIL_DOMAIN),
         ];
     }
 
@@ -356,6 +360,9 @@ class PackageIncomeCalculationPreview
             'labels' => ['Blocked by missing package'],
             'reasons' => ['No package purchase is stored for this member.'],
             'levels' => [],
+            'purchase_id' => '',
+            'payment_reference' => '',
+            'demonstration' => str_ends_with(strtolower((string) ($member?->email ?? '')), LocalTestMarker::EMAIL_DOMAIN),
         ];
     }
 

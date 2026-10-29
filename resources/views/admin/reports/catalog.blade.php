@@ -2,7 +2,10 @@
 @section('title', ucfirst($report).' Reports')
 @section('page-title', ucfirst($report).' Reports')
 @section('content')
-<div class="ds-catalog">
+@php
+    $tones = ['blue', 'green', 'amber', 'teal', 'orange', 'violet'];
+@endphp
+<div class="ds-reports">
     <x-ui.page-header :lead="$report === 'earnings'
         ? 'Stored records only. Income is not calculated on this page.'
         : 'Filtered records from the live database. Exports use the same filters.'" />
@@ -11,15 +14,27 @@
         <x-ui.alert type="danger">{{ $errors->first() }}</x-ui.alert>
     @endif
 
-    <div class="ds-stat-grid">
-        @foreach ($counts as $label => $value)
-            <x-ui.stat :label="$label" :value="$value" />
-        @endforeach
-        @foreach ($totals as $total)
-            <x-ui.stat :label="'Total '.$total['currency']" :value="$total['total']" hint="This currency only" />
-        @endforeach
-    </div>
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Summary</h2>
+            <p>Counts for this report.</p>
+        </header>
+        <div class="ds-stat-grid">
+            @foreach ($counts as $label => $value)
+                <x-ui.stat class="ds-tone-{{ $tones[$loop->index % 6] }}" :label="$label" :value="$value" />
+            @endforeach
+            @foreach ($totals as $total)
+                <x-ui.stat class="ds-tone-{{ $tones[$loop->index % 6] }}" :label="'Total '.$total['currency']" :value="$total['total']" hint="This currency only" />
+            @endforeach
+        </div>
+    </section>
 
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Filters</h2>
+            <p>The table and the export use these same values.</p>
+        </header>
+        <div class="ds-report-card">
     <form class="ds-filter-form" method="GET">
         @if ($report === 'packages')
             <label>Dataset
@@ -62,6 +77,7 @@
                 @endforeach
             </select>
         </label>
+        @if ($report !== 'members')
         <label>Currency
             <select name="currency">
                 <option value="">Any</option>
@@ -69,6 +85,7 @@
                 <option value="USDT" @selected(($filters['currency'] ?? '') === 'USDT')>USDT</option>
             </select>
         </label>
+        @endif
         @if ($report === 'earnings')
             <label>Income type
                 <select name="income_type">
@@ -85,9 +102,17 @@
                 <option value="oldest" @selected(($filters['sort'] ?? '') === 'oldest')>Oldest first</option>
             </select>
         </label>
-        <button type="submit">Apply filters</button>
+        <button class="ds-report-btn ds-report-btn-blue" type="submit">Apply filters</button>
     </form>
+        </div>
+    </section>
 
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Export</h2>
+            <p>PDF, Excel, or CSV for the current filters or the full report.</p>
+        </header>
+        <div class="ds-report-card">
     <form class="ds-filter-form" method="GET" action="{{ route('admin.catalog-reports.export', ['report' => $report]) }}">
         @foreach (request()->query() as $key => $value)
             @if (is_string($value) && $value !== '')
@@ -101,10 +126,16 @@
                 <option value="csv">CSV</option>
             </select>
         </label>
-        <button type="submit" name="scope" value="filtered">Export filtered records</button>
-        <button type="submit" name="scope" value="full">Export full report</button>
+        <button class="ds-report-btn ds-report-btn-teal" type="submit" name="scope" value="filtered">Export filtered records</button>
+        <button class="ds-report-btn ds-report-btn-violet" type="submit" name="scope" value="full">Export full report</button>
     </form>
+        </div>
+    </section>
 
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Records</h2>
+        </header>
     <div class="ds-table-wrap">
         <table>
             <thead>
@@ -136,5 +167,6 @@
         </table>
     </div>
     <div>{{ $rows->links('pagination::bootstrap-5') }}</div>
+    </section>
 </div>
 @endsection

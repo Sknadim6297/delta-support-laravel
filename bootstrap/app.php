@@ -34,5 +34,19 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->dontFlash([
+            'current_password',
+            'password',
+            'password_confirmation',
+            'pin',
+            'pin_confirmation',
+            'current_pin',
+            'security_pin',
+            'otp',
+            'pin_digits',
+            'pin_confirmation_digits',
+            'current_pin_digits',
+            'security_pin_digits',
+            'otp_digits',
+        ]);
     })->create();

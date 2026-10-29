@@ -23,6 +23,7 @@ class Member extends Model
 
     protected $hidden = [
         'password',
+        'security_pin_hash',
     ];
 
     protected $fillable = [
@@ -46,7 +47,19 @@ class Member extends Model
         'activation_wallet_amount' => 'decimal:4',
         'working_wallet_amount' => 'decimal:4',
         'roi_wallet_amount' => 'decimal:4',
+        'security_pin_set_at' => 'datetime',
+        'security_pin_locked_until' => 'datetime',
     ];
+
+    public function hasSecurityPin(): bool
+    {
+        return is_string($this->security_pin_hash) && $this->security_pin_hash !== '';
+    }
+
+    public function securityPinResets(): HasMany
+    {
+        return $this->hasMany(MemberSecurityPinReset::class, 'member_id', 'member_id');
+    }
 
     public function rank(): BelongsTo
     {

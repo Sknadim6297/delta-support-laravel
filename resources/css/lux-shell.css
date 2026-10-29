@@ -111,7 +111,7 @@
     display: flex;
     align-items: center;
     justify-content: stretch;
-    height: 68px;
+    height: 56px;
     padding: 0 16px;
     overflow: visible;
     z-index: 30;
@@ -454,9 +454,9 @@
 }
 
 .wrapper .lh-sidebar {
-    width: 270px;
-    border-right: 1px solid #e3edf7;
-    background: #fff;
+    width: 256px;
+    border-right: 0;
+    background: #101b2d;
     box-shadow: none;
 }
 
@@ -575,10 +575,10 @@
 }
 
 .wrapper .ds-lux-bar.lh-header {
-    height: 68px;
-    border-bottom: 1px solid #e3edf7;
+    height: 56px;
+    border-bottom: 1px solid #e2e8f0;
     background: #fff;
-    box-shadow: 0 1px 0 rgba(9, 39, 71, 0.02);
+    box-shadow: none;
 }
 
 .wrapper .ds-lux-bar-start {
@@ -721,12 +721,35 @@ body[data-lh-mode] {
 }
 
 .wrapper .lh-sidebar .lh-sb-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     height: auto;
-    margin: 14px 14px 6px;
-    padding: 8px 12px;
+    margin: 16px 16px 4px;
+    padding: 10px 12px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: #fff;
+}
+
+.wrapper .lh-sidebar .lh-sb-logo a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: auto;
+}
+
+.wrapper .lh-sidebar .lh-sb-logo .sb-full img,
+.wrapper .lh-sidebar .lh-sb-logo .sb-collapse img {
+    display: block;
+    width: 100%;
+    max-width: 188px;
+    max-height: 96px;
+    height: auto;
+    margin: 0 auto;
+    object-fit: contain;
+    object-position: center;
 }
 
 .wrapper .lh-sidebar .lh-sb-wrapper {
@@ -745,12 +768,13 @@ body[data-lh-mode] {
 }
 
 .wrapper .lh-sidebar .lh-sb-title {
-    margin: 16px 10px 4px;
+    margin: 22px 12px 8px;
     padding: 0;
-    color: rgba(255, 255, 255, 0.38);
+    color: rgba(255, 255, 255, 0.42);
     font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
 }
 
 .wrapper .lh-sidebar a {
@@ -760,14 +784,15 @@ body[data-lh-mode] {
 
 .wrapper .lh-sidebar[data-mode="light"] .lh-sb-wrapper .lh-sb-list .lh-sb-item > a {
     align-items: center;
-    min-height: 36px;
-    margin: 1px 0;
-    padding: 6px 10px;
-    border-radius: 8px;
-    color: rgba(255, 255, 255, 0.78);
-    font-size: 13px;
+    gap: 10px;
+    min-height: 40px;
+    margin: 2px 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 13.5px;
     font-weight: 500;
-    line-height: 1.35;
+    line-height: 1.3;
 }
 
 .wrapper .lh-sidebar[data-mode="light"] .lh-sb-wrapper .lh-sb-list .lh-sb-item > a:hover {
@@ -800,9 +825,9 @@ body[data-lh-mode] {
 
 .wrapper .lh-sidebar[data-mode="light"] .lh-sb-wrapper .lh-sb-list .lh-sb-item.load-active > a.lh-page-link:not(.lh-drop-toggle),
 .wrapper .lh-sidebar[data-mode="light"] .lh-sb-wrapper .lh-sb-list .lh-sb-item.load-active > a.lh-page-link:not(.lh-drop-toggle):hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: #2563eb;
     color: #fff;
-    box-shadow: inset 3px 0 0 #4aa3ef;
+    box-shadow: none;
 }
 
 .wrapper .lh-sidebar[data-mode="light"] .lh-sb-wrapper .lh-sb-list .lh-sb-item.load-active > a.lh-page-link:not(.lh-drop-toggle) > i {
@@ -854,11 +879,11 @@ body[data-lh-mode] {
     position: fixed;
     top: 0;
     z-index: 30;
-    height: 56px;
-    padding: 0 16px 0 12px;
-    border-bottom: 1px solid #e6ebf2;
+    height: 64px;
+    padding: 0 20px 0 16px;
+    border-bottom: 1px solid #e2e8f0;
     background: #fff;
-    box-shadow: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .wrapper .ds-lux-heading {
@@ -886,9 +911,10 @@ body[data-lh-mode] {
 }
 
 .wrapper .ds-lux-title {
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-size: 18px;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+    color: #0f172a;
 }
 
 .wrapper .ds-lux-icon-btn,
@@ -905,13 +931,13 @@ body[data-lh-mode] {
 }
 
 .wrapper .lh-main-content {
-    padding-top: 56px;
-    background: #f4f6f9;
+    padding-top: 64px;
+    background: #f5f7fb;
 }
 
 .wrapper,
 .wrapper footer {
-    background: #f4f6f9;
+    background: #f5f7fb;
 }
 
 .wrapper .lh-main-content .container-fluid {

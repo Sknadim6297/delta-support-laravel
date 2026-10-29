@@ -20,7 +20,11 @@
                     <i class="ri-notification-2-line"></i>
                 </button>
                 <div class="ds-lux-menu-panel" role="menu">
-                    <p>No new notifications</p>
+                    @forelse ($supportNotices ?? [] as $notice)
+                        <a href="{{ $notice->audience === \App\Models\SupportNotification::AUDIENCE_MEMBER ? route('member.support.show', $notice->support_ticket_id) : route('admin.support.show', $notice->support_ticket_id) }}">{{ $notice->summary }}</a>
+                    @empty
+                        <p>No new notifications</p>
+                    @endforelse
                 </div>
             </div>
             <div class="ds-lux-menu" data-lux-drop>

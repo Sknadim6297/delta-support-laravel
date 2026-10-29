@@ -26,12 +26,17 @@ class LevelIncomePerformanceTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Showing 1 to 50 of 125 entries', false)
-            ->assertSee('<strong>USDT 125.0000</strong>', false)
+            ->assertSee('<p class="ds-stat-value">USDT 125.0000</p>', false)
             ->assertSeeText('LC-BENCH-00125')
             ->assertDontSeeText('LC-BENCH-00001');
 
-        $this->assertLessThanOrEqual(8, count($queries), json_encode($queries));
-        $this->assertTrue(collect($queries)->contains(fn (array $query): bool => str_contains(strtolower($query['sql']), 'sum(')));
+        $reportQueries = collect($queries)->filter(
+            fn (array $query): bool => str_contains(strtolower($query['sql']), 'level_commission_transactions')
+        );
+        $this->assertCount(4, $reportQueries, json_encode($queries));
+        $this->assertLessThanOrEqual(11, count($queries), json_encode($queries));
+        $this->assertTrue($reportQueries->contains(fn (array $query): bool => str_contains(strtolower($query['sql']), 'sum(')));
+        $this->assertTrue($reportQueries->contains(fn (array $query): bool => str_contains(strtolower($query['sql']), 'limit 50')));
 
         $this->get(route('admin.report.level-income', ['per_page' => 1000]))
             ->assertOk()
@@ -54,7 +59,7 @@ class LevelIncomePerformanceTest extends TestCase
             ->assertSee('Showing 1 to 1 of 1 entries', false)
             ->assertSeeText('LC-BENCH-00002')
             ->assertDontSeeText('LC-BENCH-00001')
-            ->assertSee('<strong>USDT 2.0000</strong>', false);
+            ->assertSee('<p class="ds-stat-value">USDT 2.0000</p>', false);
 
         $response = $this->get(route('admin.report.level-income.export'));
         $response->assertOk()

@@ -9,7 +9,7 @@
             <ul class="pagination pagination-sm mb-0">
                 @if ($paginator->onFirstPage())
                     <li class="page-item disabled" aria-disabled="true">
-                        <a class="page-link" href="#">Previous</a>
+                        <a class="page-link" href="#" aria-label="Previous">Previous</a>
                     </li>
                 @else
                     <li class="page-item">
@@ -39,7 +39,7 @@
                     </li>
                 @else
                     <li class="page-item disabled" aria-disabled="true">
-                        <a class="page-link" href="#">Next</a>
+                        <a class="page-link" href="#" aria-label="Next">Next</a>
                     </li>
                 @endif
             </ul>

@@ -4,11 +4,11 @@
 
 :root {
     --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
-    --color-brand: #0878d1;
-    --color-brand-dark: #0664b0;
-    --color-navy: #092747;
-    --color-canvas: #f5f8fc;
-    --color-line: #e3edf7;
+    --color-brand: #2563eb;
+    --color-brand-dark: #1d4ed8;
+    --color-navy: #0f172a;
+    --color-canvas: #f5f7fb;
+    --color-line: #e2e8f0;
     --color-muted: #64748b;
     --color-hover: #eff6fd;
     --color-ok: #15803d;
@@ -3930,4 +3930,264 @@ body {
     min-height: 32px;
     padding: 0 10px;
     font-size: 12px;
+}
+
+.wrapper .lh-main-content .container-fluid,
+.wrapper .ds-content {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.wrapper .ds-content .ds-table-panel {
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid #e8edf3;
+    border-radius: 16px;
+    background: #fff;
+}
+
+.wrapper .ds-content .ds-table-toolbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 18px 8px;
+}
+
+.wrapper .ds-content .ds-table-toolbar h2 {
+    margin: 0;
+    color: #122033;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.wrapper .ds-content .ds-table-toolbar p {
+    max-width: 62ch;
+    margin: 4px 0 0;
+    color: #8b95a7;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.wrapper .ds-content form.ds-table-search,
+.wrapper .ds-content form.ds-table-search:has(> input):has(> button) {
+    display: flex;
+    flex: 0 1 420px;
+    align-items: center;
+    gap: 8px;
+    width: min(420px, 100%);
+    margin: 0;
+    border: 1px solid #e6ebf2;
+    border-radius: 10px;
+    background: #fff;
+    padding: 0 8px 0 12px;
+    box-shadow: none;
+}
+
+.wrapper .ds-content form.ds-table-search i {
+    color: #98a2b3;
+    font-size: 16px;
+}
+
+.wrapper .ds-content form.ds-table-search input,
+.wrapper .ds-content form.ds-table-search:has(> input):has(> button) > input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    height: 40px;
+    min-height: 40px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+}
+
+.wrapper .ds-content form.ds-table-search button,
+.wrapper .ds-content form.ds-table-search:has(> input):has(> button) > button {
+    flex: none;
+    height: 32px;
+    min-height: 32px;
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 12px;
+}
+
+.wrapper .ds-content .ds-table-wrap,
+.wrapper .ds-content .ds-mm div:has(> table) {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+}
+
+.wrapper .ds-content .ds-table-panel .ds-table-wrap {
+    border-top: 1px solid #eef1f5;
+}
+
+.wrapper .ds-content .ds-catalog > .ds-table-wrap,
+.wrapper .ds-content .ds-reports .ds-table-wrap,
+.wrapper .ds-content .ds-finance .ds-table-wrap {
+    border: 1px solid #e8edf3;
+    border-radius: 12px;
+}
+
+.wrapper .ds-content .ds-table-wrap table,
+.wrapper .ds-content .ds-mm table,
+.wrapper .ds-content.lh-native table.lh-data {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+.wrapper .ds-content .ds-table-wrap th,
+.wrapper .ds-content .ds-table-wrap td,
+.wrapper .ds-content .ds-mm th,
+.wrapper .ds-content .ds-mm td,
+.wrapper .ds-content.lh-native table.lh-data th,
+.wrapper .ds-content.lh-native table.lh-data td {
+    border: 0;
+    border-bottom: 1px solid #eef1f5;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 12px 14px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.wrapper .ds-content .ds-table-wrap thead th,
+.wrapper .ds-content .ds-mm thead th,
+.wrapper .ds-content.lh-native table.lh-data thead th {
+    background: #f7f8fa;
+    color: #8b95a7;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.wrapper .ds-content .ds-table-wrap tbody tr:hover td,
+.wrapper .ds-content .ds-mm tbody tr:hover td,
+.wrapper .ds-content.lh-native table.lh-data tbody tr:hover td {
+    background: #f8fafc;
+}
+
+.wrapper .ds-content .ds-table-wrap tbody tr:last-child td,
+.wrapper .ds-content .ds-mm tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.wrapper .ds-content .ds-table-wrap td form,
+.wrapper .ds-content .ds-table-wrap td form:has(> input):has(> button) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+}
+
+.wrapper .ds-content .ds-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wrapper .ds-content .ds-row-actions input {
+    width: 160px;
+    height: 32px;
+    min-height: 32px;
+}
+
+.wrapper .ds-content .ds-row-actions button,
+.wrapper .ds-content .ds-table-wrap td button {
+    height: 32px;
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+}
+
+.wrapper .ds-content .ds-table-panel .ds-pagination {
+    margin: 0;
+    padding: 12px 16px;
+    border-top: 1px solid #eef1f5;
+}
+
+.wrapper .ds-content .ds-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.wrapper .ds-content .ds-pagination .table-info {
+    color: #8b95a7;
+    font-size: 13px;
+}
+
+.wrapper .ds-content .pagination {
+    gap: 6px;
+}
+
+.wrapper .ds-content .page-link {
+    min-width: 32px;
+    min-height: 32px;
+    border: 1px solid #e6ebf2;
+    border-radius: 8px;
+    background: #fff;
+    color: #667085;
+    font-size: 13px;
+}
+
+.wrapper .ds-content a.page-link[aria-label="Previous"],
+.wrapper .ds-content a.page-link[aria-label="Next"] {
+    width: 32px;
+    padding: 0;
+    font-size: 0;
+}
+
+.wrapper .ds-content a.page-link[aria-label="Previous"]::before,
+.wrapper .ds-content a.page-link[aria-label="Next"]::before {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.wrapper .ds-content a.page-link[aria-label="Previous"]::before {
+    content: "‹";
+}
+
+.wrapper .ds-content a.page-link[aria-label="Next"]::before {
+    content: "›";
+}
+
+.wrapper .ds-content .page-item.active .page-link {
+    border-color: #d6e8f8;
+    background: #e8f3fc;
+    color: #0878d1;
+}
+
+.wrapper .ds-content .page-item.disabled .page-link {
+    background: #fff;
+    color: #c5ced8;
+}
+
+@media (max-width: 800px) {
+    .wrapper .ds-content .ds-table-toolbar {
+        flex-direction: column;
+    }
+
+    .wrapper .ds-content form.ds-table-search {
+        flex-basis: auto;
+        width: 100%;
+    }
 }

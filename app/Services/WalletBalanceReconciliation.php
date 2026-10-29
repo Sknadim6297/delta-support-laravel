@@ -5,11 +5,13 @@ namespace App\Services;
 use App\Models\ActivationWalletTransaction;
 use App\Models\LevelCommissionTransaction;
 use App\Models\Member;
+use App\Models\MemberTransfer;
 use App\Models\PackageLevelAccrual;
 use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
 use App\Models\WalletLedgerEntry;
 use App\Support\WalletLedgerDirection;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Read-only comparison of member balance columns with their ledger rows.
@@ -41,6 +43,7 @@ class WalletBalanceReconciliation
             $this->money(PackageLevelAccrual::query()->where('member_id', $member->member_id)->where('status', 'accrued')->sum('amount')),
             4
         );
+        $workingCredits = bcadd($workingCredits, $this->transferCredits($member->member_id), 4);
         $activationCredits = $this->money(ActivationWalletTransaction::query()
             ->where('member_id', $member->member_id)
             ->where('type', 'credit')
@@ -52,7 +55,7 @@ class WalletBalanceReconciliation
 
         return [
             'roi' => $this->line((string) $member->roi_wallet_amount, $roiCredits, $this->ledgerDebits($member->member_id, 'roi'), true, 'ROI Wallet is compared with legacy credits, package accruals, and stored ledger debits. No historical debit was created.'),
-            'working' => $this->line((string) $member->working_wallet_amount, $workingCredits, $this->ledgerDebits($member->member_id, 'working'), true, 'Working Wallet is compared with legacy credits, package accruals, and stored ledger debits. No historical debit was created.'),
+            'working' => $this->line((string) $member->working_wallet_amount, $workingCredits, $this->ledgerDebits($member->member_id, 'working'), true, 'Working Wallet is compared with legacy credits, package accruals, member transfers, and stored ledger debits. No historical debit was created.'),
             'activation' => $this->line((string) $member->activation_wallet_amount, $activationCredits, $activationDebits, true, 'Activation Wallet is compared with its own credit and debit rows. A difference is reported and is not corrected.'),
         ];
     }
@@ -106,6 +109,33 @@ class WalletBalanceReconciliation
                     ->orWhere('activation_wallet_amount', '<', 0);
             })
             ->count();
+    }
+
+    /**
+     * Received transfers stay in the credit total even after reversal, because the
+     * clawback is a ledger debit. A reversed send is added back here, because the
+     * original debit row stays in the ledger and ledger credits are not summed.
+     */
+    private function transferCredits(string $memberId): string
+    {
+        if (! Schema::hasTable('member_transfers')) {
+            return '0.0000';
+        }
+
+        $received = $this->money(MemberTransfer::query()
+            ->where('receiver_member_id', $memberId)
+            ->whereIn('status', [MemberTransfer::COMPLETED, MemberTransfer::REVERSED])
+            ->sum('amount'));
+        $restored = MemberTransfer::query()
+            ->where('sender_member_id', $memberId)
+            ->where('status', MemberTransfer::REVERSED);
+        $returned = bcadd(
+            $this->money((clone $restored)->sum('amount')),
+            $this->money((clone $restored)->sum('fee_amount')),
+            4
+        );
+
+        return bcadd($received, $returned, 4);
     }
 
     private function ledgerDebits(string $memberId, string $wallet): string

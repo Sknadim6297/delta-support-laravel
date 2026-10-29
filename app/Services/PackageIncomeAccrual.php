@@ -31,8 +31,44 @@ class PackageIncomeAccrual
      */
     public function preview(string $businessDate): array
     {
+        return $this->previewPlan($businessDate, null);
+    }
+
+    /**
+     * The same read-only plan financial:daily uses. Demonstration purchases are excluded.
+     *
+     * @return array{date: string, enabled: bool, roi: list<array<string, string>>, commissions: list<array<string, string>>, skipped: list<string>}
+     */
+    public function previewReal(string $businessDate): array
+    {
+        return $this->previewPlan($businessDate, function ($query): void {
+            $this->excludeDemonstrationPurchases($query);
+        });
+    }
+
+    /**
+     * @return array{date: string, enabled: bool, roi: list<array<string, string>>, commissions: list<array<string, string>>, skipped: list<string>}
+     */
+    public function previewDemonstration(string $businessDate): array
+    {
+        return $this->previewPlan($businessDate, function ($query): void {
+            $query->where('payment_reference', 'like', LocalTestMarker::PAYMENT_PREFIX.'%')
+                ->whereExists(function ($members): void {
+                    $members->selectRaw('1')
+                        ->from('members')
+                        ->whereColumn('members.member_id', 'package_purchases.member_id')
+                        ->where('members.email', 'like', '%'.LocalTestMarker::EMAIL_DOMAIN);
+                });
+        });
+    }
+
+    /**
+     * @return array{date: string, enabled: bool, roi: list<array<string, string>>, commissions: list<array<string, string>>, skipped: list<string>}
+     */
+    private function previewPlan(string $businessDate, ?callable $constrain): array
+    {
         $date = $this->date($businessDate);
-        $plan = $this->plan($date);
+        $plan = $this->plan($date, $constrain);
 
         return [
             'date' => $date->toDateString(),
@@ -41,6 +77,19 @@ class PackageIncomeAccrual
             'commissions' => $plan['commissions'],
             'skipped' => $plan['skipped'],
         ];
+    }
+
+    private function excludeDemonstrationPurchases(object $query): void
+    {
+        $query->where(function ($reference): void {
+            $reference->whereNull('payment_reference')
+                ->orWhere('payment_reference', 'not like', LocalTestMarker::PAYMENT_PREFIX.'%');
+        })->whereNotExists(function ($members): void {
+            $members->selectRaw('1')
+                ->from('members')
+                ->whereColumn('members.member_id', 'package_purchases.member_id')
+                ->where('members.email', 'like', '%'.LocalTestMarker::EMAIL_DOMAIN);
+        });
     }
 
     /**
@@ -68,15 +117,7 @@ class PackageIncomeAccrual
         }
 
         $plan = $this->plan($date, function ($query): void {
-            $query->where(function ($reference): void {
-                $reference->whereNull('payment_reference')
-                    ->orWhere('payment_reference', 'not like', LocalTestMarker::PAYMENT_PREFIX.'%');
-            })->whereNotExists(function ($members): void {
-                $members->selectRaw('1')
-                    ->from('members')
-                    ->whereColumn('members.member_id', 'package_purchases.member_id')
-                    ->where('members.email', 'like', '%'.LocalTestMarker::EMAIL_DOMAIN);
-            });
+            $this->excludeDemonstrationPurchases($query);
         });
 
         if ($dryRun) {

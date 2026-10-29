@@ -16,6 +16,8 @@ class FinancialHistoryQuery
         $package = DB::table('package_roi_accruals')->select([
             'id', 'reference', 'member_id', 'member_name', 'amount as income_amount', 'business_date as roi_date', 'status', 'created_at', 'package_name as package_label',
         ])->selectRaw($this->originLabel('package_roi_accruals'));
+        $this->excludeDemonstration($legacy);
+        $this->excludeDemonstration($package);
         $this->restrict($legacy, $memberId, $search);
         $this->restrict($package, $memberId, $search);
 
@@ -34,6 +36,8 @@ class FinancialHistoryQuery
         $package = DB::table('package_level_accruals')->select([
             'id', 'reference', 'member_id', 'member_name', 'from_member_id', 'level', 'amount as income_amount', 'business_date', 'created_at', 'package_name as package_label',
         ])->selectRaw($this->originLabel('package_level_accruals'));
+        $this->excludeDemonstration($legacy);
+        $this->excludeDemonstration($package);
         $this->restrict($legacy, $memberId, $search);
         $this->restrict($package, $memberId, $search, ['from_member_id', 'from_member_name']);
 
@@ -64,6 +68,17 @@ class FinancialHistoryQuery
             foreach ($extra as $column) {
                 $inner->orWhere($column, 'like', $like);
             }
+        });
+    }
+
+    private function excludeDemonstration(Builder $query): void
+    {
+        $from = $query->from;
+        $query->whereNotExists(function ($members) use ($from): void {
+            $members->selectRaw('1')
+                ->from('members')
+                ->whereColumn('members.member_id', $from.'.member_id')
+                ->where('members.email', 'like', '%'.LocalTestMarker::EMAIL_DOMAIN);
         });
     }
 

@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-V4ARsGXe.css",
+    "file": "assets/app-CHSjvYce.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -9,7 +9,7 @@
     ]
   },
   "resources/css/auth-portal.css": {
-    "file": "assets/auth-portal-20b7yDuF.css",
+    "file": "assets/auth-portal-D2EmHCc2.css",
     "src": "resources/css/auth-portal.css",
     "isEntry": true,
     "name": "auth-portal",
@@ -18,7 +18,7 @@
     ]
   },
   "resources/css/lux-pages.css": {
-    "file": "assets/lux-pages-CXt6Uto0.css",
+    "file": "assets/lux-pages-Ci8tEWT-.css",
     "src": "resources/css/lux-pages.css",
     "isEntry": true,
     "name": "lux-pages",
@@ -27,7 +27,7 @@
     ]
   },
   "resources/css/lux-shell.css": {
-    "file": "assets/lux-shell-DfCYjprN.css",
+    "file": "assets/lux-shell-w4af_NFY.css",
     "src": "resources/css/lux-shell.css",
     "isEntry": true,
     "name": "lux-shell",
@@ -36,7 +36,7 @@
     ]
   },
   "resources/css/panel.css": {
-    "file": "assets/panel-BkySl5o8.css",
+    "file": "assets/panel-XggnOfnc.css",
     "src": "resources/css/panel.css",
     "isEntry": true,
     "name": "panel",
@@ -45,7 +45,7 @@
     ]
   },
   "resources/css/register.css": {
-    "file": "assets/register-DRr2QIwP.css",
+    "file": "assets/register-BBxcR53B.css",
     "src": "resources/css/register.css",
     "isEntry": true,
     "name": "register",
@@ -54,7 +54,7 @@
     ]
   },
   "resources/css/site.css": {
-    "file": "assets/site-CjdsDNke.css",
+    "file": "assets/site-Cv3Pa9zX.css",
     "src": "resources/css/site.css",
     "isEntry": true,
     "name": "site",

@@ -6,7 +6,7 @@
     <x-ui.page-header
         kicker="ROI Management"
         title="Income Control"
-        lead="Automatic ROI generation is disabled. This page does not register a task or create a transaction."
+        lead="Automatic ROI generation is disabled. This page does not register a task or create a transaction. The counts below separate demonstration purchases from the real purchases financial:daily can see."
     >
         <x-slot:actions>
             <x-ui.button href="{{ route('admin.finance.roi-history') }}" variant="secondary">Open ROI History</x-ui.button>
@@ -54,8 +54,10 @@
 
     <x-ui.card title="Current business date check" subtitle="Calculated for this page view. These figures are not stored credits and are not an execution record.">
         <div class="ds-stat-grid">
-            <x-ui.stat label="Pending eligible ROI accruals" :value="$control['pending_roi']" hint="Would be considered for this date only" />
-            <x-ui.stat label="Pending eligible commission accruals" :value="$control['pending_commissions']" hint="Would be considered for this date only" />
+            <x-ui.stat label="Real daily-cycle ROI rows" :value="$control['real_pending_roi']" hint="financial:daily excludes demonstration purchases" />
+            <x-ui.stat label="Real daily-cycle commission rows" :value="$control['real_pending_commissions']" hint="Same exclusion as the dry run" />
+            <x-ui.stat label="Demonstration ROI rows" :value="$control['demonstration_pending_roi']" hint="Shown on Demo Income Preview. Not written by the daily command." />
+            <x-ui.stat label="Demonstration commission rows" :value="$control['demonstration_pending_commissions']" hint="Shown on Demo Income Preview. Not written by the daily command." />
             <x-ui.stat label="Skipped or blocked lines" :value="$control['skipped_count']" hint="From the same read-only check" />
             <x-ui.stat label="Prepared schedule" :value="$control['schedule_time']" :hint="'Not registered. Chunk size '.$control['chunk_size']" />
         </div>
@@ -80,15 +82,17 @@
         <p>Wallet ledger posting that moves a balance by itself is disabled. Package accrual writes its ledger row only inside the accrual transaction, and that command is disabled.</p>
     </x-ui.card>
 
-    <x-ui.card title="Scheduler health" subtitle="The daily command is prepared here and is not registered. This page does not run it.">
+    <x-ui.card title="Scheduler health" subtitle="package-income:accrue stays unregistered. financial:daily is a separate command and is registered only while Daily Financial Cycle is on.">
         <div class="ds-stat-grid">
-            <x-ui.stat label="Registered financial tasks" :value="$control['scheduler']['registered_events']" hint="schedule:run starts none of these" />
-            <x-ui.stat label="Prepared time" value="00:10" :hint="$control['scheduler']['timezone']" />
-            <x-ui.stat label="Overlap protection" :value="$control['scheduler']['without_overlapping'] ? $control['scheduler']['overlap_minutes'].' min' : 'Off'" hint="Prepared mutex only" />
-            <x-ui.stat label="One server" :value="$control['scheduler']['on_one_server'] ? 'Prepared' : 'Off'" hint="Not registered" />
+            <x-ui.stat label="Legacy package-income:accrue" value="Not registered" hint="Generation flag stays disabled. This page cannot turn it on." />
+            <x-ui.stat label="financial:daily" :value="$control['daily_cycle_registered'] ? 'Registered' : 'Not registered'" hint="00:10 Asia/Kolkata when the daily cycle switch is on" />
+            <x-ui.stat label="ROI calculation" :value="$control['roi_calculation_enabled'] ? 'On' : 'Off'" hint="Required before an actual daily run stores an ROI row" />
+            <x-ui.stat label="ROI wallet crediting" :value="$control['roi_wallet_crediting_enabled'] ? 'On' : 'Off'" hint="Moves the ROI wallet only when on" />
+            <x-ui.stat label="Level calculation" :value="$control['level_calculation_enabled'] ? 'On' : 'Off'" hint="Required before an actual daily run stores a commission row" />
+            <x-ui.stat label="Level wallet crediting" :value="$control['level_wallet_crediting_enabled'] ? 'On' : 'Off'" hint="Moves the working wallet only when on" />
         </div>
-        <p>Prepared command: {{ $control['scheduler']['command'] }}. Cron expression: {{ $control['scheduler']['expression'] }}. Generation is {{ $control['scheduler']['enabled'] ? 'enabled' : 'disabled' }}. The command processes one business date. Historical backfill is off. A queue worker is not required for this command because it is not queued.</p>
-        <p>After a separate approval to register it, the server crontab line is <code>* * * * * cd /path/to/delta_support &amp;&amp; php artisan schedule:run</code>. That line is not installed. The prepared task would then run at 00:10 Asia/Kolkata.</p>
+        <p>Prepared legacy command: {{ $control['scheduler']['command'] }}. It is not on the scheduler. Historical backfill is off. financial:daily reads the same package rules, skips every LOCAL-TEST purchase and every @local-test.invalid member, and does not backfill earlier dates. A dry run writes nothing. Wallet crediting stays off unless that switch is saved on Financial Controls.</p>
+        <p><a href="{{ route('admin.finance.real-income') }}">Open Real Income</a> for non-demo purchases and their skipped reasons. <a href="{{ route('admin.demo-income') }}">Demo Income Preview</a> is separate and is not ROI History.</p>
     </x-ui.card>
 
     <x-ui.card title="Main database calculation preview" :subtitle="$calculation['stored_notice']">
@@ -129,7 +133,7 @@
                     <tbody>
                     @forelse ($calculation['rows'] as $row)
                         <tr>
-                            <td>{{ $row['member_id'] }}<br>{{ $row['member_name'] }}</td>
+                            <td>{{ $row['member_id'] }}<br>{{ $row['member_name'] }}@if (! empty($row['demonstration'])) <x-ui.badge tone="warning">Demonstration</x-ui.badge>@endif</td>
                             <td>{{ $row['sponsor_id'] }}</td>
                             <td>{{ $row['package_name'] }}<br>{{ $row['package_code'] }}</td>
                             <td>{{ $row['currency'] === 'Not stored' ? 'Not stored' : $row['currency'].' '.$row['purchase_amount'] }}</td>

@@ -36,5 +36,9 @@
             <button type="submit">Save Changes</button>
         </div>
     </form>
+
+    <x-ui.card title="Member transfers" subtitle="This switch is saved on its own. It does not turn on ROI, level commission, withdrawals, or external payouts.">
+        <p><a href="{{ route('admin.member-transfers.index') }}">Open Member Transfers</a> to set the on/off switch, the 1 / 1000 / 5000 USDT limits, and the fee.</p>
+    </x-ui.card>
 </div>
 @endsection

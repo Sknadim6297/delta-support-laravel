@@ -45,7 +45,7 @@
                 </tbody>
             </table>
         </div>
-        {{ $invoices->links() }}
+        {{ $invoices->links('pagination::bootstrap-5') }}
     @endif
 </div>
 @endsection

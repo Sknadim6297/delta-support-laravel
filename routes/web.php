@@ -26,6 +26,8 @@
     use App\Http\Controllers\Admin\PackageController;
     use App\Http\Controllers\Admin\PaymentReviewController;
     use App\Http\Controllers\Admin\WithdrawalReviewController;
+    use App\Http\Controllers\Admin\MemberTransferAdminController;
+    use App\Http\Controllers\Admin\SupportTicketController as AdminSupportTicketController;
     use App\Http\Controllers\Admin\WithdrawalSettingController;
     use App\Http\Controllers\Member\CatalogController;
     use App\Http\Controllers\Member\NewMemberRegistrationController;
@@ -33,6 +35,9 @@
     use App\Http\Controllers\Member\TeamController;
     use App\Http\Controllers\Member\InvestController;
     use App\Http\Controllers\Member\MemberChangePasswordController;
+    use App\Http\Controllers\Member\MemberTransferController;
+    use App\Http\Controllers\Member\SecurityPinController;
+    use App\Http\Controllers\Member\SupportTicketController as MemberSupportTicketController;
     use App\Http\Controllers\Member\ComingSoonController;
     use App\Http\Controllers\Member\WithdrawalController;
     use App\Http\Controllers\Member\WalletController;
@@ -241,12 +246,21 @@
         Route::get('/admin/settings/financial', [\App\Http\Controllers\Admin\FinancialControlController::class, 'edit'])->name('admin.settings.financial');
         Route::put('/admin/settings/financial', [\App\Http\Controllers\Admin\FinancialControlController::class, 'update'])->name('admin.settings.financial.update');
 
+        Route::controller(MemberTransferAdminController::class)->prefix('admin/member-transfers')->name('admin.member-transfers.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::put('/settings', 'updateSettings')->name('settings.update');
+            Route::get('/export', 'export')->middleware('throttle:10,1')->name('export');
+            Route::get('/{memberTransfer}', 'show')->name('show');
+            Route::post('/{memberTransfer}/reverse', 'reverse')->middleware('throttle:6,1')->name('reverse');
+        });
+
         Route::controller(OperationsController::class)->group(function () {
             Route::get('/admin/wallets', 'walletOverview')->name('admin.wallets.overview');
             Route::get('/admin/wallets/transactions', 'walletTransactions')->name('admin.wallets.transactions');
             Route::get('/admin/finance/roi-history', 'roiHistory')->name('admin.finance.roi-history');
             Route::get('/admin/finance/roi-plans', 'roiPlans')->name('admin.finance.roi-plans');
             Route::get('/admin/finance/roi-schedule', 'roiSchedule')->name('admin.finance.roi-schedule');
+            Route::get('/admin/finance/real-income', 'realIncome')->name('admin.finance.real-income');
             Route::get('/admin/finance/level-income', 'levelIncomeHistory')->name('admin.finance.level-income');
             Route::get('/admin/finance/commission-settings', 'commissionSettings')->name('admin.finance.commission-settings');
             Route::get('/admin/finance/level-unlock-rules', 'levelUnlockRules')->name('admin.finance.level-unlock-rules');
@@ -577,26 +591,17 @@
         |--------------------------------------------------------------------------
         */
 
-        Route::controller(SupportController::class)
-            ->prefix('admin/support')
-            ->name('admin.support.')
-            ->group(function () {
-
-                Route::get(
-                    '/pending-tickets',
-                    'pendingTickets'
-                )->name('pending-tickets');
-
-                Route::get(
-                    '/applied-tickets',
-                    'appliedTicketList'
-                )->name('applied-tickets');
-
-                Route::get(
-                    '/applied-tickets/export',
-                    'exportAppliedTickets'
-                )->name('applied-tickets.export');
-            });
+        Route::controller(AdminSupportTicketController::class)->prefix('admin/support')->name('admin.support.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/open', fn () => redirect()->route('admin.support.index', ['status' => 'open']))->name('open');
+            Route::get('/pending-tickets', fn () => redirect()->route('admin.support.index', ['status' => 'awaiting_admin']))->name('pending-tickets');
+            Route::get('/applied-tickets', fn () => redirect()->route('admin.support.index', ['status' => 'resolved']))->name('applied-tickets');
+            Route::get('/applied-tickets/export', fn () => redirect()->route('admin.support.index'))->name('applied-tickets.export');
+            Route::get('/attachments/{supportAttachment}', 'attachment')->name('attachments.show');
+            Route::get('/{supportTicket}', 'show')->name('show');
+            Route::post('/{supportTicket}/reply', 'reply')->middleware('throttle:support-ticket')->name('reply');
+            Route::post('/{supportTicket}/status', 'status')->middleware('throttle:support-ticket')->name('status');
+        });
 
             /* 
         |--------------------------------------------------------------------------
@@ -713,7 +718,26 @@
             Route::get('/member/invoices/{invoice}', 'invoice')->name('member.invoices.show');
             Route::get('/member/referral', 'referral')->name('member.referral');
             Route::get('/member/tours', 'tours')->name('member.tours');
-            Route::get('/member/support', 'support')->name('member.support');
+        });
+
+        Route::controller(MemberSupportTicketController::class)->prefix('member/support')->group(function () {
+            Route::get('/', 'index')->name('member.support');
+            Route::get('/create', 'create')->name('member.support.create');
+            Route::post('/', 'store')->middleware('throttle:support-ticket')->name('member.support.store');
+            Route::get('/attachments/{supportAttachment}', 'attachment')->name('member.support.attachments.show');
+            Route::get('/{supportTicket}', 'show')->name('member.support.show');
+            Route::post('/{supportTicket}/reply', 'reply')->middleware('throttle:support-ticket')->name('member.support.reply');
+            Route::post('/{supportTicket}/close', 'close')->middleware('throttle:support-ticket')->name('member.support.close');
+        });
+
+        Route::controller(MemberTransferController::class)->prefix('member/transfers')->name('member.transfers.')->group(function () {
+            Route::get('/', 'create')->name('create');
+            Route::get('/receiver', 'receiver')->middleware('throttle:member-transfer-lookup')->name('receiver');
+            Route::post('/review', 'review')->middleware('throttle:member-transfer')->name('review');
+            Route::get('/confirm', 'confirm')->name('confirm');
+            Route::post('/', 'store')->middleware('throttle:member-transfer')->name('store');
+            Route::get('/history', 'history')->name('history');
+            Route::get('/{memberTransfer}', 'show')->name('show');
         });
 
         Route::controller(WalletController::class)->group(function () {
@@ -793,6 +817,24 @@
 
        Route::post('/member/change-password', [MemberChangePasswordController::class, 'update'])
         ->name('member.change-password.post');
+
+        Route::get('/member/security-pin', [SecurityPinController::class, 'show'])
+            ->name('member.security-pin');
+        Route::post('/member/security-pin', [SecurityPinController::class, 'store'])
+            ->middleware('throttle:member-pin-verify')
+            ->name('member.security-pin.store');
+        Route::post('/member/security-pin/change', [SecurityPinController::class, 'change'])
+            ->middleware('throttle:member-pin-verify')
+            ->name('member.security-pin.change');
+        Route::post('/member/security-pin/forgot', [SecurityPinController::class, 'forgot'])
+            ->middleware('throttle:member-pin-otp')
+            ->name('member.security-pin.forgot');
+        Route::post('/member/security-pin/forgot/verify', [SecurityPinController::class, 'verify'])
+            ->middleware('throttle:member-pin-verify')
+            ->name('member.security-pin.verify');
+        Route::post('/member/security-pin/reset', [SecurityPinController::class, 'reset'])
+            ->middleware('throttle:member-pin-verify')
+            ->name('member.security-pin.reset');
 
         Route::get('/member/change-password/update', [SupportController::class, 'memberUpdate'])->name('member.change-password.update');
 

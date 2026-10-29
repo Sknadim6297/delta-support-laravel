@@ -33,7 +33,9 @@ class WalletLedgerPoster
 
     /**
      * Insert one immutable row inside the caller's transaction. This does not move a balance.
-     * Package accrual and the working-wallet transfer call it after their own balance change.
+     * Package accrual, the same-member Working-to-Activation movement, and member transfers
+     * call it after their own balance change. Member transfers use this path while
+     * wallet_ledger.enabled stays false.
      */
     public function append(
         string $direction,
@@ -47,6 +49,8 @@ class WalletLedgerPoster
         ?string $openingBalance = null,
         ?string $closingBalance = null,
         ?int $withdrawalRequestId = null,
+        ?string $actor = null,
+        ?int $counterEntryId = null,
     ): WalletLedgerEntry {
         if (! in_array($direction, [WalletLedgerDirection::CREDIT, WalletLedgerDirection::DEBIT, WalletLedgerDirection::HOLD, WalletLedgerDirection::RELEASE, WalletLedgerDirection::REVERSAL, WalletLedgerDirection::ADJUSTMENT], true)) {
             throw new InvalidArgumentException('Unknown ledger direction.');

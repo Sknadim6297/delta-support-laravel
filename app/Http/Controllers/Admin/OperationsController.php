@@ -13,6 +13,7 @@ use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
 use App\Models\WalletLedgerEntry;
 use App\Services\CommissionPlan;
+use App\Services\PackageIncomeAccrual;
 use App\Services\PackageIncomeAdministration;
 use App\Services\PackageIncomeCalculationPreview;
 use App\Services\PackageIncomePolicy;
@@ -115,6 +116,29 @@ class OperationsController extends Controller
             'packages' => $packages,
             'rules' => $packages->mapWithKeys(fn (Package $package): array => [$package->code => $policy->definition($package->code)])->all(),
             'incomeTermCount' => PackageIncomeTerm::query()->count(),
+        ]);
+    }
+
+    public function realIncome(Request $request, PackageIncomeCalculationPreview $preview, PackageIncomeAccrual $accrual): View
+    {
+        $date = $request->query('date');
+        $calculation = $preview->forDate(is_string($date) ? $date : null);
+        $rows = [];
+        if ($calculation['valid']) {
+            foreach ($calculation['rows'] as $row) {
+                if (($row['purchase_id'] ?? '') !== '' && empty($row['demonstration'])) {
+                    $rows[] = $row;
+                }
+            }
+        }
+        $real = $calculation['valid'] ? $accrual->previewReal($calculation['date']) : ['roi' => [], 'commissions' => [], 'skipped' => []];
+
+        return view('admin.finance.real-income', [
+            'calculation' => $calculation,
+            'rows' => $rows,
+            'realRoi' => count($real['roi']),
+            'realCommissions' => count($real['commissions']),
+            'skipped' => $real['skipped'],
         ]);
     }
 

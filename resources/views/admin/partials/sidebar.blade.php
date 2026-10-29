@@ -44,9 +44,10 @@
 
                 <li class="lh-sb-item-separator"></li>
                 <li class="lh-sb-title condense">Finance</li>
-                <x-navigation.lux-group icon="ri-line-chart-line" label="ROI Management" :open="request()->routeIs('admin.finance.roi-history', 'admin.finance.roi-plans', 'admin.finance.roi-schedule', 'admin.finance.income-test')">
+                <x-navigation.lux-group icon="ri-line-chart-line" label="ROI Management" :open="request()->routeIs('admin.finance.roi-history', 'admin.finance.roi-plans', 'admin.finance.roi-schedule', 'admin.finance.real-income', 'admin.finance.income-test')">
                     <x-navigation.lux-link :href="route('admin.finance.roi-plans')" :active="request()->routeIs('admin.finance.roi-plans')">ROI Plans</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.finance.roi-schedule')" :active="request()->routeIs('admin.finance.roi-schedule')">Income Control</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.finance.real-income')" :active="request()->routeIs('admin.finance.real-income')">Real Income</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.finance.roi-history')" :active="request()->routeIs('admin.finance.roi-history')">ROI History</x-navigation.lux-link>
                     @unless (app()->environment('production'))
                         <x-navigation.lux-link :href="route('admin.finance.income-test')" :active="request()->routeIs('admin.finance.income-test')">Income Scheduler Testing</x-navigation.lux-link>
@@ -59,11 +60,12 @@
                     <x-navigation.lux-link :href="route('admin.finance.eligibility')" :active="request()->routeIs('admin.finance.eligibility')">Referral Eligibility</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.demo-income')" :active="request()->routeIs('admin.demo-income')">Demo Income Preview</x-navigation.lux-link>
                 </x-navigation.lux-group>
-                <x-navigation.lux-group icon="ri-wallet-3-line" label="Wallet Management" :open="request()->routeIs('admin.wallets.*')">
+                <x-navigation.lux-group icon="ri-wallet-3-line" label="Wallet Management" :open="request()->routeIs('admin.wallets.*', 'admin.member-transfers.*')">
                     <x-navigation.lux-link :href="route('admin.wallets.overview')" :active="request()->routeIs('admin.wallets.overview')">Wallet Overview</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.wallets.show', ['wallet' => 'roi'])" :active="request()->routeIs('admin.wallets.show') && request()->route('wallet') === 'roi'">ROI Wallet</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.wallets.show', ['wallet' => 'working'])" :active="request()->routeIs('admin.wallets.show') && request()->route('wallet') === 'working'">Working Wallet</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.wallets.show', ['wallet' => 'activation'])" :active="request()->routeIs('admin.wallets.show') && request()->route('wallet') === 'activation'">Activation Wallet</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.member-transfers.index')" :active="request()->routeIs('admin.member-transfers.*')">Member Transfers</x-navigation.lux-link>
                 </x-navigation.lux-group>
                 <x-navigation.lux-group icon="ri-arrow-down-circle-line" label="Withdrawals" :open="request()->routeIs('admin.withdrawals.*')">
                     <x-navigation.lux-link :href="route('admin.withdrawals.overview')" :active="request()->routeIs('admin.withdrawals.overview')">Withdrawal Overview</x-navigation.lux-link>
@@ -84,6 +86,17 @@
                     <x-navigation.lux-link :href="route('admin.catalog-reports.show', ['report' => 'packages'])" :active="request()->routeIs('admin.catalog-reports.show') && request()->route('report') === 'packages'">Package Reports</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.catalog-reports.show', ['report' => 'payments'])" :active="request()->routeIs('admin.catalog-reports.show') && request()->route('report') === 'payments'">Payment Reports</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.catalog-reports.show', ['report' => 'earnings'])" :active="request()->routeIs('admin.catalog-reports.show') && request()->route('report') === 'earnings'">Earnings Reports</x-navigation.lux-link>
+                </x-navigation.lux-group>
+
+                <li class="lh-sb-item-separator"></li>
+                <li class="lh-sb-title condense">Support</li>
+                <x-navigation.lux-group icon="ri-customer-service-2-line" label="Support Tickets" :open="request()->routeIs('admin.support.*')">
+                    <x-navigation.lux-link :href="route('admin.support.index')" :active="request()->routeIs('admin.support.index') && request('status') === null">All Tickets</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.support.open')" :active="request('status') === 'open'">Open</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.support.pending-tickets')" :active="request('status') === 'awaiting_admin'">Awaiting Admin</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.support.index', ['status' => 'awaiting_member'])" :active="request('status') === 'awaiting_member'">Awaiting Member</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.support.applied-tickets')" :active="request('status') === 'resolved'">Resolved</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.support.index', ['status' => 'closed'])" :active="request('status') === 'closed'">Closed</x-navigation.lux-link>
                 </x-navigation.lux-group>
 
                 <li class="lh-sb-item-separator"></li>

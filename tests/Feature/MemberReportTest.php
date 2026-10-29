@@ -31,7 +31,8 @@ class MemberReportTest extends TestCase
             ->assertSeeText('4.0083')
             ->assertSeeText('4.0083')
             ->assertDontSeeText('INV-OTHER')
-            ->assertDontSeeText('99');
+            ->assertDontSeeText('99.0000')
+            ->assertDontSeeText('USDT 99');
     }
 
     public function test_member_roi_date_filter_and_total_are_scoped_to_own_records(): void

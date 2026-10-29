@@ -1,17 +1,17 @@
 /* Canonical Delta Support tokens. Imported by panel, public, and auth entry points. */
 :root {
-    --ds-primary: #0878d1;
-    --ds-primary-hover: #0664b0;
-    --ds-foreground: #092747;
+    --ds-primary: #2563eb;
+    --ds-primary-hover: #1d4ed8;
+    --ds-foreground: #0f172a;
     --ds-secondary-foreground: #64748b;
     --ds-surface: #ffffff;
-    --ds-surface-muted: #eff6fd;
-    --ds-canvas: #f5f8fc;
-    --ds-border: #e3edf7;
-    --ds-success: #15803d;
+    --ds-surface-muted: #f8fafc;
+    --ds-canvas: #f5f7fb;
+    --ds-border: #e2e8f0;
+    --ds-success: #10b981;
     --ds-warning: #b45309;
     --ds-danger: #dc2626;
-    --ds-focus: rgba(8, 120, 209, 0.16);
+    --ds-focus: rgba(37, 99, 235, 0.16);
     --ds-radius-control: 10px;
     --ds-radius-card: 14px;
     --ds-shadow: 0 1px 2px rgba(9, 39, 71, 0.05);

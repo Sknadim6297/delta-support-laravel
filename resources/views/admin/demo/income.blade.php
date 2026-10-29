@@ -6,7 +6,7 @@
     <x-ui.page-header
         kicker="Demonstration"
         title="Demo Income Preview"
-        lead="This preview uses the stored eligibility rules for the 20 demonstration members. It does not credit a wallet, create an accrual, or send a payout."
+        lead="This preview uses the stored eligibility rules for demonstration members only. It is not ROI History and it is not included in financial:daily. It does not credit a wallet, create an accrual, or send a payout."
     />
     <x-ui.table>
         <table class="ds-table-wide">

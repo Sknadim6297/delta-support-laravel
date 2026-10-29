@@ -8,11 +8,11 @@ use Illuminate\Support\Facades\Storage;
 class BrandTokens
 {
     public const DEFAULTS = [
-        'primary' => '#0878d1',
-        'primary_hover' => '#0664b0',
-        'navy' => '#092747',
-        'canvas' => '#f5f8fc',
-        'border' => '#e3edf7',
+        'primary' => '#2563eb',
+        'primary_hover' => '#1d4ed8',
+        'navy' => '#0f172a',
+        'canvas' => '#f5f7fb',
+        'border' => '#e2e8f0',
     ];
 
     public const LABELS = [

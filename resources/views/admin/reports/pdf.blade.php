@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <style>
         body { font-family: DejaVu Sans, sans-serif; color: #172033; font-size: 9px; }
-        h1 { font-size: 16px; margin: 0 0 4px; }
+        h1 { font-size: 16px; margin: 0 0 8px; background: #101b2d; color: #fff; padding: 8px 10px; }
         p { margin: 0 0 3px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #d5deea; padding: 3px 4px; text-align: left; vertical-align: top; }
         thead { display: table-header-group; }
-        th { background: #eef3f8; }
+        th { background: #101b2d; color: #fff; }
         tr { page-break-inside: avoid; }
     </style>
 </head>

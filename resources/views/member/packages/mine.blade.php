@@ -71,7 +71,7 @@
                 </article>
             @endforeach
         </div>
-        {{ $purchases->links() }}
+        {{ $purchases->links('pagination::bootstrap-5') }}
     @endif
 </div>
 @endsection
