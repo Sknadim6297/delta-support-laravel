@@ -3,103 +3,105 @@
 @section('page-title', 'Member Registration')
 
 @section('content')
-    <main>
-        <div>
-            <x-ui.page-header title="Member Registration" lead="The new member starts inactive. Registration does not purchase a package or create commission." />
-            @if(session('success'))
-                <div>{{ session('success') }}</div>
-            @endif
+    <x-members.shell lead="The new member starts inactive. Registration does not purchase a package or create commission.">
+        @if(session('success'))
+            <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+        @endif
 
-            <form method="POST" action="{{ route('admin.members.store') }}" class="ds-settings-form">
-                @csrf
+        <form method="POST" action="{{ route('admin.members.store') }}" id="adminRegistrationForm" class="ds-mm-form">
+            @csrf
 
-                <div>
+            <x-members.panel title="Account" subtitle="The Member ID is assigned when this form is saved.">
+                <div class="ds-mm-fields">
                     <div>
-                        <label>Member ID</label>
+                        <label for="generatedMemberId">Member ID</label>
                         <input type="text" id="generatedMemberId" value="{{ old('generated_member_id', $generated_member_id ?? '') }}" placeholder="Auto-generated Member ID" readonly>
                         <input type="hidden" name="generated_member_id" value="{{ old('generated_member_id', $generated_member_id ?? '') }}">
                     </div>
-
                     <div>
-                        <label>Member Name <span>*</span></label>
-                        <input type="text" name="member_name" placeholder="Enter Member Name" value="{{ old('member_name') }}" required>
+                        <label for="admin-member-name">Member Name <span>*</span></label>
+                        <input type="text" id="admin-member-name" name="member_name" placeholder="Enter Member Name" value="{{ old('member_name') }}" required>
                         <div class="validation-message" data-error-for="member_name" hidden>
                             @error('member_name'){{ $message }}@enderror
                         </div>
                     </div>
+                </div>
+            </x-members.panel>
 
+            <x-members.panel title="Sponsor information" subtitle="An administrator can register under any valid sponsor.">
+                <div class="ds-mm-fields">
                     <div>
-                        <label>Sponsor ID <span>*</span></label>
-                        <input type="text" name="sponsor_id" placeholder="Enter Sponsor ID" value="{{ old('sponsor_id', $default_sponsor_id ?? 'ST666666') }}" required>
+                        <label for="admin-sponsor-id">Sponsor ID <span>*</span></label>
+                        <input type="text" id="admin-sponsor-id" name="sponsor_id" placeholder="Enter Sponsor ID" value="{{ old('sponsor_id', $default_sponsor_id ?? 'ST666666') }}" required>
                         <div class="validation-message" data-error-for="sponsor_id" hidden>
                             @error('sponsor_id'){{ $message }}@enderror
                         </div>
                     </div>
-
                     <div>
-                        <label>Sponsor Name <span>*</span></label>
-                        <input type="text" name="sponsor_name" placeholder="Sponsor Name will auto-fill" value="{{ old('sponsor_name', $default_sponsor_name ?? 'Admin') }}" readonly>
+                        <label for="admin-sponsor-name">Sponsor Name <span>*</span></label>
+                        <input type="text" id="admin-sponsor-name" name="sponsor_name" placeholder="Sponsor Name will auto-fill" value="{{ old('sponsor_name', $default_sponsor_name ?? 'Admin') }}" readonly>
                         <div class="validation-message" data-error-for="sponsor_name" hidden>
                             @error('sponsor_name'){{ $message }}@enderror
                         </div>
                     </div>
+                </div>
+            </x-members.panel>
 
+            <x-members.panel title="Contact information">
+                <div class="ds-mm-fields">
                     <div>
-                        <label>Email ID <span>*</span></label>
-                        <input type="email" name="email" placeholder="Enter Email ID" value="{{ old('email') }}" required>
+                        <label for="admin-email">Email ID <span>*</span></label>
+                        <input type="email" id="admin-email" name="email" placeholder="Enter Email ID" value="{{ old('email') }}" required>
                         <div class="validation-message" data-error-for="email" hidden>
                             @error('email'){{ $message }}@enderror
                         </div>
                     </div>
-
                     <div>
-                        <label>Mobile No <span>*</span></label>
-                        <input type="text" name="mobile_no" placeholder="Enter Mobile No" value="{{ old('mobile_no') }}" required maxlength="10">
+                        <label for="admin-mobile">Mobile No <span>*</span></label>
+                        <input type="text" id="admin-mobile" name="mobile_no" placeholder="Enter Mobile No" value="{{ old('mobile_no') }}" required maxlength="10">
                         <div class="validation-message" data-error-for="mobile_no" hidden>
                             @error('mobile_no'){{ $message }}@enderror
                         </div>
                     </div>
+                </div>
+            </x-members.panel>
 
+            <x-members.panel title="KYC and wallet">
+                <div class="ds-mm-fields">
                     <div>
-                        <label>PAN Card Number <span>*</span></label>
-                        <input type="text" name="pan_card_no" placeholder="Enter PAN Card Number" value="{{ old('pan_card_no') }}" required maxlength="10">
+                        <label for="admin-pan">PAN Card Number <span>*</span></label>
+                        <input type="text" id="admin-pan" name="pan_card_no" placeholder="Enter PAN Card Number" value="{{ old('pan_card_no') }}" required maxlength="10">
                         <div class="validation-message" data-error-for="pan_card_no" hidden>
                             @error('pan_card_no'){{ $message }}@enderror
                         </div>
                     </div>
-
                     <div>
-                        <label>Wallet Address</label>
-                        <input type="text" name="wallet_address" placeholder="Optional wallet address" value="{{ old('wallet_address') }}">
+                        <label for="admin-wallet">Wallet Address</label>
+                        <input type="text" id="admin-wallet" name="wallet_address" placeholder="Optional wallet address" value="{{ old('wallet_address') }}">
                     </div>
+                </div>
+            </x-members.panel>
 
+            <x-members.panel title="Security" subtitle="A password is optional. The member can use Forgot Password after the account is created.">
+                <div class="ds-mm-fields">
                     <div>
-                        <label>Password</label>
-                        <div>
-                            <input type="password" id="registrationPassword" name="password" placeholder="Optional password" autocomplete="new-password">
-                        </div>
+                        <label for="registrationPassword">Password</label>
+                        <input type="password" id="registrationPassword" name="password" placeholder="Optional password" autocomplete="new-password">
                         <div class="validation-message" data-error-for="password" hidden>
                             @error('password'){{ $message }}@enderror
                         </div>
                     </div>
-
                     <div>
-                        <label>Confirm Password</label>
-                        <div>
-                            <input type="password" id="registrationPasswordConfirmation" name="password_confirmation" placeholder="Confirm password" autocomplete="new-password">
-                        </div>
+                        <label for="registrationPasswordConfirmation">Confirm Password</label>
+                        <input type="password" id="registrationPasswordConfirmation" name="password_confirmation" placeholder="Confirm password" autocomplete="new-password">
                     </div>
                 </div>
-
-                <div>
-                    <button type="submit">
-                        <i></i>
-                        Register Member
-                    </button>
+                <div class="ds-mm-actions">
+                    <button type="submit" class="ds-btn">Register Member</button>
                 </div>
-            </form>
-        </div>
-    </main>
+            </x-members.panel>
+        </form>
+    </x-members.shell>
 
     <script>
         const sponsorIdInput = document.querySelector('input[name="sponsor_id"]');
@@ -108,7 +110,7 @@
         const emailInput = document.querySelector('input[name="email"]');
         const mobileNoInput = document.querySelector('input[name="mobile_no"]');
         const panCardInput = document.querySelector('input[name="pan_card_no"]');
-        const registrationForm = document.querySelector('form');
+        const registrationForm = document.getElementById('adminRegistrationForm');
         let sponsorValidationTimer = null;
         const touchedFields = new Set();
         let sponsorIdValid = (sponsorIdInput?.value || '').trim().toUpperCase() === 'ST666666';

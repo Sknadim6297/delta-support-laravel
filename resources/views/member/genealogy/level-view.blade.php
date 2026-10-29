@@ -1,5 +1,8 @@
 @extends('member.layouts.app')
 
+@section('title', 'Levelwise Members')
+@section('page-title', 'Levelwise Members')
+
 @section('content')
 
         <main>

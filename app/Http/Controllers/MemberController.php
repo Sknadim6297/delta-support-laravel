@@ -345,8 +345,21 @@ class MemberController extends Controller
             ->pluck('aggregate', 'status');
         $activeMemberCount = (int) $statusCounts->get('active', 0);
         $inactiveMemberCount = (int) $statusCounts->get('inactive', 0);
+        $totalMembers = (int) Member::query()->count();
+        $approvedPackageCount = \App\Models\PackagePurchase::query()
+            ->where('status', \App\Models\PackagePurchase::APPROVED)
+            ->distinct()
+            ->count('member_id');
 
-        return view($view, compact('members', 'memberName', 'memberId', 'activeMemberCount', 'inactiveMemberCount'));
+        return view($view, compact(
+            'members',
+            'memberName',
+            'memberId',
+            'activeMemberCount',
+            'inactiveMemberCount',
+            'totalMembers',
+            'approvedPackageCount',
+        ));
     }
 
     public function export(Request $request, string $status)

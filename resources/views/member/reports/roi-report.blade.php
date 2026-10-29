@@ -1,4 +1,7 @@
 @extends('member.layouts.app')
+
+@section('title', 'ROI Report')
+@section('page-title', 'ROI Report')
 @section('content')
 
 

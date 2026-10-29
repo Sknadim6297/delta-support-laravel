@@ -9,9 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="{{ asset('lux/assets/css/vendor/bootstrap.min.css') }}" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    <link href="{{ asset('lux/assets/css/style.css') }}" rel="stylesheet">
     @vite(['resources/css/panel.css', 'resources/css/lux-shell.css', 'resources/css/lux-pages.css', 'resources/js/panel.js', 'resources/js/lux-shell.js'])
     @include('partials.brand-tokens')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21,6 +19,7 @@
     <main class="wrapper sb-default">
         @include('partials.lux-bar', [
             'luxTitle' => trim($__env->yieldContent('page-title')) ?: 'Admin',
+            'luxHome' => route('dashboard'),
             'luxName' => auth()->user()->name ?? 'Admin',
             'luxMeta' => auth()->user()->email,
             'luxProfile' => route('admin.settings.profile'),

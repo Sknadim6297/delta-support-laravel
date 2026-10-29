@@ -1,5 +1,8 @@
 @extends('admin.layouts.app')
 
+@section('title', 'Activation Debit')
+@section('page-title', 'Activation Debit')
+
 @section('content')
 
         <main>

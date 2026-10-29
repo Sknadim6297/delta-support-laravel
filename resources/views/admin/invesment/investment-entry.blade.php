@@ -1,5 +1,8 @@
 @extends('admin.layouts.app')
 
+@section('title', 'Investment Entry')
+@section('page-title', 'Investment Entry')
+
 @section('content')
     <div>
         @include('partials.legacy-financial-lock')

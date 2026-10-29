@@ -1,4 +1,7 @@
 @extends('admin.layouts.app')
+
+@section('title', 'Active Investments')
+@section('page-title', 'Active Investments')
 @section('content')
 
 <main>

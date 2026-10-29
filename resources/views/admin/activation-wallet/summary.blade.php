@@ -1,5 +1,8 @@
 @extends('admin.layouts.app')
 
+@section('title', 'Activation Wallet')
+@section('page-title', 'Activation Wallet')
+
 @section('content')
 
         <main>

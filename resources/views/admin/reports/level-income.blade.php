@@ -1,4 +1,7 @@
 @extends('admin.layouts.app')
+
+@section('title', 'Level Commission Report')
+@section('page-title', 'Level Commission Report')
 @section('content')
 
 

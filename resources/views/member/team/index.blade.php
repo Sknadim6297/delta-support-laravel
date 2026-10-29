@@ -2,7 +2,6 @@
 
 @section('title', $view === 'direct' ? 'Direct Members' : 'Team Overview')
 @section('page-title', $view === 'direct' ? 'Direct Members' : 'Team Overview')
-@section('content-class', 'lh-native')
 
 @php
     $directTotal = $directMembers->count();
@@ -15,61 +14,47 @@
 @endphp
 
 @section('content')
-<div class="row">
-    <div class="col-xl-3 col-md-6">
-        <div class="lh-card lh-card-1">
-            <div class="lh-card-content label-card">
-                <div class="title"><div class="growth-numbers"><h4>Direct Members</h4><h5>{{ $directTotal }}</h5></div><span class="icon"><i class="ri-user-shared-line"></i></span></div>
-                <p class="card-groth"><span>{{ $directActive }} active · {{ $directInactive }} inactive</span></p>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="lh-card lh-card-2">
-            <div class="lh-card-content label-card">
-                <div class="title"><div class="growth-numbers"><h4>Active Direct Members</h4><h5>{{ $directActive }}</h5></div><span class="icon"><i class="ri-user-follow-line"></i></span></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="lh-card lh-card-3">
-            <div class="lh-card-content label-card">
-                <div class="title"><div class="growth-numbers"><h4>Inactive Direct Members</h4><h5>{{ $directInactive }}</h5></div><span class="icon"><i class="ri-user-unfollow-line"></i></span></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="lh-card lh-card-4">
-            <div class="lh-card-content label-card">
-                <div class="title"><div class="growth-numbers"><h4>Whole Team</h4><h5>{{ $teamTotal }}</h5></div><span class="icon"><i class="ri-node-tree"></i></span></div>
-                <p class="card-groth"><span>{{ $teamActive }} active · {{ $teamInactive }} inactive</span></p>
-            </div>
-        </div>
-    </div>
-</div>
+<x-members.shell kicker="My network" :lead="$view === 'direct' ? 'People who registered with your Member ID.' : 'Sponsor relationships already stored under your account.'">
+    <x-slot:actions>
+        <x-ui.button variant="{{ $view === 'direct' ? 'primary' : 'secondary' }}" :href="route('member.team.direct')">Direct Members ({{ $directTotal }})</x-ui.button>
+        <x-ui.button variant="{{ $view === 'whole' ? 'primary' : 'secondary' }}" :href="route('member.team.whole')">Whole Team ({{ $teamTotal }})</x-ui.button>
+    </x-slot:actions>
 
-<div class="lh-card">
-    <div class="lh-card-header">
-        <h4 class="lh-card-title">{{ $view === 'direct' ? 'Direct Members' : 'Team Overview' }}</h4>
-        <div class="header-tools">
-            <a class="lh-primary-btn" href="{{ route('member.team.direct') }}">Direct Members ({{ $directTotal }})</a>
-            <a class="lh-primary-btn" href="{{ route('member.team.whole') }}">Whole Team ({{ $teamTotal }})</a>
-        </div>
+    <div class="ds-mm-stats">
+        <article class="ds-mm-stat">
+            <span>Direct members</span>
+            <strong>{{ $directTotal }}</strong>
+            <small>{{ $directActive }} active · {{ $directInactive }} inactive</small>
+        </article>
+        <article class="ds-mm-stat">
+            <span>Active direct</span>
+            <strong>{{ $directActive }}</strong>
+            <small>Status is active</small>
+        </article>
+        <article class="ds-mm-stat">
+            <span>Inactive direct</span>
+            <strong>{{ $directInactive }}</strong>
+            <small>Status is inactive</small>
+        </article>
+        <article class="ds-mm-stat">
+            <span>Whole team</span>
+            <strong>{{ $teamTotal }}</strong>
+            <small>{{ $teamActive }} active · {{ $teamInactive }} inactive</small>
+        </article>
     </div>
-    <div class="lh-card-content">
-        <p class="lh-note">A member can appear in this network without an active package. These counts are sponsor relationships, not paid commission levels.</p>
 
-        @if ($view === 'whole' && $levels->isNotEmpty())
-            <div class="row">
-                @foreach ($levels as $level => $count)
-                    <div class="col-md-3 col-6">
-                        <p class="lh-note"><strong>Level {{ $level }}</strong> · {{ $count }}</p>
-                    </div>
-                @endforeach
-            </div>
-        @endif
+    @if ($view === 'whole' && $levels->isNotEmpty())
+        <div class="ds-mm-stats">
+            @foreach ($levels as $level => $count)
+                <article class="ds-mm-stat">
+                    <span>Level {{ $level }}</span>
+                    <strong>{{ $count }}</strong>
+                </article>
+            @endforeach
+        </div>
+    @endif
 
-        <form class="lh-filter" method="GET" action="{{ $view === 'direct' ? route('member.team.direct') : route('member.team.whole') }}">
+    <form class="ds-mm-filters" method="GET" action="{{ $view === 'direct' ? route('member.team.direct') : route('member.team.whole') }}">
             <div>
                 <label for="team-member-id">Member ID</label>
                 <input id="team-member-id" type="text" name="member_id" value="{{ $memberId }}" placeholder="Enter Member ID" data-member-autocomplete autocomplete="off">
@@ -86,12 +71,13 @@
                     <option value="inactive" @selected($status === 'inactive')>Inactive</option>
                 </select>
             </div>
-            <button type="submit" class="lh-primary-btn">Search</button>
-            <a class="lh-primary-btn" href="{{ $view === 'direct' ? route('member.team.direct') : route('member.team.whole') }}">Clear</a>
+            <button type="submit" class="ds-btn">Search</button>
+            <a class="ds-btn ds-btn-secondary" href="{{ $view === 'direct' ? route('member.team.direct') : route('member.team.whole') }}">Clear</a>
         </form>
 
-        <div class="lh-scroll">
-            <table class="lh-data">
+    <x-members.panel :title="$view === 'direct' ? 'Direct Members' : 'Team Overview'" subtitle="A member can appear here without an active package. These counts are sponsor relationships, not paid commission levels." flush>
+        <div>
+            <table>
                 <thead>
                     <tr>
                         @if ($view === 'whole')<th>Level</th>@endif
@@ -109,17 +95,19 @@
                     @forelse ($filteredMembers as $teamMember)
                         <tr>
                             @if ($view === 'whole')<td>Level {{ $teamMember['level'] }}</td>@endif
-                            <td>{{ $teamMember['member_id'] }}</td>
+                            <td><span class="ds-mm-id">{{ $teamMember['member_id'] }}</span></td>
                             <td>{{ $teamMember['member_name'] }}</td>
                             <td>{{ $teamMember['sponsor_id'] }}</td>
                             <td>{{ $teamMember['email'] }}</td>
                             <td>{{ $teamMember['mobile_no'] }}</td>
-                            <td><span class="lh-status {{ $teamMember['status'] === 'active' ? 'is-active' : 'is-muted' }}">{{ ucfirst($teamMember['status']) }}</span></td>
+                            <td>
+                                <x-ui.badge :tone="$teamMember['status'] === 'active' ? 'success' : 'warning'">{{ ucfirst($teamMember['status']) }}</x-ui.badge>
+                            </td>
                             <td>{{ ! empty($teamMember['package_active']) ? 'Active package' : 'No active package' }}</td>
-                            <td>{{ $teamMember['created_at']?->format('d-M-Y') ?? 'N/A' }}</td>
+                            <td>{{ $teamMember['created_at']?->format('d M Y') ?? 'N/A' }}</td>
                         </tr>
                     @empty
-                        <tr>
+                        <tr class="ds-mm-empty">
                             <td colspan="{{ $view === 'whole' ? 9 : 8 }}">No team members found.</td>
                         </tr>
                     @endforelse
@@ -127,8 +115,8 @@
             </table>
         </div>
         @if (method_exists($filteredMembers, 'links'))
-            <div>{{ $filteredMembers->links() }}</div>
+            <div class="ds-mm-pages">{{ $filteredMembers->links('pagination::bootstrap-5') }}</div>
         @endif
-    </div>
-</div>
+    </x-members.panel>
+</x-members.shell>
 @endsection

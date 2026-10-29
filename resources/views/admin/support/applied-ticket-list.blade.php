@@ -1,4 +1,7 @@
 @extends('admin.layouts.app')
+
+@section('title', 'Applied Tickets')
+@section('page-title', 'Applied Tickets')
 @section('content')
          <main>
 

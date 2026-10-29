@@ -7,6 +7,12 @@
             <button type="button" class="lh-toggle-sidebar" aria-label="Toggle navigation">
                 <i class="ri-menu-line"></i>
             </button>
+            <div class="ds-lux-heading">
+                @if (!empty($luxHome))
+                    <a class="ds-lux-home" href="{{ $luxHome }}">Home</a>
+                @endif
+                <h1 class="ds-lux-title">{{ $luxTitle ?? 'Panel' }}</h1>
+            </div>
         </div>
         <div class="ds-lux-bar-end">
             <div class="ds-lux-menu" data-lux-drop>
@@ -26,6 +32,7 @@
                             <small>{{ $luxMeta }}</small>
                         @endif
                     </span>
+                    <i class="ri-arrow-down-s-line ds-lux-caret" aria-hidden="true"></i>
                 </button>
                 <div class="ds-lux-menu-panel" role="menu">
                     @if (!empty($luxProfile))

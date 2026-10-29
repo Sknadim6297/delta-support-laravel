@@ -1,5 +1,8 @@
 @extends('admin.layouts.app')
 
+@section('title', 'Rank Management')
+@section('page-title', 'Rank Management')
+
 @section('content')
     <main>
         <div>

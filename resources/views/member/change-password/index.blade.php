@@ -1,6 +1,9 @@
 <!-- //now fix the all details as a member -->
 
 @extends('member.layouts.app')
+
+@section('title', 'Account Security')
+@section('page-title', 'Account Security')
 @section('content')
 
         <main>

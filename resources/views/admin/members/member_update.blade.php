@@ -4,43 +4,32 @@
 @section('page-title', 'View / Update Member')
 
 @section('content')
-    <div class="ds-dash">
-        <x-ui.page-header
-            title="View / Update Member"
-            lead="Look up a member by ID, then update the profile. Sponsor identity and wallet balances stay on their existing rules."
-        />
+    <x-members.shell lead="Look up a member by ID, then update the saved profile. Sponsor identity and wallet balances stay on their existing rules.">
 
-        @if ($errors->any())
-            <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
-        @endif
-
-        <div id="memberSummary" class="ds-member-summary" hidden>
-            <article class="ds-stat">
-                <p class="ds-stat-label">Account status</p>
-                <p class="ds-stat-value" id="summaryStatus"></p>
+    @if ($errors->any())
+        <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
+    @endif
+        <div id="memberSummary" class="ds-mm-stats" hidden>
+            <article class="ds-mm-stat">
+                <span>Account status</span>
+                <strong id="summaryStatus"></strong>
             </article>
-            <article class="ds-stat">
-                <p class="ds-stat-label">Registration date</p>
-                <p class="ds-stat-value" id="summaryRegistered"></p>
+            <article class="ds-mm-stat">
+                <span>Registration date</span>
+                <strong id="summaryRegistered"></strong>
             </article>
-            <article class="ds-stat">
-                <p class="ds-stat-label">Package status</p>
-                <p class="ds-stat-value" id="summaryPackage"></p>
+            <article class="ds-mm-stat">
+                <span>Package status</span>
+                <strong id="summaryPackage"></strong>
             </article>
-            <article class="ds-stat">
-                <p class="ds-stat-label">Direct referrals</p>
-                <p class="ds-stat-value" id="summaryReferrals"></p>
+            <article class="ds-mm-stat">
+                <span>Direct referrals</span>
+                <strong id="summaryReferrals"></strong>
             </article>
         </div>
 
-        <section class="ds-card">
-            <div class="ds-card-head">
-                <div>
-                    <h2>Find a member</h2>
-                    <p>Enter the member ID and load the saved profile.</p>
-                </div>
-            </div>
-            <div class="ds-member-lookup">
+        <x-members.panel title="Find a member" subtitle="Enter the member ID and load the saved profile.">
+            <div class="ds-mm-filters ds-member-lookup">
                 <div>
                     <label for="memberId">Member ID</label>
                     <input type="text"
@@ -53,18 +42,12 @@
                 </div>
                 <button type="button" id="fetchMemberDetails" class="ds-btn">Look up</button>
             </div>
-        </section>
+        </x-members.panel>
 
-        <form method="POST" action="{{ route('admin.members.update-member') }}" id="memberUpdateForm" class="ds-profile-form">
+        <form method="POST" action="{{ route('admin.members.update-member') }}" id="memberUpdateForm" class="ds-profile-form ds-mm-form">
             @csrf
-            <section class="ds-card">
-                <div class="ds-card-head">
-                    <div>
-                        <h2>Personal details</h2>
-                        <p>Leave the password blank to keep the current password.</p>
-                    </div>
-                </div>
-                <div class="ds-field-grid">
+            <x-members.panel title="Sponsor information" subtitle="The sponsor ID stays on the registration record.">
+                <div class="ds-mm-fields">
                     <div>
                         <label for="sponsorId">Sponsor ID <span>*</span></label>
                         <input type="text" id="sponsorId" name="sponsor_id" readonly value="{{ old('sponsor_id') }}" placeholder="Enter Sponsor ID">
@@ -73,37 +56,52 @@
                         <label for="sponsorName">Sponsor Name <span>*</span></label>
                         <input type="text" id="sponsorName" name="sponsor_name" value="{{ old('sponsor_name') }}" placeholder="Enter Sponsor Name">
                     </div>
+                </div>
+            </x-members.panel>
+
+            <x-members.panel title="Basic information" subtitle="Name and contact details used on the account.">
+                <div class="ds-mm-fields">
                     <div>
                         <label for="memberName">Member Name <span>*</span></label>
                         <input type="text" id="memberName" name="member_name" value="{{ old('member_name') }}" placeholder="Enter Member Name">
-                    </div>
-                    <div>
-                        <label for="walletAddress">BEP20 Wallet Address</label>
-                        <input type="text" id="walletAddress" name="wallet_address" value="{{ old('wallet_address') }}" placeholder="Enter BEP20 Wallet Address">
-                    </div>
-                    <div>
-                        <label for="mobileNo">Mobile No <span>*</span></label>
-                        <input type="text" id="mobileNo" name="mobile_no" value="{{ old('mobile_no') }}" placeholder="Enter Mobile No" required maxlength="10">
                     </div>
                     <div>
                         <label for="email">Email ID <span>*</span></label>
                         <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="Enter Email ID" autocomplete="off">
                     </div>
                     <div>
+                        <label for="mobileNo">Mobile No <span>*</span></label>
+                        <input type="text" id="mobileNo" name="mobile_no" value="{{ old('mobile_no') }}" placeholder="Enter Mobile No" required maxlength="10">
+                    </div>
+                </div>
+            </x-members.panel>
+
+            <x-members.panel title="KYC and wallet" subtitle="PAN and the BEP20 address stored with this member.">
+                <div class="ds-mm-fields">
+                    <div>
                         <label for="panCardNo">PAN Card Number <span>*</span></label>
                         <input type="text" id="panCardNo" name="pan_card_no" value="{{ old('pan_card_no') }}" placeholder="Enter PAN Card Number" maxlength="10">
                     </div>
+                    <div>
+                        <label for="walletAddress">BEP20 Wallet Address</label>
+                        <input type="text" id="walletAddress" name="wallet_address" value="{{ old('wallet_address') }}" placeholder="Enter BEP20 Wallet Address">
+                    </div>
+                </div>
+            </x-members.panel>
+
+            <x-members.panel title="Security" subtitle="Leave the password blank to keep the current password.">
+                <div class="ds-mm-fields">
                     <div>
                         <label for="password">Password</label>
                         <input type="password" id="password" name="password" placeholder="Enter Password" autocomplete="new-password">
                     </div>
                 </div>
-                <div class="ds-form-actions">
+                <div class="ds-mm-actions">
                     <button type="submit" class="ds-btn">Update</button>
                 </div>
-            </section>
+            </x-members.panel>
         </form>
-    </div>
+    </x-members.shell>
 @endsection
 
 @section('scripts')

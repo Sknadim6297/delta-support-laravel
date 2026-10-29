@@ -1,5 +1,8 @@
 @extends('admin.layouts.app')
 
+@section('title', 'Investment Withdrawal')
+@section('page-title', 'Investment Withdrawal')
+
 @section('content')
         <main>
 

@@ -247,9 +247,9 @@
                         @endforeach
                         </tbody>
                     </table>
-                @endif
+        @endif
             </div>
         </div>
     </div>
-</div>
+    </div>
 @endsection

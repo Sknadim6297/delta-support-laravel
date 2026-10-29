@@ -1,4 +1,7 @@
 @extends('member.layouts.app')
+
+@section('title', 'Closed Investments')
+@section('page-title', 'Closed Investments')
 @section('content')
 
      <main>

@@ -33,7 +33,25 @@ class MemberDirectoryController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.members.directory', compact('members'));
+        $statusCounts = Member::query()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+        $activeMemberCount = (int) $statusCounts->get('active', 0);
+        $inactiveMemberCount = (int) $statusCounts->get('inactive', 0);
+        $totalMembers = (int) Member::query()->count();
+        $approvedPackageCount = \App\Models\PackagePurchase::query()
+            ->where('status', \App\Models\PackagePurchase::APPROVED)
+            ->distinct()
+            ->count('member_id');
+
+        return view('admin.members.directory', compact(
+            'members',
+            'totalMembers',
+            'activeMemberCount',
+            'inactiveMemberCount',
+            'approvedPackageCount',
+        ));
     }
 
     public function updateStatus(Request $request, string $memberId): RedirectResponse
