@@ -150,9 +150,11 @@ class WithdrawalFoundationTest extends TestCase
         $names = collect(Route::getRoutes())->map(fn ($route) => $route->getName())->filter()->all();
         $this->assertContains('admin.withdrawals.settings', $names);
         $this->assertContains('admin.withdrawals.settings.update', $names);
-        $this->assertNotContains('admin.withdrawals.approve', $names);
+        $this->assertContains('admin.withdrawals.approve', $names);
+        $this->assertContains('admin.withdrawals.reject', $names);
+        $this->assertContains('member.withdrawals.store', $names);
         $this->assertNotContains('admin.withdrawals.payout', $names);
-        $this->assertNotContains('member.withdrawals.store', $names);
+        $this->assertNotContains('admin.withdrawals.settle', $names);
         $uris = array_values(array_unique(array_filter(
             collect(Route::getRoutes())->map(fn ($route) => $route->uri())->all(),
             fn (string $uri): bool => str_starts_with($uri, 'admin/withdrawals')
@@ -163,14 +165,17 @@ class WithdrawalFoundationTest extends TestCase
             'admin/withdrawals/payouts',
             'admin/withdrawals/requests',
             'admin/withdrawals/requests/{withdrawalRequest}',
+            'admin/withdrawals/requests/{withdrawalRequest}/approve',
+            'admin/withdrawals/requests/{withdrawalRequest}/reject',
             'admin/withdrawals/settings',
         ], $uris);
         $this->assertSame(
-            ['PUT'],
+            ['POST', 'PUT'],
             collect(Route::getRoutes())->filter(fn ($route) => str_starts_with($route->uri(), 'admin/withdrawals') || str_starts_with($route->uri(), 'member/withdrawals'))
                 ->flatMap(fn ($route) => $route->methods())
                 ->reject(fn (string $method) => in_array($method, ['GET', 'HEAD'], true))
                 ->unique()
+                ->sort()
                 ->values()
                 ->all()
         );

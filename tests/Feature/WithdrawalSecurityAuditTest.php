@@ -50,12 +50,15 @@ class WithdrawalSecurityAuditTest extends TestCase
 
         $this->withSession(['member_context_id' => $member->member_id])
             ->post(route('member.withdrawals.request'), ['amount' => '20.0000'])
-            ->assertStatus(405);
+            ->assertForbidden();
 
         $admin = User::factory()->create(['is_admin' => true]);
         $this->actingAs($admin)->post(route('admin.withdrawals.payouts'))->assertStatus(405);
         $this->actingAs($admin)->post(route('admin.withdrawals.index'))->assertStatus(405);
-        foreach (['approve', 'reject', 'complete', 'transfer'] as $action) {
+        foreach (['approve', 'reject'] as $action) {
+            $this->actingAs($admin)->post('/admin/withdrawals/requests/'.$own->id.'/'.$action)->assertForbidden();
+        }
+        foreach (['complete', 'transfer'] as $action) {
             $this->actingAs($admin)->post('/admin/withdrawals/requests/'.$own->id.'/'.$action)->assertNotFound();
         }
 

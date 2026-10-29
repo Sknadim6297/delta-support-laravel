@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\WithdrawalRequest;
+use App\Services\FinancialControls;
+use App\Services\WithdrawalWorkflow;
 use App\Support\WithdrawalStatus;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use RuntimeException;
 
 class WithdrawalReviewController extends Controller
 {
@@ -46,7 +50,35 @@ class WithdrawalReviewController extends Controller
 
         return view('admin.withdrawals.show', [
             'withdrawal' => $withdrawalRequest,
+            'canReview' => app(FinancialControls::class)->enabled('withdrawal_approval_enabled')
+                && $withdrawalRequest->status === WithdrawalStatus::PENDING_REVIEW,
         ]);
+    }
+
+    public function approve(WithdrawalRequest $withdrawalRequest, WithdrawalWorkflow $workflow): RedirectResponse
+    {
+        try {
+            $workflow->approve($withdrawalRequest, $this->admin());
+        } catch (RuntimeException $exception) {
+            abort(403, $exception->getMessage());
+        }
+
+        return redirect()->route('admin.withdrawals.show', $withdrawalRequest)->with('status', 'The request was approved. No external payout was sent.');
+    }
+
+    public function reject(Request $request, WithdrawalRequest $withdrawalRequest, WithdrawalWorkflow $workflow): RedirectResponse
+    {
+        if (! app(FinancialControls::class)->enabled('withdrawal_approval_enabled')) {
+            abort(403, 'Withdrawal approval is disabled. No balance was changed.');
+        }
+        $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
+        try {
+            $workflow->reject($withdrawalRequest, $this->admin(), $data['reason']);
+        } catch (RuntimeException $exception) {
+            abort(403, $exception->getMessage());
+        }
+
+        return redirect()->route('admin.withdrawals.show', $withdrawalRequest)->with('status', 'The request was rejected and its reservation was released.');
     }
 
     public function payouts(): View
@@ -73,6 +105,16 @@ class WithdrawalReviewController extends Controller
             ->when($request->filled('network'), fn (Builder $query) => $query->where('network', trim((string) $request->query('network'))))
             ->when($this->isDate($from), fn (Builder $query) => $query->whereDate('created_at', '>=', $from))
             ->when($this->isDate($to), fn (Builder $query) => $query->whereDate('created_at', '<=', $to));
+    }
+
+    private function admin(): \App\Models\User
+    {
+        $user = auth()->user();
+        if (! $user instanceof \App\Models\User) {
+            abort(403);
+        }
+
+        return $user;
     }
 
     private function isDate(string $value): bool

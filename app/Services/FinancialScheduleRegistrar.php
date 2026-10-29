@@ -18,12 +18,11 @@ class FinancialScheduleRegistrar
      */
     public function preparePackageIncome(Schedule $schedule): void
     {
-        $schedule->command('package-income:accrue')
+        $event = $schedule->command('package-income:accrue')
             ->name('package-income-daily')
             ->dailyAt((string) config('deltasupport.package_income.schedule_time', '00:10'))
-            ->timezone((string) config('deltasupport.package_income.timezone', 'Asia/Kolkata'))
-            ->withoutOverlapping(120)
-            ->onOneServer();
+            ->timezone((string) config('deltasupport.package_income.timezone', 'Asia/Kolkata'));
+        app(ScheduleLockSupport::class)->apply($event, 120);
     }
 
     /**

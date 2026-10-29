@@ -11,6 +11,7 @@ use App\Models\PackageLevelAccrual;
 use App\Models\PackagePurchase;
 use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
+use App\Models\WalletLedgerEntry;
 use App\Services\CommissionPlan;
 use App\Services\PackageIncomeAdministration;
 use App\Services\PackageIncomeCalculationPreview;
@@ -96,7 +97,9 @@ class OperationsController extends Controller
 
     public function walletTransactions(): View
     {
-        return view('admin.wallets.transactions');
+        return view('admin.wallets.transactions', [
+            'entries' => WalletLedgerEntry::query()->latest('id')->paginate(20),
+        ]);
     }
 
     public function tours(): RedirectResponse

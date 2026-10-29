@@ -2,18 +2,18 @@
 
 namespace App\Services\Rewards;
 
+use App\Services\ScheduleLockSupport;
 use Illuminate\Console\Scheduling\Schedule;
 
 class RewardScheduleRegistrar
 {
     public function register(Schedule $schedule): void
     {
-        $schedule->command('rewards:evaluate')
+        $event = $schedule->command('rewards:evaluate')
             ->name('rewards-evaluate')
-            ->everyFifteenMinutes()
+            ->everyTwoMinutes()
             ->timezone('Asia/Kolkata')
-            ->withoutOverlapping(20)
-            ->onOneServer()
             ->appendOutputTo(storage_path('logs/rewards-evaluate.log'));
+        app(ScheduleLockSupport::class)->apply($event, 20);
     }
 }

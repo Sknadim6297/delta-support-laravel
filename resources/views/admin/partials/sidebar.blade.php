@@ -89,6 +89,7 @@
                 <li class="lh-sb-title condense">Account</li>
                 <x-navigation.lux-group icon="ri-settings-3-line" label="Settings" :open="request()->routeIs('admin.settings.*', 'admin.change-password.*')">
                     <x-navigation.lux-link :href="route('admin.settings.general')" :active="request()->routeIs('admin.settings.general')">General Settings</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.settings.financial')" :active="request()->routeIs('admin.settings.financial')">Financial Controls</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.settings.branding')" :active="request()->routeIs('admin.settings.branding')">Branding</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.settings.security')" :active="request()->routeIs('admin.settings.security', 'admin.change-password.*')">Security</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.settings.profile')" :active="request()->routeIs('admin.settings.profile')">Admin Profile</x-navigation.lux-link>

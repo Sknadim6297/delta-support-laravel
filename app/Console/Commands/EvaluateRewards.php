@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\RewardEvaluationRun;
+use App\Services\FinancialControls;
 use App\Services\Rewards\RewardEligibilityService;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -14,9 +15,15 @@ class EvaluateRewards extends Command
 
     protected $description = 'Recalculate reward eligibility from approved USDT package business. This does not credit a wallet.';
 
-    public function handle(RewardEligibilityService $eligibility): int
+    public function handle(RewardEligibilityService $eligibility, FinancialControls $controls): int
     {
         $businessDate = CarbonImmutable::now('Asia/Kolkata')->toDateString();
+        if (! $controls->enabled('rewards_evaluation_enabled')) {
+            $this->warn('Rewards evaluation is disabled. No qualification was written and no wallet was credited.');
+
+            return self::SUCCESS;
+        }
+
         $run = RewardEvaluationRun::query()->create([
             'business_date' => $businessDate,
             'status' => RewardEvaluationRun::RUNNING,

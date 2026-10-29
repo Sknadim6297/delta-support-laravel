@@ -33,12 +33,12 @@ class WalletBalanceReconciliation
     {
         $roiCredits = bcadd(
             $this->money(RoiTransaction::query()->where('member_id', $member->member_id)->sum('income_amount')),
-            $this->money(PackageRoiAccrual::query()->where('member_id', $member->member_id)->sum('amount')),
+            $this->money(PackageRoiAccrual::query()->where('member_id', $member->member_id)->where('status', 'accrued')->sum('amount')),
             4
         );
         $workingCredits = bcadd(
             $this->money(LevelCommissionTransaction::query()->where('member_id', $member->member_id)->sum('income_amount')),
-            $this->money(PackageLevelAccrual::query()->where('member_id', $member->member_id)->sum('amount')),
+            $this->money(PackageLevelAccrual::query()->where('member_id', $member->member_id)->where('status', 'accrued')->sum('amount')),
             4
         );
         $activationCredits = $this->money(ActivationWalletTransaction::query()

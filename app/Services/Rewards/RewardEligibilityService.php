@@ -23,7 +23,7 @@ class RewardEligibilityService
      */
     public function evaluate(?int $campaignId = null): array
     {
-        // Expires before the next 15-minute schedule so a crashed run can be retried.
+        // Released when the run finishes. A crashed process keeps the lock for 840 seconds.
         $lock = Cache::lock('rewards-evaluate', 840);
         if (! $lock->get()) {
             return ['skipped' => true, 'members' => 0, 'selected' => 0];

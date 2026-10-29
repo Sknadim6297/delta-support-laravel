@@ -44,6 +44,87 @@ class PackageIncomeAccrual
     }
 
     /**
+     * One business date for the controlled daily cycle. Demo purchases are excluded.
+     * A dry run writes nothing. Wallet columns move only when that crediting switch is on.
+     *
+     * @return array{dry_run: bool, roi_records: int, commission_records: int, skipped: list<string>}
+     */
+    public function runControlled(string $businessDate, bool $dryRun = false): array
+    {
+        $controls = app(FinancialControls::class);
+        $date = $this->date($businessDate);
+        $today = CarbonImmutable::now((string) config('deltasupport.package_income.timezone', 'Asia/Kolkata'))->toDateString();
+        if (! $dryRun && ! $controls->enabled('daily_financial_cycle_enabled')) {
+            throw new RuntimeException('The daily financial cycle is disabled. No wallet was credited.');
+        }
+        if (! $dryRun && $date->toDateString() !== $today) {
+            throw new RuntimeException('The daily cycle processes only the current business date. No earlier date was credited.');
+        }
+
+        $calculateRoi = $dryRun || $controls->enabled('roi_calculation_enabled');
+        $calculateLevel = $dryRun || $controls->enabled('level_calculation_enabled');
+        if (! $dryRun && ! $calculateRoi && ! $calculateLevel) {
+            throw new RuntimeException('ROI and level calculation are disabled. No wallet was credited.');
+        }
+
+        $plan = $this->plan($date, function ($query): void {
+            $query->where(function ($reference): void {
+                $reference->whereNull('payment_reference')
+                    ->orWhere('payment_reference', 'not like', LocalTestMarker::PAYMENT_PREFIX.'%');
+            })->whereNotExists(function ($members): void {
+                $members->selectRaw('1')
+                    ->from('members')
+                    ->whereColumn('members.member_id', 'package_purchases.member_id')
+                    ->where('members.email', 'like', '%'.LocalTestMarker::EMAIL_DOMAIN);
+            });
+        });
+
+        if ($dryRun) {
+            return [
+                'dry_run' => true,
+                'roi_records' => $calculateRoi ? count($plan['roi']) : 0,
+                'commission_records' => $calculateLevel ? count($plan['commissions']) : 0,
+                'skipped' => $plan['skipped'],
+            ];
+        }
+
+        $lock = Cache::lock('package-income-'.$date->toDateString(), 120);
+        if (! $lock->get()) {
+            throw new RuntimeException('Package income for '.$date->toDateString().' is already running.');
+        }
+
+        try {
+            $creditRoi = $controls->enabled('roi_wallet_crediting_enabled');
+            $creditLevel = $controls->enabled('level_wallet_crediting_enabled');
+            $roi = 0;
+            $commissions = 0;
+            if ($calculateRoi) {
+                foreach ($plan['roi'] as $row) {
+                    if ($this->creditRoi($row, 'Package ROI accrual', $creditRoi, false)) {
+                        $roi++;
+                    }
+                }
+            }
+            if ($calculateLevel) {
+                foreach ($plan['commissions'] as $row) {
+                    if ($this->creditCommission($row, 'Package level commission accrual', $creditLevel, false)) {
+                        $commissions++;
+                    }
+                }
+            }
+
+            return [
+                'dry_run' => false,
+                'roi_records' => $roi,
+                'commission_records' => $commissions,
+                'skipped' => $plan['skipped'],
+            ];
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
      * Credit one business date. Refuses while package income is disabled.
      * It does not walk earlier dates.
      *
@@ -354,16 +435,28 @@ class PackageIncomeAccrual
     /**
      * @param  array<string, string>  $row
      */
-    private function creditRoi(array $row, string $reason = 'Package ROI accrual'): bool
+    /**
+     * @param  array<string, string>  $row
+     */
+    private function creditRoi(array $row, string $reason = 'Package ROI accrual', bool $creditWallet = true, bool $allowDemo = true): bool
     {
-        return DB::transaction(function () use ($row, $reason): bool {
+        return DB::transaction(function () use ($row, $reason, $creditWallet, $allowDemo): bool {
             $member = Member::query()->where('member_id', $row['member_id'])->lockForUpdate()->first();
-            if (! $member) {
+            if (! $member || (! $allowDemo && app(LocalTestMarker::class)->isEmail($member->email))) {
                 return false;
             }
+
+            $key = $row['purchase_id'].'|'.$row['business_date'];
+            $existing = DB::table('package_roi_accruals')->where('idempotency_key', $key)->lockForUpdate()->first();
+            if ($existing) {
+                return $creditWallet && $existing->status === 'calculated'
+                    ? $this->postRoiWallet($member, $row, $reason, (int) $existing->id)
+                    : false;
+            }
+
             $inserted = DB::table('package_roi_accruals')->insertOrIgnore([
                 'reference' => $row['reference'],
-                'idempotency_key' => $row['purchase_id'].'|'.$row['business_date'],
+                'idempotency_key' => $key,
                 'package_purchase_id' => $row['purchase_id'],
                 'member_id' => $member->member_id,
                 'member_name' => $member->member_name,
@@ -371,43 +464,79 @@ class PackageIncomeAccrual
                 'package_name' => $row['package_name'],
                 'business_date' => $row['business_date'],
                 'amount' => $row['amount'],
-                'status' => 'accrued',
+                'status' => 'calculated',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            if ($inserted !== 1) {
-                return false;
+            if ($inserted !== 1 || ! $creditWallet) {
+                return $inserted === 1;
             }
-            $member->roi_wallet_amount = bcadd((string) ($member->roi_wallet_amount ?? '0'), $row['amount'], 4);
-            $member->save();
-            $this->ledger->append(
-                WalletLedgerDirection::CREDIT,
-                $member->member_id,
-                'roi',
-                $row['amount'],
-                $row['reference'],
-                (string) Str::uuid(),
-                $reason,
-                (int) $row['purchase_id']
-            );
 
-            return true;
+            $id = (int) DB::table('package_roi_accruals')->where('idempotency_key', $key)->value('id');
+
+            return $this->postRoiWallet($member, $row, $reason, $id);
         });
     }
 
     /**
      * @param  array<string, string>  $row
      */
-    private function creditCommission(array $row, string $reason = 'Package level commission accrual'): bool
+    private function postRoiWallet(Member $member, array $row, string $reason, int $accrualId): bool
     {
-        return DB::transaction(function () use ($row, $reason): bool {
+        $locked = DB::table('package_roi_accruals')->where('id', $accrualId)->lockForUpdate()->first();
+        if (! $locked || $locked->status === 'accrued') {
+            return false;
+        }
+
+        $opening = bcadd((string) ($member->roi_wallet_amount ?? '0'), '0', 4);
+        $closing = bcadd($opening, $row['amount'], 4);
+        $member->roi_wallet_amount = $closing;
+        $member->save();
+        DB::table('package_roi_accruals')->where('id', $accrualId)->update([
+            'status' => 'accrued',
+            'updated_at' => now(),
+        ]);
+        $this->ledger->append(
+            WalletLedgerDirection::CREDIT,
+            $member->member_id,
+            'roi',
+            $row['amount'],
+            $row['reference'],
+            (string) Str::uuid(),
+            $reason,
+            (int) $row['purchase_id'],
+            $opening,
+            $closing
+        );
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, string>  $row
+     */
+    /**
+     * @param  array<string, string>  $row
+     */
+    private function creditCommission(array $row, string $reason = 'Package level commission accrual', bool $creditWallet = true, bool $allowDemo = true): bool
+    {
+        return DB::transaction(function () use ($row, $reason, $creditWallet, $allowDemo): bool {
             $member = Member::query()->where('member_id', $row['member_id'])->lockForUpdate()->first();
-            if (! $member || $member->member_id === $this->policy->adminRootId()) {
+            if (! $member || $member->member_id === $this->policy->adminRootId() || (! $allowDemo && app(LocalTestMarker::class)->isEmail($member->email))) {
                 return false;
             }
+
+            $key = $row['purchase_id'].'|'.$row['member_id'].'|'.$row['business_date'];
+            $existing = DB::table('package_level_accruals')->where('idempotency_key', $key)->lockForUpdate()->first();
+            if ($existing) {
+                return $creditWallet && $existing->status === 'calculated'
+                    ? $this->postCommissionWallet($member, $row, $reason, (int) $existing->id)
+                    : false;
+            }
+
             $inserted = DB::table('package_level_accruals')->insertOrIgnore([
                 'reference' => $row['reference'],
-                'idempotency_key' => $row['purchase_id'].'|'.$row['member_id'].'|'.$row['business_date'],
+                'idempotency_key' => $key,
                 'package_purchase_id' => $row['purchase_id'],
                 'member_id' => $member->member_id,
                 'member_name' => $member->member_name,
@@ -420,28 +549,52 @@ class PackageIncomeAccrual
                 'pool_amount' => $row['pool'],
                 'rate_percentage' => $row['rate'],
                 'amount' => $row['amount'],
-                'status' => 'accrued',
+                'status' => 'calculated',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            if ($inserted !== 1) {
-                return false;
+            if ($inserted !== 1 || ! $creditWallet) {
+                return $inserted === 1;
             }
-            $member->working_wallet_amount = bcadd((string) ($member->working_wallet_amount ?? '0'), $row['amount'], 4);
-            $member->save();
-            $this->ledger->append(
-                WalletLedgerDirection::CREDIT,
-                $member->member_id,
-                'working',
-                $row['amount'],
-                $row['reference'],
-                (string) Str::uuid(),
-                $reason,
-                (int) $row['purchase_id']
-            );
 
-            return true;
+            $id = (int) DB::table('package_level_accruals')->where('idempotency_key', $key)->value('id');
+
+            return $this->postCommissionWallet($member, $row, $reason, $id);
         });
+    }
+
+    /**
+     * @param  array<string, string>  $row
+     */
+    private function postCommissionWallet(Member $member, array $row, string $reason, int $accrualId): bool
+    {
+        $locked = DB::table('package_level_accruals')->where('id', $accrualId)->lockForUpdate()->first();
+        if (! $locked || $locked->status === 'accrued') {
+            return false;
+        }
+
+        $opening = bcadd((string) ($member->working_wallet_amount ?? '0'), '0', 4);
+        $closing = bcadd($opening, $row['amount'], 4);
+        $member->working_wallet_amount = $closing;
+        $member->save();
+        DB::table('package_level_accruals')->where('id', $accrualId)->update([
+            'status' => 'accrued',
+            'updated_at' => now(),
+        ]);
+        $this->ledger->append(
+            WalletLedgerDirection::CREDIT,
+            $member->member_id,
+            'working',
+            $row['amount'],
+            $row['reference'],
+            (string) Str::uuid(),
+            $reason,
+            (int) $row['purchase_id'],
+            $opening,
+            $closing
+        );
+
+        return true;
     }
 
     private function date(string $businessDate): CarbonImmutable

@@ -35,9 +35,20 @@ class WalletLedgerPoster
      * Insert one immutable row inside the caller's transaction. This does not move a balance.
      * Package accrual and the working-wallet transfer call it after their own balance change.
      */
-    public function append(string $direction, string $memberId, string $wallet, string $amount, string $reference, string $idempotencyKey, string $reason, ?int $packagePurchaseId = null): WalletLedgerEntry
-    {
-        if (! in_array($direction, [WalletLedgerDirection::CREDIT, WalletLedgerDirection::DEBIT, WalletLedgerDirection::REVERSAL, WalletLedgerDirection::ADJUSTMENT], true)) {
+    public function append(
+        string $direction,
+        string $memberId,
+        string $wallet,
+        string $amount,
+        string $reference,
+        string $idempotencyKey,
+        string $reason,
+        ?int $packagePurchaseId = null,
+        ?string $openingBalance = null,
+        ?string $closingBalance = null,
+        ?int $withdrawalRequestId = null,
+    ): WalletLedgerEntry {
+        if (! in_array($direction, [WalletLedgerDirection::CREDIT, WalletLedgerDirection::DEBIT, WalletLedgerDirection::HOLD, WalletLedgerDirection::RELEASE, WalletLedgerDirection::REVERSAL, WalletLedgerDirection::ADJUSTMENT], true)) {
             throw new InvalidArgumentException('Unknown ledger direction.');
         }
         $this->column($wallet);
@@ -47,11 +58,14 @@ class WalletLedgerPoster
             'wallet' => $wallet,
             'direction' => $direction,
             'amount' => $amount,
+            'opening_balance' => $openingBalance,
+            'closing_balance' => $closingBalance,
             'denomination' => 'USDT',
             'member_id' => $memberId,
             'reference' => trim($reference),
             'idempotency_key' => trim($idempotencyKey),
             'package_purchase_id' => $packagePurchaseId,
+            'withdrawal_request_id' => $withdrawalRequestId,
             'actor' => 'system',
             'reason' => $reason,
         ]);
@@ -89,10 +103,15 @@ class WalletLedgerPoster
                 throw new RuntimeException('The debit would take the wallet below 0.0000. No row was stored.');
             }
 
+            $closing = $direction === WalletLedgerDirection::CREDIT
+                ? bcadd($balance, $amount, 4)
+                : bcsub($balance, $amount, 4);
             $entry = WalletLedgerEntry::query()->create([
                 'wallet' => $wallet,
                 'direction' => $direction,
                 'amount' => $amount,
+                'opening_balance' => $balance,
+                'closing_balance' => $closing,
                 'denomination' => 'USDT',
                 'member_id' => $member->member_id,
                 'reference' => $reference,
@@ -101,9 +120,7 @@ class WalletLedgerPoster
                 'reason' => $reason,
             ]);
 
-            $member->{$column} = $direction === WalletLedgerDirection::CREDIT
-                ? bcadd($balance, $amount, 4)
-                : bcsub($balance, $amount, 4);
+            $member->{$column} = $closing;
             $member->save();
 
             return $entry;

@@ -17,6 +17,8 @@ class WalletLedgerEntry extends Model
         'wallet',
         'direction',
         'amount',
+        'opening_balance',
+        'closing_balance',
         'denomination',
         'member_id',
         'reference',
@@ -30,6 +32,8 @@ class WalletLedgerEntry extends Model
 
     protected $casts = [
         'amount' => 'decimal:4',
+        'opening_balance' => 'decimal:4',
+        'closing_balance' => 'decimal:4',
     ];
 
     protected static function booted(): void

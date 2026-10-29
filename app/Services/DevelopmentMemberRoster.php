@@ -334,6 +334,9 @@ class DevelopmentMemberRoster
                 throw new RuntimeException('A development member ID was repeated.');
             }
             $ids[$member->member_id] = true;
+            if ((new SponsorChain)->isRoot($member->sponsor_id) && $member->sponsor_name !== 'Admin') {
+                throw new RuntimeException($member->member_id.' does not record the admin sponsor name.');
+            }
             $seen = [$member->member_id => true];
             $cursor = $member->sponsor_id;
             $ended = false;
@@ -359,4 +362,5 @@ class DevelopmentMemberRoster
                 throw new RuntimeException($member->member_id.' does not reach the admin sponsor.');
             }
         }
-  
+    }
+}

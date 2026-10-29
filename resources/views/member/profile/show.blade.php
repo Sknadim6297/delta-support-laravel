@@ -52,6 +52,7 @@
                 <div>
                     <label for="email">Email Address <span aria-hidden="true">*</span></label>
                     <input type="email" id="email" name="email" value="{{ old('email', $member->email) }}" autocomplete="email" required>
+                    <p class="ds-field-note">{{ $member->email }}</p>
                     <div class="validation-message" data-error-for="email">@error('email'){{ $message }}@enderror</div>
                 </div>
                 <div>

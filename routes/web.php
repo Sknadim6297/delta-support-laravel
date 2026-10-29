@@ -207,6 +207,8 @@
             Route::get('/', 'overview')->name('overview');
             Route::get('/requests', 'index')->name('index');
             Route::get('/payouts', 'payouts')->name('payouts');
+            Route::post('/requests/{withdrawalRequest}/approve', 'approve')->name('approve');
+            Route::post('/requests/{withdrawalRequest}/reject', 'reject')->name('reject');
             Route::get('/requests/{withdrawalRequest}', 'show')->name('show');
         });
 
@@ -235,6 +237,9 @@
             Route::put('/profile', 'updateProfile')->middleware('throttle:6,1')->name('profile.update');
             Route::put('/profile/password', 'updatePassword')->middleware('throttle:6,1')->name('profile.password');
         });
+
+        Route::get('/admin/settings/financial', [\App\Http\Controllers\Admin\FinancialControlController::class, 'edit'])->name('admin.settings.financial');
+        Route::put('/admin/settings/financial', [\App\Http\Controllers\Admin\FinancialControlController::class, 'update'])->name('admin.settings.financial.update');
 
         Route::controller(OperationsController::class)->group(function () {
             Route::get('/admin/wallets', 'walletOverview')->name('admin.wallets.overview');
@@ -713,6 +718,7 @@
 
         Route::controller(WithdrawalController::class)->prefix('member/withdrawals')->name('member.withdrawals.')->group(function () {
             Route::get('/', 'requestForm')->name('request');
+            Route::post('/', 'store')->middleware('throttle:6,1')->name('store');
             Route::get('/history', 'history')->name('history');
             Route::get('/{withdrawalRequest}', 'show')->name('show');
         });

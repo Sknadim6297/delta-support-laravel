@@ -12,7 +12,7 @@
     };
 @endphp
 <div>
-    <p class="ds-lead">Balances are stored USDT amounts. This screen does not send a request, reserve funds, or calculate a payout.</p>
+    <p class="ds-lead">{{ $requestsEnabled ? 'A request reserves the available balance. It does not send cryptocurrency.' : 'Balances are stored USDT amounts. This screen does not send a request, reserve funds, or calculate a payout.' }}</p>
     <div>
         @foreach (['roi' => $member->roi_wallet_amount, 'working' => $member->working_wallet_amount, 'activation' => $member->activation_wallet_amount] as $wallet => $balance)
             <article>
@@ -22,6 +22,29 @@
         @endforeach
     </div>
     <div>
+        @if ($requestsEnabled)
+        <form method="POST" action="{{ route('member.withdrawals.store') }}">
+            @csrf
+            <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
+            <label><span>Source wallet</span>
+                <select name="wallet" required>
+                    @foreach ($wallets as $wallet)
+                        <option value="{{ $wallet }}" @selected(old('wallet') === $wallet)>{{ $walletLabels[$wallet] }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label><span>Withdrawal amount (USDT)</span><input name="amount" value="{{ old('amount') }}" inputmode="decimal" required></label>
+            <label><span>Network</span>
+                <select name="network" required>
+                    @foreach ($networks as $network)
+                        <option value="{{ $network }}" @selected(old('network') === $network)>{{ $network }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label><span>Public receiving wallet address</span><input name="address" value="{{ old('address') }}" maxlength="128" required></label>
+            <button type="submit">Submit Withdrawal Request</button>
+        </form>
+        @else
         <div>
             <label><span>Source wallet</span>
                 <select @disabled($wallets === [])>
@@ -64,6 +87,7 @@
                 <button type="button" disabled>Submit Withdrawal Request</button>
             </div>
         </div>
+        @endif
     </div>
 </div>
 @endsection

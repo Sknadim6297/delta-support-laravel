@@ -45,7 +45,10 @@ class FinancialScheduleRegistrarTest extends TestCase
         $this->assertSame('10 0 * * *', $event->expression);
         $this->assertSame('Asia/Kolkata', $event->timezone);
         $this->assertTrue($event->withoutOverlapping);
-        $this->assertTrue($event->onOneServer);
+        $this->assertSame(
+            in_array((string) config('cache.default'), ['redis', 'memcached', 'dynamodb', 'database'], true),
+            $event->onOneServer
+        );
         $this->assertFalse(config('deltasupport.package_income.enabled'));
     }
 

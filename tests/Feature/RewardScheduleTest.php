@@ -15,7 +15,13 @@ class RewardScheduleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_rewards_run_every_fifteen_minutes_and_financial_schedules_stay_empty(): void
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['deltasupport.controls.rewards_evaluation_enabled' => true]);
+    }
+
+    public function test_rewards_run_every_two_minutes_and_financial_schedules_stay_empty(): void
     {
         $combined = new Schedule;
         app(FinancialScheduleRegistrar::class)->register($combined);
@@ -26,11 +32,14 @@ class RewardScheduleTest extends TestCase
         $event = $combined->events()[0];
 
         $this->assertStringContainsString('rewards:evaluate', (string) $event->command);
-        $this->assertSame('*/15 * * * *', $event->expression);
+        $this->assertSame('*/2 * * * *', $event->expression);
         $this->assertSame('Asia/Kolkata', $event->timezone);
         $this->assertTrue($event->withoutOverlapping);
         $this->assertSame(20, $event->expiresAt);
-        $this->assertTrue($event->onOneServer);
+        $this->assertSame(
+            in_array((string) config('cache.default'), ['redis', 'memcached', 'dynamodb', 'database'], true),
+            $event->onOneServer
+        );
         $this->assertStringNotContainsString('package-income', (string) $event->command);
     }
 

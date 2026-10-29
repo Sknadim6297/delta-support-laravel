@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\WithdrawalRequest;
 use App\Models\WithdrawalSetting;
+use App\Services\FinancialControls;
+use App\Services\WithdrawalWorkflow;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use RuntimeException;
 
 class WithdrawalController extends Controller
 {
@@ -21,7 +25,25 @@ class WithdrawalController extends Controller
             'settings' => $settings,
             'wallets' => $settings->configuredWallets(),
             'networks' => $settings->configuredNetworks(),
+            'requestsEnabled' => app(FinancialControls::class)->enabled('withdrawal_requests_enabled'),
         ]);
+    }
+
+    public function store(Request $request, WithdrawalWorkflow $workflow): RedirectResponse
+    {
+        try {
+            $workflow->submit($this->member($request), [
+                'wallet' => (string) $request->input('wallet'),
+                'amount' => (string) $request->input('amount'),
+                'network' => (string) $request->input('network'),
+                'address' => (string) $request->input('address'),
+                'idempotency_key' => (string) $request->input('idempotency_key'),
+            ]);
+        } catch (RuntimeException $exception) {
+            abort(403, $exception->getMessage());
+        }
+
+        return redirect()->route('member.withdrawals.history')->with('status', 'The withdrawal request was reserved. No external payout was sent.');
     }
 
     public function history(Request $request): View
