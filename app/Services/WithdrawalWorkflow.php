@@ -27,6 +27,7 @@ class WithdrawalWorkflow
     public function __construct(
         private readonly FinancialControls $controls,
         private readonly WalletLedgerPoster $ledger,
+        private readonly LocalTestMarker $marker,
     ) {
     }
 
@@ -37,6 +38,9 @@ class WithdrawalWorkflow
     {
         if (! $this->controls->enabled('withdrawal_requests_enabled')) {
             throw new RuntimeException('Withdrawal requests are disabled. No funds were reserved.');
+        }
+        if ($this->marker->isEmail($member->email)) {
+            throw new RuntimeException('Demo members cannot request a withdrawal. No funds were reserved.');
         }
 
         $settings = WithdrawalSetting::current();

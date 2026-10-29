@@ -44,6 +44,9 @@ class PaymentReviewController extends Controller
         $purchases = PackagePurchase::query()
             ->with(['invoice', 'member'])
             ->where('status', $status)
+            ->where(function ($query): void {
+                app(\App\Services\LocalTestMarker::class)->excludePurchases($query);
+            })
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $term = '%' . trim((string) $request->query('q')) . '%';
                 $query->where(function ($inner) use ($term): void {

@@ -52,11 +52,12 @@
                         <x-navigation.lux-link :href="route('admin.finance.income-test')" :active="request()->routeIs('admin.finance.income-test')">Income Scheduler Testing</x-navigation.lux-link>
                     @endunless
                 </x-navigation.lux-group>
-                <x-navigation.lux-group icon="ri-node-tree" label="Level Income" :open="request()->routeIs('admin.finance.level-income', 'admin.finance.eligibility', 'admin.finance.commission-settings', 'admin.finance.level-unlock-rules')">
+                <x-navigation.lux-group icon="ri-node-tree" label="Level Income" :open="request()->routeIs('admin.finance.level-income', 'admin.finance.eligibility', 'admin.finance.commission-settings', 'admin.finance.level-unlock-rules', 'admin.demo-income')">
                     <x-navigation.lux-link :href="route('admin.finance.commission-settings')" :active="request()->routeIs('admin.finance.commission-settings')">Commission Settings</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.finance.level-unlock-rules')" :active="request()->routeIs('admin.finance.level-unlock-rules')">Level Unlock Rules</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.finance.level-income')" :active="request()->routeIs('admin.finance.level-income')">Level Income History</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.finance.eligibility')" :active="request()->routeIs('admin.finance.eligibility')">Referral Eligibility</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.demo-income')" :active="request()->routeIs('admin.demo-income')">Demo Income Preview</x-navigation.lux-link>
                 </x-navigation.lux-group>
                 <x-navigation.lux-group icon="ri-wallet-3-line" label="Wallet Management" :open="request()->routeIs('admin.wallets.*')">
                     <x-navigation.lux-link :href="route('admin.wallets.overview')" :active="request()->routeIs('admin.wallets.overview')">Wallet Overview</x-navigation.lux-link>

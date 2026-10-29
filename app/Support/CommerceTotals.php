@@ -12,12 +12,16 @@ class CommerceTotals
      *
      * @return array{USDT: string, USD: string}
      */
-    public static function sums(string $model, ?string $status = null, ?string $memberId = null): array
+    public static function sums(string $model, ?string $status = null, ?string $memberId = null, ?callable $constrain = null): array
     {
         /** @var class-string<Model> $model */
-        $rows = $model::query()
+        $query = $model::query()
             ->when($status !== null, fn ($query) => $query->where('status', $status))
-            ->when($memberId !== null, fn ($query) => $query->where('member_id', $memberId))
+            ->when($memberId !== null, fn ($query) => $query->where('member_id', $memberId));
+        if ($constrain !== null) {
+            $constrain($query);
+        }
+        $rows = $query
             ->selectRaw('denomination, SUM(price_usd) as total')
             ->groupBy('denomination')
             ->pluck('total', 'denomination');

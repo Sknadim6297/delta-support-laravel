@@ -274,28 +274,36 @@
         |--------------------------------------------------------------------------
         */
 
+        Route::get('/admin/demo-income', [\App\Http\Controllers\Admin\DemoIncomePreviewController::class, 'index'])->name('admin.demo-income');
+
         Route::get('/dashboard', function (Request $request) {
             $request->session()->forget('member_context_id');
 
             $purchaseColumns = ['id', 'reference', 'member_id', 'package_name', 'price_usd', 'denomination', 'status', 'created_at', 'reviewed_at'];
+            $marker = app(\App\Services\LocalTestMarker::class);
+            $realMembers = \App\Models\Member::query();
+            $marker->excludeMembers($realMembers);
+            $realPurchases = \App\Models\PackagePurchase::query();
+            $marker->excludePurchases($realPurchases);
 
             return view('admin.dashboard.index', [
-                'activationWalletTotal' => (float) \App\Models\Member::sum('activation_wallet_amount'),
-                'workingWalletTotal' => (float) \App\Models\Member::sum('working_wallet_amount'),
-                'roiWalletTotal' => (float) \App\Models\Member::sum('roi_wallet_amount'),
+                'activationWalletTotal' => (float) (clone $realMembers)->sum('activation_wallet_amount'),
+                'workingWalletTotal' => (float) (clone $realMembers)->sum('working_wallet_amount'),
+                'roiWalletTotal' => (float) (clone $realMembers)->sum('roi_wallet_amount'),
                 'memberCount' => \App\Models\Member::count(),
                 'activeMembers' => \App\Models\Member::where('status', 'active')->count(),
                 'inactiveMembers' => \App\Models\Member::where('status', 'inactive')->count(),
                 'packageCount' => \App\Models\Package::count(),
                 'activePackageCount' => \App\Models\Package::where('is_active', true)->count(),
-                'approvedPurchases' => \App\Support\CommerceTotals::sums(\App\Models\PackagePurchase::class, \App\Models\PackagePurchase::APPROVED),
-                'pendingPurchases' => \App\Support\CommerceTotals::sums(\App\Models\PackagePurchase::class, \App\Models\PackagePurchase::PENDING),
-                'pendingCount' => \App\Models\PackagePurchase::where('status', \App\Models\PackagePurchase::PENDING)->count(),
-                'approvedCount' => \App\Models\PackagePurchase::where('status', \App\Models\PackagePurchase::APPROVED)->count(),
-                'rejectedCount' => \App\Models\PackagePurchase::where('status', \App\Models\PackagePurchase::REJECTED)->count(),
-                'recentMembers' => \App\Models\Member::query()->latest()->limit(5)->get(['member_id', 'member_name', 'status', 'created_at']),
-                'recentPurchases' => \App\Models\PackagePurchase::query()->latest()->limit(5)->get($purchaseColumns),
-                'recentReviews' => \App\Models\PackagePurchase::query()->whereNotNull('reviewed_at')->latest('reviewed_at')->limit(5)->get($purchaseColumns),
+                'approvedPurchases' => \App\Support\CommerceTotals::sums(\App\Models\PackagePurchase::class, \App\Models\PackagePurchase::APPROVED, null, fn ($query) => $marker->excludePurchases($query)),
+                'pendingPurchases' => \App\Support\CommerceTotals::sums(\App\Models\PackagePurchase::class, \App\Models\PackagePurchase::PENDING, null, fn ($query) => $marker->excludePurchases($query)),
+                'pendingCount' => (clone $realPurchases)->where('status', \App\Models\PackagePurchase::PENDING)->count(),
+                'approvedCount' => (clone $realPurchases)->where('status', \App\Models\PackagePurchase::APPROVED)->count(),
+                'rejectedCount' => (clone $realPurchases)->where('status', \App\Models\PackagePurchase::REJECTED)->count(),
+                'recentMembers' => \App\Models\Member::query()->latest()->limit(5)->get(['member_id', 'member_name', 'email', 'status', 'created_at']),
+                'recentPurchases' => (clone $realPurchases)->latest()->limit(5)->get($purchaseColumns),
+                'recentReviews' => (clone $realPurchases)->whereNotNull('reviewed_at')->latest('reviewed_at')->limit(5)->get($purchaseColumns),
+                'demoMembers' => app(\App\Services\DemoMemberSetup::class)->tree(),
                 'rewardActive' => \App\Models\RewardCampaign::query()->where('status', 'active')->count(),
                 'rewardQualified' => \App\Models\RewardQualification::query()->whereIn('status', ['qualified', 'selected'])->count(),
                 'rewardPending' => \App\Models\RewardDelivery::query()->whereIn('status', ['pending', 'approved', 'processing'])->count(),

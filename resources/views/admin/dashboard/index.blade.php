@@ -175,6 +175,38 @@
 </div>
 
 <div class="row">
+    <div class="col-12">
+        <div class="lh-card">
+            <div class="lh-card-header">
+                <h4 class="lh-card-title">Demonstration members</h4>
+            </div>
+            <div class="lh-card-content lh-scroll">
+                @if ($demoMembers === [])
+                    <p class="lh-note">No demonstration members are stored. Real member and payment totals are unchanged.</p>
+                @else
+                    <p class="lh-note">These 20 records are marked local-test. They are excluded from wallet credits, withdrawals, rewards, and financial totals. <a href="{{ route('admin.demo-income') }}">Open the income preview</a> or <a href="{{ route('admin.genealogy.tree-view') }}">the referral tree</a>.</p>
+                    <table class="lh-data">
+                        <thead><tr><th>Member</th><th>Sponsor</th><th>Package</th><th>Directs</th><th>Levels</th><th>Status</th></tr></thead>
+                        <tbody>
+                        @foreach ($demoMembers as $demo)
+                            <tr>
+                                <td>{{ $demo['name'] }}<br><small>{{ $demo['member_id'] }}</small></td>
+                                <td>{{ $demo['sponsor_name'] }}<br><small>{{ $demo['sponsor_id'] }}</small></td>
+                                <td>{{ $demo['package'] === '' ? 'None' : $demo['package'] }}</td>
+                                <td>{{ $demo['qualifying_directs'] }}</td>
+                                <td>{{ $demo['unlocked_levels'] }}</td>
+                                <td><span class="lh-status {{ $statusClass((string) $demo['status']) }}">{{ ucfirst((string) $demo['status']) }}</span></td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
     <div class="col-xl-6">
         <div class="lh-card">
             <div class="lh-card-header"><h4 class="lh-card-title">Recent registrations</h4></div>

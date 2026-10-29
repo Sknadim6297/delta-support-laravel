@@ -18,6 +18,22 @@ class LocalTestMarker
         return str_ends_with(strtolower((string) $email), self::EMAIL_DOMAIN);
     }
 
+    public function excludeMembers(object $query): void
+    {
+        $query->where(function ($inner): void {
+            $inner->whereNull('email')
+                ->orWhere('email', 'not like', '%'.self::EMAIL_DOMAIN);
+        });
+    }
+
+    public function excludePurchases(object $query): void
+    {
+        $query->where(function ($inner): void {
+            $inner->whereNull('payment_reference')
+                ->orWhere('payment_reference', 'not like', self::PAYMENT_PREFIX.'%');
+        });
+    }
+
     public function isPurchase(?PackagePurchase $purchase): bool
     {
         if ($purchase === null || ! str_starts_with((string) $purchase->payment_reference, self::PAYMENT_PREFIX)) {

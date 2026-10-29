@@ -10,6 +10,7 @@ use App\Models\PackageLevelAccrual;
 use App\Models\PackagePurchase;
 use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
+use App\Services\LocalTestMarker;
 use App\Support\MoneyDisplay;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -308,6 +309,7 @@ class CatalogReport
             $query->where('denomination', $filters['currency']);
         }
         $this->between($query, 'submitted_at', $filters);
+        app(LocalTestMarker::class)->excludePurchases($query);
 
         return $this->sort($query, 'submitted_at', $filters);
     }
@@ -496,6 +498,7 @@ class CatalogReport
         if (! empty($filters['currency']) && $filters['currency'] !== 'USDT') {
             $query->whereRaw('1 = 0');
         }
+        $this->excludeDemoMembers($query);
     }
 
     private function earningConstraints(QueryBuilder $query, array $filters, string $dateColumn, bool $hasStatus): void
@@ -516,6 +519,18 @@ class CatalogReport
         if (! empty($filters['package']) || ! empty($filters['currency'])) {
             $query->whereRaw('1 = 0');
         }
+        $this->excludeDemoMembers($query);
+    }
+
+    private function excludeDemoMembers(QueryBuilder $query): void
+    {
+        $from = $query->from;
+        $query->whereNotExists(function ($members) use ($from): void {
+            $members->selectRaw('1')
+                ->from('members')
+                ->whereColumn('members.member_id', $from.'.member_id')
+                ->where('members.email', 'like', '%'.LocalTestMarker::EMAIL_DOMAIN);
+        });
     }
 
     private function exportQuery(string $report, array $filters): Builder|QueryBuilder
