@@ -8,7 +8,13 @@ return [
     | codebase. They are closed in the running application until a later phase
     | explicitly enables them. Tests turn this on so existing coverage still runs.
     */
-    'legacy_financial_actions' => (bool) env('LEGACY_FINANCIAL_ACTIONS', false),
+    'legacy_financial_actions' => filter_var(env('LEGACY_FINANCIAL_ACTIONS', false), FILTER_VALIDATE_BOOLEAN),
+
+    /*
+    | The only database financial:arm may accept. An empty value refuses every database.
+    | Setting this name does not arm posting.
+    */
+    'financial_approved_database' => env('FINANCIAL_APPROVED_DATABASE', ''),
 
     'report_timezone' => 'Asia/Kolkata',
 

@@ -53,7 +53,8 @@ class RealIncomeReportTest extends TestCase
 
         $schedule = new Schedule;
         app(DailyFinancialScheduleRegistrar::class)->register($schedule);
-        $this->assertSame([], $schedule->events());
+        $commands = implode(' ', array_map(fn ($event) => (string) $event->command, $schedule->events()));
+        $this->assertStringContainsString('financial:daily', $commands);
 
         $this->actingAs($admin)->get(route('admin.finance.real-income'))
             ->assertOk()
@@ -111,10 +112,10 @@ class RealIncomeReportTest extends TestCase
         $this->assertSame('2.5000', $real['roi'][0]['amount']);
         $this->assertSame('0.0000', $buyer->fresh()->roi_wallet_amount);
 
-        config(['deltasupport.controls.daily_financial_cycle_enabled' => true]);
         $schedule = new Schedule;
         app(DailyFinancialScheduleRegistrar::class)->register($schedule);
-        $this->assertCount(1, $schedule->events());
+        $commands = implode(' ', array_map(fn ($event) => (string) $event->command, $schedule->events()));
+        $this->assertStringContainsString('financial:daily', $commands);
 
         $this->actingAs($admin)->get(route('admin.finance.real-income'))
             ->assertOk()

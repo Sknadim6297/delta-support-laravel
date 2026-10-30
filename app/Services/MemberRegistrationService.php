@@ -155,6 +155,9 @@ class MemberRegistrationService
     {
         for ($counter = 100000; $counter <= 999999; $counter++) {
             $candidate = 'ST' . $counter;
+            if ($candidate === self::ADMIN_SPONSOR_ID) {
+                continue;
+            }
 
             if (! Member::query()->where('member_id', $candidate)->exists()) {
                 return $candidate;

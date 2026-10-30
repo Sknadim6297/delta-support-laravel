@@ -48,6 +48,9 @@ class MemberController extends Controller
     {
         for ($counter = 100000; $counter <= 999999; $counter++) {
             $candidate = 'ST' . $counter;
+            if ($candidate === MemberRegistrationService::ADMIN_SPONSOR_ID) {
+                continue;
+            }
 
             if (! Member::where('member_id', $candidate)->exists()) {
                 return $candidate;

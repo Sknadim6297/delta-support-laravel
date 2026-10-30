@@ -98,16 +98,20 @@ class PackageIncomeAccrual
      *
      * @return array{dry_run: bool, roi_records: int, commission_records: int, skipped: list<string>}
      */
-    public function runControlled(string $businessDate, bool $dryRun = false): array
+    public function runControlled(string $businessDate, bool $dryRun = false, bool $recoverYesterday = false): array
     {
         $controls = app(FinancialControls::class);
         $date = $this->date($businessDate);
-        $today = CarbonImmutable::now((string) config('deltasupport.package_income.timezone', 'Asia/Kolkata'))->toDateString();
+        $timezone = (string) config('deltasupport.package_income.timezone', 'Asia/Kolkata');
+        $today = CarbonImmutable::now($timezone)->toDateString();
         if (! $dryRun && ! $controls->enabled('daily_financial_cycle_enabled')) {
             throw new RuntimeException('The daily financial cycle is disabled. No wallet was credited.');
         }
         if (! $dryRun && $date->toDateString() !== $today) {
-            throw new RuntimeException('The daily cycle processes only the current business date. No earlier date was credited.');
+            $yesterday = CarbonImmutable::now($timezone)->subDay()->toDateString();
+            if (! $recoverYesterday || $date->toDateString() !== $yesterday) {
+                throw new RuntimeException('The daily cycle processes only the current business date. No earlier date was credited.');
+            }
         }
 
         $calculateRoi = $dryRun || $controls->enabled('roi_calculation_enabled');

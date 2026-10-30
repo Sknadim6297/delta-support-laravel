@@ -70,7 +70,8 @@ class WalletLedgerPoster
             'idempotency_key' => trim($idempotencyKey),
             'package_purchase_id' => $packagePurchaseId,
             'withdrawal_request_id' => $withdrawalRequestId,
-            'actor' => 'system',
+            'counter_entry_id' => $counterEntryId,
+            'actor' => filled($actor) ? trim($actor) : 'system',
             'reason' => $reason,
         ]);
     }

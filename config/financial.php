@@ -7,7 +7,7 @@ return [
     | that walks forward through simulated business dates. Never enable in production.
     */
     'accelerated' => [
-        'enabled' => (bool) env('FINANCIAL_ACCELERATED_TESTING', false),
+        'enabled' => filter_var(env('FINANCIAL_ACCELERATED_TESTING', false), FILTER_VALIDATE_BOOLEAN),
         'interval_minutes' => 10,
         // First simulated business date; defaults to the day after the earliest investment.
         'start_date' => env('FINANCIAL_ACCELERATED_START_DATE'),

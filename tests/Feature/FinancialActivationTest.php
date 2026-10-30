@@ -45,10 +45,15 @@ class FinancialActivationTest extends TestCase
         $this->assertFalse($row->external_payouts_enabled);
         $this->assertFalse($row->daily_financial_cycle_enabled);
 
+        $this->assertFalse($row->financial_automation_armed);
+        $this->assertFalse($row->financial_emergency_stop);
+
         $schedule = new Schedule;
         app(DailyFinancialScheduleRegistrar::class)->register($schedule);
-        $this->assertSame([], $schedule->events());
-        $this->artisan('financial:daily')->assertExitCode(1);
+        $commands = implode(' ', array_map(fn ($event) => (string) $event->command, $schedule->events()));
+        $this->assertStringContainsString('financial:daily', $commands);
+        $this->artisan('financial:daily')->assertSuccessful()->expectsOutputToContain('not armed');
+        $this->assertSame(0, PackageRoiAccrual::query()->count());
         $this->artisan('financial:daily', ['--dry-run' => true, '--date' => '2026-10-29'])->assertSuccessful();
     }
 
@@ -190,12 +195,15 @@ class FinancialActivationTest extends TestCase
         $this->get(route('admin.settings.financial'))->assertRedirect(route('login'));
         $this->actingAs($admin)->put(route('admin.settings.financial.update'), [
             'roi_calculation_enabled' => '1',
+            'financial_emergency_stop' => '1',
         ])->assertRedirect(route('admin.settings.financial'));
 
-        $this->assertTrue(FinancialControl::current()->roi_calculation_enabled);
+        $this->assertFalse(FinancialControl::current()->roi_calculation_enabled);
         $this->assertFalse(FinancialControl::current()->external_payouts_enabled);
+        $this->assertTrue(FinancialControl::current()->financial_emergency_stop);
         $this->actingAs($admin)->put(route('admin.settings.financial.update'), [])->assertRedirect();
         $this->assertFalse(FinancialControl::current()->fresh()->roi_calculation_enabled);
+        $this->assertFalse(FinancialControl::current()->fresh()->financial_emergency_stop);
         $this->assertSame(1, PackageRoiAccrual::query()->count());
     }
 

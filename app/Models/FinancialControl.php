@@ -16,6 +16,8 @@ class FinancialControl extends Model
         'withdrawal_approval_enabled',
         'external_payouts_enabled',
         'daily_financial_cycle_enabled',
+        'financial_automation_armed',
+        'financial_emergency_stop',
     ];
 
     protected $casts = [
@@ -28,6 +30,8 @@ class FinancialControl extends Model
         'withdrawal_approval_enabled' => 'boolean',
         'external_payouts_enabled' => 'boolean',
         'daily_financial_cycle_enabled' => 'boolean',
+        'financial_automation_armed' => 'boolean',
+        'financial_emergency_stop' => 'boolean',
     ];
 
     public static function current(): self
@@ -42,6 +46,8 @@ class FinancialControl extends Model
             'withdrawal_approval_enabled' => false,
             'external_payouts_enabled' => false,
             'daily_financial_cycle_enabled' => false,
+            'financial_automation_armed' => false,
+            'financial_emergency_stop' => false,
         ]);
     }
 };

@@ -82,10 +82,10 @@
         <p>Wallet ledger posting that moves a balance by itself is disabled. Package accrual writes its ledger row only inside the accrual transaction, and that command is disabled.</p>
     </x-ui.card>
 
-    <x-ui.card title="Scheduler health" subtitle="package-income:accrue stays unregistered. financial:daily is a separate command and is registered only while Daily Financial Cycle is on.">
+    <x-ui.card title="Scheduler health" subtitle="package-income:accrue stays unregistered. financial:daily is on the 00:10 Asia/Kolkata schedule and posts only after automation is armed.">
         <div class="ds-stat-grid">
             <x-ui.stat label="Legacy package-income:accrue" value="Not registered" hint="Generation flag stays disabled. This page cannot turn it on." />
-            <x-ui.stat label="financial:daily" :value="$control['daily_cycle_registered'] ? 'Registered' : 'Not registered'" hint="00:10 Asia/Kolkata when the daily cycle switch is on" />
+            <x-ui.stat label="financial:daily" :value="$control['daily_cycle_registered'] ? 'Registered' : 'Not registered'" hint="00:10 Asia/Kolkata. Posting waits for the automation arm and stops on the emergency switch." />
             <x-ui.stat label="ROI calculation" :value="$control['roi_calculation_enabled'] ? 'On' : 'Off'" hint="Required before an actual daily run stores an ROI row" />
             <x-ui.stat label="ROI wallet crediting" :value="$control['roi_wallet_crediting_enabled'] ? 'On' : 'Off'" hint="Moves the ROI wallet only when on" />
             <x-ui.stat label="Level calculation" :value="$control['level_calculation_enabled'] ? 'On' : 'Off'" hint="Required before an actual daily run stores a commission row" />
