@@ -16,6 +16,12 @@ return [
     */
     'financial_approved_database' => env('FINANCIAL_APPROVED_DATABASE', ''),
 
+    /*
+    | The web Root Admin seal accepts only this schema name.
+    | Uploading a seal does not create the admin and does not arm posting.
+    */
+    'admin_bootstrap_database' => 'Delta_support_db',
+
     'report_timezone' => 'Asia/Kolkata',
 
     'report_pdf_row_limit' => 500,

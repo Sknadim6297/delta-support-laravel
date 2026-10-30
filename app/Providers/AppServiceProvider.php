@@ -29,6 +29,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('admin-bootstrap', function (Request $request) {
+            return Limit::perMinute(5)->by('admin-bootstrap:'.$request->ip());
+        });
+
         RateLimiter::for('member-pin-otp', function (Request $request) {
             $memberId = (string) $request->session()->get('member_context_id', 'guest');
 

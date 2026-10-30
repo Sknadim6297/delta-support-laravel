@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\EnsureRootAdminBootstrap;
 use App\Http\Middleware\EnsureLegacyFinancialActionsEnabled;
 use App\Http\Middleware\EnsureMemberContext;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -28,6 +29,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'legacy.financial' => EnsureLegacyFinancialActionsEnabled::class,
             'impersonation.block' => RedirectImpersonatingAdmins::class,
         ]);
+        $middleware->web(prepend: [
+            EnsureRootAdminBootstrap::class,
+        ]);
         $middleware->web(append: [
             PreventImpersonatedMutations::class,
         ]);
@@ -38,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'current_password',
             'password',
             'password_confirmation',
+            'bootstrap_token',
             'pin',
             'pin_confirmation',
             'current_pin',

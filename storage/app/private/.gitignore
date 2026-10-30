@@ -1,2 +1,6 @@
 *
 !.gitignore
+!admin-bootstrap/
+!admin-bootstrap/.gitignore
+!admin-bootstrap/.htaccess
+!admin-bootstrap/web.config

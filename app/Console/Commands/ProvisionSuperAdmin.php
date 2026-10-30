@@ -2,10 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AdminActivityLog;
-use App\Models\User;
 use App\Rules\StrongPassword;
 use App\Services\ProductionDatabaseTarget;
+use App\Services\SuperAdminProvisioner;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -69,42 +68,8 @@ class ProvisionSuperAdmin extends Command
                 throw new RuntimeException('Refused. '.$actual.' is protected. No account was created.');
             }
 
-            if (User::query()->where('is_admin', true)->exists()) {
-                $this->error('Refused. A Super Admin already exists. No password was changed.');
-
-                return self::FAILURE;
-            }
-
             $email = trim((string) ($this->option('email') ?: getenv('ADMIN_EMAIL') ?: 'admin@deltasupport.local'));
-            if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
-                $this->error('Refused. The administrator email is not valid.');
-
-                return self::FAILURE;
-            }
-
-            if (User::query()->where('email', $email)->exists()) {
-                $this->error('Refused. That email already exists. No password was changed.');
-
-                return self::FAILURE;
-            }
-
-            $admin = User::query()->create([
-                'name' => (string) (getenv('ADMIN_NAME') ?: 'Delta Support Admin'),
-                'email' => $email,
-                'password' => $password,
-                'is_admin' => true,
-                'must_change_password' => true,
-            ]);
-
-            AdminActivityLog::query()->create([
-                'user_id' => $admin->id,
-                'action' => 'admin_provisioned',
-                'subject' => 'ST666666',
-                'format' => null,
-                'scope' => 'admin',
-                'filters' => ['email' => $email],
-                'row_count' => 1,
-            ]);
+            app(SuperAdminProvisioner::class)->create($email, $password);
         } catch (RuntimeException $exception) {
             $this->error($exception->getMessage());
 

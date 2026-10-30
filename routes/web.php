@@ -45,6 +45,7 @@
     use App\Http\Controllers\Member\ReportController as MemberReportController;
     use App\Http\Controllers\Member\GenealogyController as MemberGenealogyController;
     use App\Http\Controllers\PublicMemberAuthController;
+    use App\Http\Controllers\Admin\RootAdminBootstrapController;
     use App\Models\Member;
     use App\Models\User;
 
@@ -151,6 +152,16 @@
     Route::post('/admin/login', [PublicMemberAuthController::class, 'login'])
         ->middleware('throttle:5,1')
         ->name('login.submit');
+
+    Route::get('/admin/bootstrap/{gate}', [RootAdminBootstrapController::class, 'create'])
+        ->where('gate', '[A-Za-z0-9_-]{43}')
+        ->middleware('throttle:admin-bootstrap')
+        ->name('admin.bootstrap.create');
+
+    Route::post('/admin/bootstrap/{gate}', [RootAdminBootstrapController::class, 'store'])
+        ->where('gate', '[A-Za-z0-9_-]{43}')
+        ->middleware('throttle:admin-bootstrap')
+        ->name('admin.bootstrap.store');
 
 
     Route::post('/admin/impersonation/stop', [MemberImpersonationController::class, 'stop'])

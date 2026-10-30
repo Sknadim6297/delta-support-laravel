@@ -30,4 +30,6 @@ Thumbs.db
 /test_output.txt
 /storage/app/rank-progression-test-data.json
 /storage/app/admin-one-time-password.txt
+/storage/app/private/admin-bootstrap/*.json
+/storage/app/private/admin-bootstrap/*.tmp
 /storage/app/backups/
