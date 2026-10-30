@@ -35,7 +35,7 @@ class RootAdminSeedFile
 
         @chmod($temporary, 0600);
         if (is_file($this->path())) {
-            $this->delete();
+            $this->deletePath($this->path());
         }
         if (! rename($temporary, $this->path())) {
             $this->deletePath($temporary);

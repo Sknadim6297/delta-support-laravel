@@ -6,6 +6,7 @@ use App\Models\AdminActivityLog;
 use App\Models\Member;
 use App\Models\User;
 use App\Services\RootAdminBootstrap;
+use App\Services\RootAdminSeed;
 use App\Services\RootAdminSeedFile;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\RootAdminSeeder;
@@ -121,7 +122,7 @@ class RootAdminSeederTest extends TestCase
 
         $this->expectSeedRefusal('Delta_support_db');
         $this->assertSame(0, User::query()->count());
-        $this->assertFileDoesNotExist(app(RootAdminSeedFile::class)->path());
+        $this->assertFileExists(app(RootAdminSeedFile::class)->path());
         $this->assertFinancialFlagsStayOff();
 
         config(['deltasupport.admin_bootstrap_database' => 'delta_support']);
@@ -134,6 +135,39 @@ class RootAdminSeederTest extends TestCase
         $this->expectSeedRefusal('not valid');
         $this->assertSame(0, User::query()->count());
         $this->assertSame(0, Member::query()->count());
+    }
+
+    public function test_mariadb_case_folding_and_configured_identity_stay_separate_from_a_missing_file(): void
+    {
+        $seed = app(RootAdminSeed::class);
+
+        $this->assertNull($seed->identityRefusal('mariadb', 'Delta_support_db', 'delta_support_db', 'Delta_support_db'));
+        $this->assertNull($seed->identityRefusal('mysql', 'delta_support_db', 'DELTA_SUPPORT_DB', 'Delta_support_db'));
+        $this->assertStringContainsString(
+            'does not match the connected schema',
+            (string) $seed->identityRefusal('mysql', 'Delta_support_db', 'delta_support', 'Delta_support_db')
+        );
+        $this->assertStringContainsString(
+            'could not be verified',
+            (string) $seed->identityRefusal('mysql', 'Delta_support_db', '', 'Delta_support_db')
+        );
+        $this->assertStringContainsString(
+            'protected',
+            (string) $seed->identityRefusal('mysql', 'delta_support', 'delta_support', 'Delta_support_db')
+        );
+        $this->assertNotNull($seed->identityRefusal('sqlite', 'Delta_support_db', 'delta_support_db', 'Delta_support_db'));
+
+        config(['deltasupport.admin_bootstrap_database' => null]);
+        $this->assertSame('Delta_support_db', $seed->approvedDatabaseName());
+
+        config(['deltasupport.admin_bootstrap_database' => DB::connection()->getDatabaseName()]);
+        $this->expectSeedRefusal('root admin file is missing');
+
+        $this->writeFile(Hash::make(self::PASSWORD));
+        config(['deltasupport.admin_bootstrap_database' => 'Delta_support_db']);
+        $this->expectSeedRefusal('is not Delta_support_db');
+        $this->assertSame(0, User::query()->count());
+        $this->assertFileExists(app(RootAdminSeedFile::class)->path());
     }
 
     public function test_missing_admin_column_and_database_seeder_do_not_create_an_admin(): void
