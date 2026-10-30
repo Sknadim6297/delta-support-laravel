@@ -206,7 +206,15 @@ class RootAdminBootstrap
 
     private function directory(): string
     {
-        $directory = storage_path('app'.DIRECTORY_SEPARATOR.'private'.DIRECTORY_SEPARATOR.'admin-bootstrap');
+        return self::storageDirectory();
+    }
+
+    public static function storageDirectory(): string
+    {
+        $configured = config('deltasupport.admin_bootstrap_directory');
+        $directory = is_string($configured) && $configured !== ''
+            ? $configured
+            : storage_path('app'.DIRECTORY_SEPARATOR.'private'.DIRECTORY_SEPARATOR.'admin-bootstrap');
         $public = public_path();
         if ($public !== '' && str_starts_with(strtolower($directory), strtolower(rtrim($public, '\\/')))) {
             throw new RuntimeException('Refused. The bootstrap seal path is inside the public web directory.');

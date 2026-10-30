@@ -23,6 +23,7 @@ class RootAdminBootstrapTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->useIsolatedBootstrapDirectory();
         config(['deltasupport.admin_bootstrap_database' => DB::connection()->getDatabaseName()]);
         $this->removeBootstrapFiles();
     }
@@ -345,10 +346,16 @@ class RootAdminBootstrapTest extends TestCase
         return preg_replace('#^http://#', 'https://', $uri) ?? $uri;
     }
 
+    private function useIsolatedBootstrapDirectory(): void
+    {
+        config(['deltasupport.admin_bootstrap_directory' => sys_get_temp_dir().DIRECTORY_SEPARATOR.'delta-support-root-admin-tests']);
+    }
+
     private function removeBootstrapFiles(): void
     {
-        foreach (['seal.json', 'seal.json.tmp', 'consumed.json', 'consumed.json.tmp'] as $name) {
-            $path = storage_path('app/private/admin-bootstrap/'.$name);
+        $this->useIsolatedBootstrapDirectory();
+        $bootstrap = app(RootAdminBootstrap::class);
+        foreach ([$bootstrap->sealPath(), $bootstrap->sealPath().'.tmp', $bootstrap->consumedPath(), $bootstrap->consumedPath().'.tmp'] as $path) {
             if (is_file($path)) {
                 unlink($path);
             }

@@ -14,7 +14,7 @@ class AdminUserSeeder extends Seeder
         $password = env('ADMIN_PASSWORD');
 
         if (app()->environment('production')) {
-            throw new RuntimeException('Refused. Production admin accounts are created with admin:provision. No password was changed.');
+            throw new RuntimeException('Refused. Production admin accounts are created with RootAdminSeeder. No password was changed.');
         }
 
         if (! is_string($email) || $email === '' || ! is_string($password) || $password === '') {
