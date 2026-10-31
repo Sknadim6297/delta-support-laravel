@@ -120,6 +120,19 @@
         ->middleware('throttle:30,1')
         ->name('member.register.check-sponsor');
 
+    Route::get('/member/password-setup/{token}', [\App\Http\Controllers\MemberPasswordSetupController::class, 'create'])
+        ->where('token', '[A-Za-z0-9\-_]{43}')
+        ->name('member.password-setup');
+
+    Route::post('/member/password-setup/{token}', [\App\Http\Controllers\MemberPasswordSetupController::class, 'store'])
+        ->where('token', '[A-Za-z0-9\-_]{43}')
+        ->middleware('throttle:10,1')
+        ->name('member.password-setup.store');
+
+    Route::post('/register/password-setup-email', [PublicMemberAuthController::class, 'resendPasswordSetup'])
+        ->middleware('throttle:5,1')
+        ->name('member.register.password-setup-email');
+
     Route::get('/forgot-password', [PublicMemberAuthController::class, 'forgot'])
         ->name('member.forgot');
 
@@ -403,6 +416,10 @@
                 )->name('check-sponsor-id');
 
                 Route::post('/store', 'store')->name('store');
+
+                Route::post('/password-setup-email', 'resendPasswordSetup')
+                    ->middleware('throttle:5,1')
+                    ->name('password-setup-email');
 
                 Route::post(
                     '/update-member',
@@ -815,6 +832,10 @@
 
         Route::post('/member/registration', [NewMemberRegistrationController::class, 'store'])
             ->name('member.registration.store');
+
+        Route::post('/member/registration/password-setup-email', [NewMemberRegistrationController::class, 'resendPasswordSetup'])
+            ->middleware('throttle:5,1')
+            ->name('member.registration.password-setup-email');
 
         Route::get('/member/dashboard', function (Request $request) {
             $member = Member::where('member_id', $request->session()->get('member_context_id'))->firstOrFail();

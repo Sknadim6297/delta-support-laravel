@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\MemberPasswordOtpMail;
-use App\Mail\MemberWelcomeMail;
+use App\Mail\MemberPasswordSetupMail;
 use App\Models\Member;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,7 +49,20 @@ class PublicMemberAuthTest extends TestCase
         $this->assertNotSame($sponsor->member_id, $member->member_id);
         $this->assertSame('Rahul Das', $member->sponsor_name);
         $this->assertSame('inactive', $member->status);
-        $this->assertTrue(Hash::check($this->welcomePassword(), $member->password));
+        $this->assertNull($member->password);
+        $setupUrl = null;
+        Mail::assertSent(MemberPasswordSetupMail::class, function (MemberPasswordSetupMail $mail) use (&$setupUrl): bool {
+            $setupUrl = $mail->setupUrl;
+
+            return str_contains($mail->setupUrl, '/member/password-setup/');
+        });
+        $token = basename((string) parse_url((string) $setupUrl, PHP_URL_PATH));
+        $this->post(route('member.password-setup.store', ['token' => $token]), [
+            'password' => 'chosen-pass',
+            'password_confirmation' => 'chosen-pass',
+        ])->assertRedirect(route('login'));
+        $member->refresh();
+        $this->assertTrue(Hash::check('chosen-pass', $member->password));
 
         $this->actingAs(User::factory()->create(['is_admin' => true]))
             ->get(route('admin.members.inactive'))
@@ -86,7 +99,7 @@ class PublicMemberAuthTest extends TestCase
 
         $this->post(route('login.submit'), [
             'member_id' => $member->member_id,
-            'password' => $this->welcomePassword(),
+            'password' => 'chosen-pass',
         ])->assertRedirect(route('member.dashboard'));
     }
 
@@ -164,21 +177,6 @@ class PublicMemberAuthTest extends TestCase
         $member->refresh();
         $this->assertTrue(Hash::check('new-password', $member->password));
         $this->assertDatabaseCount('member_password_otps', 0);
-    }
-
-    private function welcomePassword(): string
-    {
-        static $password;
-
-        if (! $password) {
-            Mail::assertSent(MemberWelcomeMail::class, function (MemberWelcomeMail $mail) use (&$password) {
-                $password = $mail->temporaryPassword;
-
-                return true;
-            });
-        }
-
-        return $password;
     }
 
     private function createMember(string $memberId, string $name, string $email): Member

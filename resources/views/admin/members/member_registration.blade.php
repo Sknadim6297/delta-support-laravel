@@ -3,10 +3,24 @@
 @section('page-title', 'Member Registration')
 
 @section('content')
-    <x-members.shell lead="The new member starts inactive. Registration does not purchase a package or create commission.">
-        @if(session('success'))
-            <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+    <x-members.shell class="ds-registration-page" lead="The new member starts inactive. Registration does not purchase a package or create commission.">
+        @if ($notice = session('registration_notice'))
+            <div class="ds-registration-notice is-{{ $notice['tone'] === 'warning' ? 'warning' : 'success' }}" role="status">
+                <p>{{ $notice['title'] }}</p>
+                <p>Member ID: {{ $notice['member_id'] }}</p>
+                <p>{{ $notice['email_status'] }}</p>
+            </div>
         @endif
+        <form method="POST" action="{{ route('admin.members.password-setup-email') }}" class="ds-password-setup-resend">
+            @csrf
+            <h2>Resend password setup email</h2>
+            <div class="ds-password-setup-resend-field">
+                <label for="resendMemberId">Member ID</label>
+                <input type="text" id="resendMemberId" name="member_id" value="{{ old('member_id', session('password_setup_member_id')) }}" placeholder="Enter Member ID (e.g. ST100002)" required autocomplete="off" maxlength="32">
+                @error('member_id')<div class="validation-message">{{ $message }}</div>@enderror
+            </div>
+            <button type="submit" class="ds-btn">Resend password setup email</button>
+        </form>
 
         <form method="POST" action="{{ route('admin.members.store') }}" id="adminRegistrationForm" class="ds-mm-form">
             @csrf
@@ -21,7 +35,7 @@
                     <div>
                         <label for="admin-member-name">Member Name <span>*</span></label>
                         <input type="text" id="admin-member-name" name="member_name" placeholder="Enter Member Name" value="{{ old('member_name') }}" required>
-                        <div class="validation-message" data-error-for="member_name" hidden>
+                        <div class="validation-message" data-error-for="member_name" @unless($errors->has('member_name')) hidden @endunless>
                             @error('member_name'){{ $message }}@enderror
                         </div>
                     </div>
@@ -33,14 +47,14 @@
                     <div>
                         <label for="admin-sponsor-id">Sponsor ID <span>*</span></label>
                         <input type="text" id="admin-sponsor-id" name="sponsor_id" placeholder="Enter Sponsor ID" value="{{ old('sponsor_id', $default_sponsor_id ?? 'ST666666') }}" required>
-                        <div class="validation-message" data-error-for="sponsor_id" hidden>
+                        <div class="validation-message" data-error-for="sponsor_id" @unless($errors->has('sponsor_id')) hidden @endunless>
                             @error('sponsor_id'){{ $message }}@enderror
                         </div>
                     </div>
                     <div>
                         <label for="admin-sponsor-name">Sponsor Name <span>*</span></label>
                         <input type="text" id="admin-sponsor-name" name="sponsor_name" placeholder="Sponsor Name will auto-fill" value="{{ old('sponsor_name', $default_sponsor_name ?? 'Admin') }}" readonly>
-                        <div class="validation-message" data-error-for="sponsor_name" hidden>
+                        <div class="validation-message" data-error-for="sponsor_name" @unless($errors->has('sponsor_name')) hidden @endunless>
                             @error('sponsor_name'){{ $message }}@enderror
                         </div>
                     </div>
@@ -52,14 +66,14 @@
                     <div>
                         <label for="admin-email">Email ID <span>*</span></label>
                         <input type="email" id="admin-email" name="email" placeholder="Enter Email ID" value="{{ old('email') }}" required>
-                        <div class="validation-message" data-error-for="email" hidden>
+                        <div class="validation-message" data-error-for="email" @unless($errors->has('email')) hidden @endunless>
                             @error('email'){{ $message }}@enderror
                         </div>
                     </div>
                     <div>
                         <label for="admin-mobile">Mobile No <span>*</span></label>
                         <input type="text" id="admin-mobile" name="mobile_no" placeholder="Enter Mobile No" value="{{ old('mobile_no') }}" required maxlength="10">
-                        <div class="validation-message" data-error-for="mobile_no" hidden>
+                        <div class="validation-message" data-error-for="mobile_no" @unless($errors->has('mobile_no')) hidden @endunless>
                             @error('mobile_no'){{ $message }}@enderror
                         </div>
                     </div>
@@ -71,7 +85,7 @@
                     <div>
                         <label for="admin-pan">PAN Card Number <span>*</span></label>
                         <input type="text" id="admin-pan" name="pan_card_no" placeholder="Enter PAN Card Number" value="{{ old('pan_card_no') }}" required maxlength="10">
-                        <div class="validation-message" data-error-for="pan_card_no" hidden>
+                        <div class="validation-message" data-error-for="pan_card_no" @unless($errors->has('pan_card_no')) hidden @endunless>
                             @error('pan_card_no'){{ $message }}@enderror
                         </div>
                     </div>
@@ -82,12 +96,12 @@
                 </div>
             </x-members.panel>
 
-            <x-members.panel title="Security" subtitle="The password is emailed to the member when the account is created. Leave it blank to send a generated password.">
+            <x-members.panel title="Security" subtitle="A one-time password setup link is emailed to the member. The email does not contain a password. Leave this blank if the member should choose the password from that link.">
                 <div class="ds-mm-fields">
                     <div>
                         <label for="registrationPassword">Password</label>
-                        <input type="password" id="registrationPassword" name="password" placeholder="Leave blank to email a generated password" autocomplete="new-password">
-                        <div class="validation-message" data-error-for="password" hidden>
+                        <input type="password" id="registrationPassword" name="password" placeholder="Optional. It is not emailed." autocomplete="new-password">
+                        <div class="validation-message" data-error-for="password" @unless($errors->has('password')) hidden @endunless>
                             @error('password'){{ $message }}@enderror
                         </div>
                     </div>

@@ -23,6 +23,17 @@
                     {{ session('success') }}
                 </div>
             @endif
+            @if (session('mail_notice'))
+                <div class="form-message mb-3" role="status">
+                    {{ session('mail_notice') }}
+                </div>
+            @endif
+            @if (session('password_setup_member_id'))
+                <form method="POST" action="{{ route('member.register.password-setup-email') }}" class="mb-3">
+                    @csrf
+                    <button type="submit" class="ds-btn">Resend password setup email</button>
+                </form>
+            @endif
 
             <form method="POST" action="{{ route('member.register.store') }}" id="registrationForm">
                 @csrf

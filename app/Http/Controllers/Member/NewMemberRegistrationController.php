@@ -3,17 +3,16 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
-use App\Mail\MemberWelcomeMail;
 use App\Models\Member;
+use App\Services\MailDeliveryNotice;
+use App\Services\MemberPasswordSetupMailer;
 use App\Services\MemberRegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use Throwable;
 
 class NewMemberRegistrationController extends Controller
 {
@@ -81,41 +80,52 @@ class NewMemberRegistrationController extends Controller
         }
 
         $validated = $validator->validated();
-        $typedPassword = filled($validated['password'] ?? null) ? (string) $validated['password'] : null;
         $result = app(MemberRegistrationService::class)->register($validated, [
             'require_pan' => true,
             'locked_sponsor' => $currentMember,
-            'generate_password' => $typedPassword === null,
         ]);
         $member = $result['member'];
-        $password = $typedPassword ?? (string) $result['temporary_password'];
-        $emailSent = true;
+        $notice = app(MemberPasswordSetupMailer::class)->send($member);
 
-        try {
-            Mail::to($member->email)->send(new MemberWelcomeMail(
-                $member->member_id,
-                $member->member_name,
-                $password,
-            ));
-        } catch (Throwable) {
-            $emailSent = false;
-        }
-
-        $message = 'Registration successful. The new account is inactive. Member ID: ' . $member->member_id . '. ';
-        $message .= $emailSent
-            ? 'The password was sent to ' . $member->email . '.'
-            : 'The account was created, but the password email could not be sent.';
-        $message .= ' Package benefits stay locked until activation is verified.';
-
-        return redirect()
-            ->route('member.registration')
-            ->with('success', $message)
+        return $this->withPasswordSetupNotice(
+            redirect()->route('member.registration'),
+            $member,
+            $notice,
+            'Registration successful. The new account is inactive. Member ID: '.$member->member_id.'. Package benefits stay locked until activation is verified.',
+        )
             ->with('registration_receipt', [
                 'member_id' => $member->member_id,
                 'member_name' => $member->member_name,
                 'sponsor_id' => $member->sponsor_id,
                 'status' => 'Inactive',
             ]);
+    }
+
+    public function resendPasswordSetup(Request $request, MemberPasswordSetupMailer $mailer): RedirectResponse
+    {
+        $currentMember = $this->currentMember($request);
+        $memberId = strtoupper(trim((string) $request->input('member_id')));
+        $member = Member::query()->where('member_id', $memberId)->where('sponsor_id', $currentMember->member_id)->first();
+
+        if ($member === null) {
+            return back()->withErrors(['member_id' => 'That member is not in your direct registrations. No account was created.']);
+        }
+
+        return $this->withPasswordSetupNotice(
+            back(),
+            $member,
+            $mailer->send($member),
+            'No new member was created.',
+        );
+    }
+
+    private function withPasswordSetupNotice(RedirectResponse $redirect, Member $member, MailDeliveryNotice $notice, string $success): RedirectResponse
+    {
+        return $redirect
+            ->with('success', $success)
+            ->with('mail_notice', $notice->sentence($member->email))
+            ->with('mail_accepted', $notice->accepted)
+            ->with('password_setup_member_id', $member->member_id);
     }
 
     private function currentMember(Request $request): Member

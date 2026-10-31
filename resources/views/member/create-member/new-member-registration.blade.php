@@ -5,14 +5,22 @@
 @section('content')
 <x-members.shell kicker="My network" lead="You are the sponsor. The new account starts inactive. Registration does not purchase a package or create income.">
     @if ($receipt = session('registration_receipt'))
-        <x-members.panel title="Registration successful" subtitle="Share these details. The password is not shown.">
+        <x-members.panel title="Registration successful" subtitle="Share the Member ID. The password is not shown or emailed.">
             <dl class="ds-detail">
                 <div><dt>Member ID</dt><dd>{{ $receipt['member_id'] }}</dd></div>
                 <div><dt>Member Name</dt><dd>{{ $receipt['member_name'] }}</dd></div>
                 <div><dt>Sponsor ID</dt><dd>{{ $receipt['sponsor_id'] }}</dd></div>
                 <div><dt>Account status</dt><dd>{{ $receipt['status'] }}</dd></div>
             </dl>
-            <p class="ds-field-note">The new member can log in with this Member ID while the account is inactive. Package benefits stay locked until activation is verified.</p>
+            <p class="ds-field-note">The new member can log in with this Member ID after setting a password. Package benefits stay locked until activation is verified.</p>
+            @if(session('mail_notice'))
+                <x-ui.alert type="{{ session('mail_accepted') ? 'success' : 'error' }}">{{ session('mail_notice') }}</x-ui.alert>
+            @endif
+            <form method="POST" action="{{ route('member.registration.password-setup-email') }}">
+                @csrf
+                <input type="hidden" name="member_id" value="{{ $receipt['member_id'] }}">
+                <button type="submit" class="ds-btn">Resend password setup email</button>
+            </form>
         </x-members.panel>
     @endif
 
@@ -80,11 +88,11 @@
             </div>
         </x-members.panel>
 
-        <x-members.panel title="Security" subtitle="The password is emailed to the member when the account is created. Leave it blank to send a generated password.">
+        <x-members.panel title="Security" subtitle="A one-time password setup link is emailed to the member. The email does not contain a password.">
             <div class="ds-mm-fields">
                 <div>
                     <label for="registrationPassword">Password</label>
-                    <input type="password" id="registrationPassword" name="password" placeholder="Leave blank to email a generated password" autocomplete="new-password">
+                    <input type="password" id="registrationPassword" name="password" placeholder="Optional. It is not emailed." autocomplete="new-password">
                     <div class="validation-message" data-error-for="password" hidden>@error('password'){{ $message }}@enderror</div>
                 </div>
                 <div>

@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Mail\MemberPasswordOtpMail;
-use App\Mail\MemberWelcomeMail;
 use App\Models\AdminActivityLog;
 use App\Models\Member;
 use App\Models\User;
+use App\Services\MailDeliveryNotice;
+use App\Services\MemberPasswordSetupMailer;
 use App\Services\MemberRegistrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -103,19 +104,33 @@ class PublicMemberAuthController extends Controller
 
         $result = app(MemberRegistrationService::class)->register($validated, [
             'allow_admin_sponsor' => true,
-            'generate_password' => true,
         ]);
         $member = $result['member'];
-        $temporaryPassword = $result['temporary_password'];
+        $notice = app(MemberPasswordSetupMailer::class)->send($member);
 
-        Mail::to($member->email)->send(new MemberWelcomeMail(
-            $member->member_id,
-            $member->member_name,
-            $temporaryPassword,
-        ));
+        return $this->withPasswordSetupNotice(
+            redirect()->route('member.register'),
+            $member,
+            $notice,
+            'Registration successful. Your Member ID is '.$member->member_id.'.',
+        );
+    }
 
-        return redirect()->route('member.register')
-            ->with('success', 'Registration successful. Your Member ID is ' . $member->member_id . '. Your password was sent to your email. You can replace it from Forgot Password.');
+    public function resendPasswordSetup(Request $request, MemberPasswordSetupMailer $mailer): RedirectResponse
+    {
+        $memberId = (string) $request->session()->get('password_setup_member_id');
+        $member = $memberId === '' ? null : Member::query()->where('member_id', $memberId)->first();
+
+        if ($member === null) {
+            return back()->withErrors(['email' => 'Register the member before resending the password setup email.']);
+        }
+
+        return $this->withPasswordSetupNotice(
+            back(),
+            $member,
+            $mailer->send($member),
+            'No new member was created.',
+        );
     }
 
     public function login(Request $request): RedirectResponse
@@ -378,6 +393,15 @@ class PublicMemberAuthController extends Controller
         ]);
 
         Mail::to($member->email)->send(new MemberPasswordOtpMail($member->member_id, $otp));
+    }
+
+    private function withPasswordSetupNotice(RedirectResponse $redirect, Member $member, MailDeliveryNotice $notice, string $success): RedirectResponse
+    {
+        return $redirect
+            ->with('success', $success)
+            ->with('mail_notice', $notice->sentence($member->email))
+            ->with('mail_accepted', $notice->accepted)
+            ->with('password_setup_member_id', $member->member_id);
     }
 
     private function maskEmail(string $email): string

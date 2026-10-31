@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Mail\MemberWelcomeMail;
+use App\Mail\MemberPasswordSetupMail;
 use App\Models\Member;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,7 +29,7 @@ class SponsorRegistrationFlowTest extends TestCase
             ->get(route('admin.members.registration'))
             ->assertOk()
             ->assertSeeText('Member Registration')
-            ->assertSeeText('The password is emailed to the member when the account is created.')
+            ->assertSeeText('A one-time password setup link is emailed to the member.')
             ->assertSee('name="_token"', false);
 
         Mail::fake();
@@ -45,13 +45,21 @@ class SponsorRegistrationFlowTest extends TestCase
                 'password_confirmation' => 'secret1',
             ])
             ->assertRedirect(route('admin.members.registration'))
-            ->assertSessionHas('success', function (string $message): bool {
-                return str_contains($message, 'sent to new@example.com')
-                    && ! str_contains($message, 'secret1');
+            ->assertSessionMissing('success')
+            ->assertSessionMissing('mail_notice')
+            ->assertSessionHas('registration_notice', function (array $notice): bool {
+                return $notice['tone'] === 'warning'
+                    && $notice['title'] === 'Registration successful'
+                    && $notice['member_id'] !== ''
+                    && str_contains($notice['email_status'], 'was not accepted')
+                    && ! str_contains($notice['email_status'], 'secret1')
+                    && ! str_contains(strtolower($notice['email_status']), 'password was sent');
             });
 
-        Mail::assertSent(MemberWelcomeMail::class, function (MemberWelcomeMail $mail): bool {
-            return $mail->hasTo('new@example.com') && $mail->temporaryPassword === 'secret1';
+        Mail::assertSent(MemberPasswordSetupMail::class, function (MemberPasswordSetupMail $mail): bool {
+            return $mail->hasTo('new@example.com')
+                && str_contains($mail->setupUrl, '/member/password-setup/')
+                && ! str_contains($mail->setupUrl, 'secret1');
         });
 
         $member = Member::where('email', 'new@example.com')->firstOrFail();
@@ -75,6 +83,20 @@ class SponsorRegistrationFlowTest extends TestCase
         $this->assertSame(0, DB::table('invoices')->count());
         $this->assertSame(0, DB::table('package_purchases')->count());
         $this->assertSame(0, DB::table('wallet_ledger_entries')->count());
+
+        $shown = $this->actingAs($admin)->get(route('admin.members.registration'));
+        $shown->assertOk()
+            ->assertSeeText('Registration successful')
+            ->assertSeeText('Member ID: '.$member->member_id)
+            ->assertSeeText('was not accepted')
+            ->assertDontSeeText('Member registration submitted successfully');
+        $this->assertSame(1, substr_count($shown->getContent(), 'Registration successful'));
+        $this->assertSame(1, substr_count($shown->getContent(), 'was not accepted'));
+
+        $this->actingAs($admin)
+            ->get(route('admin.members.registration'))
+            ->assertOk()
+            ->assertDontSeeText('Registration successful');
 
         $this->actingAs($admin)
             ->get(route('admin.members.directory', ['q' => '9876543212']))
@@ -101,8 +123,9 @@ class SponsorRegistrationFlowTest extends TestCase
 
     public function test_admin_cannot_register_with_an_invalid_sponsor(): void
     {
-        $this->actingAs(User::factory()->create(['is_admin' => true]))
-            ->from(route('admin.members.registration'))
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->from(route('admin.members.registration'))
             ->post(route('admin.members.store'), [
                 'member_name' => 'New Member',
                 'sponsor_id' => 'ST999999',
@@ -111,9 +134,20 @@ class SponsorRegistrationFlowTest extends TestCase
                 'pan_card_no' => 'ABCDE1234F',
             ])
             ->assertRedirect(route('admin.members.registration'))
-            ->assertSessionHasErrors(['sponsor_id']);
+            ->assertSessionHasErrors(['sponsor_id'])
+            ->assertSessionMissing('registration_notice')
+            ->assertSessionMissing('success');
 
         $this->assertDatabaseMissing('members', ['email' => 'new@example.com']);
+
+        $this->get(route('admin.members.registration'))
+            ->assertOk()
+            ->assertSeeText('Invalid Sponsor ID. Enter an existing Member ID or leave it blank to use the default sponsor.')
+            ->assertDontSeeText('Registration successful');
+
+        $this->get(route('admin.members.registration'))
+            ->assertOk()
+            ->assertDontSeeText('Enter an existing Member ID or leave it blank to use the default sponsor.');
     }
 
     public function test_member_registers_a_direct_referral_and_cannot_spoof_the_sponsor(): void
@@ -125,7 +159,7 @@ class SponsorRegistrationFlowTest extends TestCase
             ->get(route('member.registration'))
             ->assertOk()
             ->assertSeeText('Register New Member')
-            ->assertSeeText('The password is emailed to the member when the account is created.')
+            ->assertSeeText('A one-time password setup link is emailed to the member.')
             ->assertSee('value="ST100001"', false)
             ->assertSee('readonly', false)
             ->assertSee('name="_token"', false);
@@ -141,16 +175,34 @@ class SponsorRegistrationFlowTest extends TestCase
                 'pan_card_no' => 'ABCDE1234F',
             ])
             ->assertRedirect(route('member.registration'))
-            ->assertSessionHas('success', function (string $message): bool {
-                return str_contains($message, 'sent to direct@example.com');
+            ->assertSessionHas('mail_notice', function (string $message): bool {
+                return str_contains($message, 'was not accepted')
+                    && ! str_contains(strtolower($message), 'password was sent');
             });
 
         $child = Member::where('email', 'direct@example.com')->firstOrFail();
-        Mail::assertSent(MemberWelcomeMail::class, function (MemberWelcomeMail $mail) use ($child): bool {
-            return $mail->hasTo('direct@example.com')
-                && $mail->memberId === $child->member_id
-                && Hash::check($mail->temporaryPassword, $child->password);
+        $before = Member::query()->count();
+        $setupUrl = null;
+        Mail::assertSent(MemberPasswordSetupMail::class, function (MemberPasswordSetupMail $mail) use ($child, &$setupUrl): bool {
+            $setupUrl = $mail->setupUrl;
+
+            return $mail->hasTo('direct@example.com') && $mail->memberId === $child->member_id;
         });
+        $token = basename((string) parse_url((string) $setupUrl, PHP_URL_PATH));
+        $this->post(route('member.password-setup.store', ['token' => $token]), [
+            'password' => 'chosen-pass',
+            'password_confirmation' => 'chosen-pass',
+        ])->assertRedirect(route('login'));
+        $child->refresh();
+        $this->assertTrue(Hash::check('chosen-pass', $child->password));
+        $this->post(route('member.password-setup.store', ['token' => $token]), [
+            'password' => 'another-pass',
+            'password_confirmation' => 'another-pass',
+        ])->assertSessionHasErrors('password');
+        $this->withSession(['member_context_id' => $sponsor->member_id])
+            ->post(route('member.registration.password-setup-email'), ['member_id' => $child->member_id])
+            ->assertSessionHas('success', 'No new member was created.');
+        $this->assertSame($before, Member::query()->count());
         $this->assertSame($sponsor->member_id, $child->sponsor_id);
         $this->assertSame('inactive', $child->status);
         $this->assertNotSame($sponsor->member_id, $child->member_id);
@@ -201,7 +253,10 @@ class SponsorRegistrationFlowTest extends TestCase
         $this->assertSame($sponsor->member_id, $member->sponsor_id);
         $this->assertSame('Rahul Das', $member->sponsor_name);
         $this->assertSame('inactive', $member->status);
-        $this->assertNotNull($member->password);
+        $this->assertNull($member->password);
+        Mail::assertSent(MemberPasswordSetupMail::class, function (MemberPasswordSetupMail $mail) use ($member): bool {
+            return $mail->hasTo('public@example.com') && $mail->memberId === $member->member_id;
+        });
         $this->assertMatchesRegularExpression('/^ST\d{6}$/', $member->member_id);
 
         $this->from(route('member.register'))
