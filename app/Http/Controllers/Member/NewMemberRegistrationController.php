@@ -57,7 +57,6 @@ class NewMemberRegistrationController extends Controller
             'member_name' => trim((string) $request->input('member_name')),
             'email' => trim((string) $request->input('email')),
             'mobile_no' => trim((string) $request->input('mobile_no')),
-            'pan_card_no' => strtoupper(trim((string) $request->input('pan_card_no'))),
             'wallet_address' => $wallet === '' ? null : $wallet,
         ]);
 
@@ -68,7 +67,6 @@ class NewMemberRegistrationController extends Controller
             'sponsor_id' => ['required', 'string', Rule::in([$currentMember->member_id])],
             'email' => ['required', 'email', 'unique:members,email'],
             'mobile_no' => ['required', 'string', 'regex:/^[0-9+\-\s]+$/', 'min:10', 'max:15'],
-            'pan_card_no' => ['required', 'string', 'max:10'],
             'wallet_address' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:6', 'confirmed'],
         ], [
@@ -81,7 +79,6 @@ class NewMemberRegistrationController extends Controller
 
         $validated = $validator->validated();
         $result = app(MemberRegistrationService::class)->register($validated, [
-            'require_pan' => true,
             'locked_sponsor' => $currentMember,
         ]);
         $member = $result['member'];

@@ -53,13 +53,6 @@ class ProfileController extends Controller
             );
         }
 
-        if ($request->exists('pan_card_no') && strtoupper(trim((string) $request->input('pan_card_no'))) !== strtoupper(trim((string) $member->pan_card_no))) {
-            $validator->errors()->add(
-                'pan_card_no',
-                'PAN Card Number cannot be changed until verification is available.'
-            );
-        }
-
         if ($validator->errors()->isNotEmpty()) {
             return back()->withErrors($validator)->withInput();
         }

@@ -143,9 +143,10 @@ class MemberProfileUpdateTest extends TestCase
             'member_id' => $member->member_id,
             'member_name' => 'Rahul Das',
             'mobile_no' => $member->mobile_no,
-            'pan_card_no' => 'SHORT',
             'email' => $member->email,
-        ])->assertSessionHasErrors(['pan_card_no']);
+        ])->assertRedirect(route('admin.members.update', ['member_id' => $member->member_id]));
+
+        $this->assertSame('ABCDE1234F', $member->fresh()->pan_card_no);
 
         $this->assertDatabaseHas('members', [
             'member_id' => $member->member_id,
@@ -174,7 +175,7 @@ class MemberProfileUpdateTest extends TestCase
         ]);
     }
 
-    public function test_mobile_and_pan_reuse_limits_are_preserved_on_update(): void
+    public function test_mobile_reuse_limit_is_preserved_and_update_does_not_change_pan(): void
     {
         $this->signIn();
         $member = $this->member();
@@ -199,7 +200,7 @@ class MemberProfileUpdateTest extends TestCase
             'mobile_no' => '9876543210',
             'pan_card_no' => 'ABCDE1234F',
             'email' => 'rahul@example.com',
-        ])->assertSessionHasErrors(['pan_card_no']);
+        ])->assertSessionHasErrors(['mobile_no']);
 
         $this->post(route('admin.members.update-member'), [
             'member_id' => $member->member_id,
@@ -213,6 +214,7 @@ class MemberProfileUpdateTest extends TestCase
         $this->assertDatabaseHas('members', [
             'member_id' => $member->member_id,
             'member_name' => 'Rahul Das',
+            'pan_card_no' => 'ABCDE1234F',
         ]);
     }
 

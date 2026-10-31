@@ -40,7 +40,6 @@
                         <th>Sponsor Name</th>
                         <th>Email</th>
                         <th>Mobile</th>
-                        <th>PAN Card Number</th>
                         <th>Registration</th>
                         <th>Account</th>
                         <th>Package</th>
@@ -56,7 +55,6 @@
                             <td>{{ $member['sponsor_name'] }}</td>
                             <td>{{ $member['email'] }}</td>
                             <td>{{ $member['mobile'] }}</td>
-                            <td>{{ $member['pan_card_no'] }}</td>
                             <td>{{ $member['joining_date'] }}</td>
                             <td><x-ui.badge tone="warning">{{ $member['account_status'] }}</x-ui.badge></td>
                             <td>
@@ -71,7 +69,7 @@
                         </tr>
                     @empty
                         <tr class="ds-mm-empty">
-                            <td colspan="11">No inactive members found.</td>
+                            <td colspan="10">No inactive members found.</td>
                         </tr>
                     @endforelse
                 </tbody>

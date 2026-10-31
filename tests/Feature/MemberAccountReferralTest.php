@@ -79,8 +79,8 @@ class MemberAccountReferralTest extends TestCase
             ->assertSeeText('Sponsor Name')
             ->assertSeeText('Email ID')
             ->assertSeeText('Mobile No')
-            ->assertSeeText('PAN Card Number')
             ->assertSeeText('Wallet Address')
+            ->assertDontSeeText('PAN Card Number')
             ->assertSeeText('Confirm Password')
             ->assertSee('value="ST100001"', false)
             ->assertSee('value="Sk Nadim"', false)
@@ -140,7 +140,7 @@ class MemberAccountReferralTest extends TestCase
         $this->assertSame($sponsor->member_id, $child->sponsor_id);
         $this->assertSame('Sk Nadim', $child->sponsor_name);
         $this->assertSame('inactive', $child->status);
-        $this->assertSame('ABCDE1234F', $child->pan_card_no);
+        $this->assertNull($child->pan_card_no);
         $this->assertSame('0xwallet', $child->wallet_address);
         $this->assertTrue(Hash::check('secret1', $child->password));
         $this->assertNotSame($sponsor->member_id, $child->member_id);
@@ -183,7 +183,8 @@ class MemberAccountReferralTest extends TestCase
             ->assertSeeText('Rahul Das')
             ->assertSeeText('ST100001')
             ->assertSeeText('0xrahul')
-            ->assertSeeText('ABCDE1234F')
+            ->assertDontSeeText('PAN Card Number')
+            ->assertDontSeeText('ABCDE1234F')
             ->assertDontSeeText('other@example.com');
 
         $this->from(route('member.profile'))
@@ -208,7 +209,7 @@ class MemberAccountReferralTest extends TestCase
             'pan_card_no' => 'ZZZZZ9999Z',
             'status' => 'active',
             'activation_wallet_amount' => '99',
-        ])->assertSessionHasErrors(['wallet_address', 'pan_card_no']);
+        ])->assertSessionHasErrors(['wallet_address']);
 
         $member->refresh();
         $this->assertSame('Rahul Das', $member->member_name);

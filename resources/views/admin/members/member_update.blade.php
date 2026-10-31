@@ -76,12 +76,8 @@
                 </div>
             </x-members.panel>
 
-            <x-members.panel title="KYC and wallet" subtitle="PAN and the BEP20 address stored with this member.">
+            <x-members.panel title="Wallet" subtitle="The BEP20 address stored with this member.">
                 <div class="ds-mm-fields">
-                    <div>
-                        <label for="panCardNo">PAN Card Number <span>*</span></label>
-                        <input type="text" id="panCardNo" name="pan_card_no" value="{{ old('pan_card_no') }}" placeholder="Enter PAN Card Number" maxlength="10">
-                    </div>
                     <div>
                         <label for="walletAddress">BEP20 Wallet Address</label>
                         <input type="text" id="walletAddress" name="wallet_address" value="{{ old('wallet_address') }}" placeholder="Enter BEP20 Wallet Address">
@@ -115,7 +111,6 @@
         const walletAddressInput = document.getElementById('walletAddress');
         const mobileNoInput = document.getElementById('mobileNo');
         const emailInput = document.getElementById('email');
-        const panCardInput = document.getElementById('panCardNo');
         const passwordInput = document.getElementById('password');
         const fields = {
             sponsor_id: sponsorIdInput,
@@ -124,7 +119,6 @@
             wallet: walletAddressInput,
             mobile: mobileNoInput,
             email: emailInput,
-            pan_card_no: panCardInput,
             password: passwordInput
         };
         const touchedFields = new Set();
@@ -146,7 +140,6 @@
                     sponsor_name: sponsorNameInput,
                     mobile_no: mobileNoInput,
                     email: emailInput,
-                    pan_card_no: panCardInput,
                     password: passwordInput
                 }[fieldName];
                 field?.parentElement.appendChild(error);
@@ -227,23 +220,6 @@
             }
 
             setError('mobile_no');
-            return true;
-        }
-
-        function validatePanCard(force = false) {
-            const value = (panCardInput?.value || '').trim();
-
-            if (!value) {
-                setError('pan_card_no', shouldShowRequired('pan_card_no', force) ? 'PAN Card Number is required.' : '');
-                return false;
-            }
-
-            if (value.length !== 10) {
-                setError('pan_card_no', 'PAN Card Number must be exactly 10 characters.');
-                return false;
-            }
-
-            setError('pan_card_no');
             return true;
         }
 
@@ -334,7 +310,6 @@
             setError('member_name');
             setError('mobile_no');
             setError('email');
-            setError('pan_card_no');
             setError('password');
             const summary = document.getElementById('memberSummary');
             if (summary) {
@@ -394,17 +369,6 @@
             validateEmail(true);
         });
 
-        panCardInput.addEventListener('input', function () {
-            this.value = this.value.slice(0, 10);
-            markTouched('pan_card_no');
-            validatePanCard();
-        });
-
-        panCardInput.addEventListener('blur', function () {
-            markTouched('pan_card_no');
-            validatePanCard(true);
-        });
-
         passwordInput.addEventListener('input', validatePassword);
         passwordInput.addEventListener('blur', validatePassword);
 
@@ -460,7 +424,6 @@
                     fields.wallet.value = member.wallet || '';
                     fields.mobile.value = member.mobile || '';
                     fields.email.value = member.email || '';
-                    fields.pan_card_no.value = member.pan_card_no || '';
                     fields.password.value = '';
                     fetchedMemberId = member.member_id;
                     sponsorIdValid = true;
@@ -494,13 +457,11 @@
             markTouched('sponsor_id');
             markTouched('email');
             markTouched('mobile_no');
-            markTouched('pan_card_no');
 
             const isValid = validateMemberName(true)
                 && (sponsorAlreadyValidated || validateSponsorId(true))
                 && validateEmail(true)
                 && validateMobileNo(true)
-                && validatePanCard(true)
                 && validatePassword();
 
             if (!isValid) {

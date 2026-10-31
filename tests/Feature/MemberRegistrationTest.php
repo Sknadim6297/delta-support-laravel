@@ -54,7 +54,7 @@ class MemberRegistrationTest extends TestCase
             'email' => 'rahul@example.com',
             'status' => 'inactive',
             'member_name' => 'Rahul Das',
-            'pan_card_no' => 'ABCDE1234F',
+            'pan_card_no' => null,
             'sponsor_id' => $sponsor->member_id,
             'sponsor_name' => $sponsor->member_name,
         ]);
@@ -98,7 +98,7 @@ class MemberRegistrationTest extends TestCase
         ]);
     }
 
-    public function test_inactive_member_list_shows_pan_card_and_mobile_number_reuse_is_limited_to_three_times(): void
+    public function test_inactive_member_list_hides_pan_and_mobile_number_reuse_is_limited_to_three_times(): void
     {
         User::factory()->create([
             'name' => 'Admin',
@@ -107,6 +107,10 @@ class MemberRegistrationTest extends TestCase
         ]);
 
         $this->actingAs(User::first());
+
+        $this->get('/admin/members/registration')
+            ->assertOk()
+            ->assertDontSeeText('PAN Card Number');
 
         $validMemberNames = ['Member One', 'Member Two', 'Member Three'];
 
@@ -115,7 +119,6 @@ class MemberRegistrationTest extends TestCase
                 'member_name' => $validMemberNames[$index - 1],
                 'wallet_address' => '0xabc',
                 'mobile_no' => '9876543210',
-                'pan_card_no' => 'ABCDE1234' . chr(64 + $index),
                 'email' => 'member' . $index . '@example.com',
             ])->assertRedirect('/admin/members/registration');
         }
@@ -124,16 +127,16 @@ class MemberRegistrationTest extends TestCase
             'member_name' => 'Member Four',
             'wallet_address' => '0xabc',
             'mobile_no' => '9876543210',
-            'pan_card_no' => 'ABCDE1234D',
             'email' => 'member4@example.com',
         ])->assertSessionHasErrors(['mobile_no']);
 
         $this->get('/admin/members/inactive')
             ->assertOk()
-            ->assertSeeText('PAN Card Number');
+            ->assertSeeText('Member One')
+            ->assertDontSeeText('PAN Card Number');
     }
 
-    public function test_pan_card_number_can_be_reused_up_to_three_times(): void
+    public function test_registration_and_update_succeed_without_a_pan_card_number(): void
     {
         User::factory()->create([
             'name' => 'Admin',
@@ -143,23 +146,46 @@ class MemberRegistrationTest extends TestCase
 
         $this->actingAs(User::first());
 
-        foreach (range(1, 3) as $index) {
-            $names = ['Member One', 'Member Two', 'Member Three'];
-            $this->post('/admin/members/store', [
-                'member_name' => $names[$index - 1],
-                'wallet_address' => '0xabc',
-                'mobile_no' => '987654321' . $index,
-                'pan_card_no' => 'ABCDE1234F',
-                'email' => 'member' . $index . '@example.com',
-            ])->assertRedirect('/admin/members/registration');
-        }
+        $existing = Member::create([
+            'member_id' => 'ST100099',
+            'sponsor_id' => 'ST666666',
+            'sponsor_name' => 'Admin',
+            'member_name' => 'Existing Member',
+            'wallet_address' => '0xexisting',
+            'mobile_no' => '9123456780',
+            'pan_card_no' => 'ABCDE1234F',
+            'email' => 'existing@example.com',
+            'status' => 'inactive',
+        ]);
 
         $this->post('/admin/members/store', [
-            'member_name' => 'Member Four',
+            'member_name' => 'Member Without Pan',
             'wallet_address' => '0xabc',
             'mobile_no' => '9876543214',
-            'pan_card_no' => 'ABCDE1234F',
-            'email' => 'member4@example.com',
-        ])->assertSessionHasErrors(['pan_card_no']);
+            'email' => 'nopan@example.com',
+        ])->assertRedirect('/admin/members/registration')
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseHas('members', [
+            'email' => 'nopan@example.com',
+            'pan_card_no' => null,
+        ]);
+
+        $this->post(route('admin.members.update-member'), [
+            'member_id' => $existing->member_id,
+            'member_name' => 'Existing Member Updated',
+            'wallet_address' => '0xexisting',
+            'mobile_no' => '9123456780',
+            'email' => 'existing@example.com',
+        ])->assertRedirect(route('admin.members.update', ['member_id' => $existing->member_id]));
+
+        $existing->refresh();
+        $this->assertSame('Existing Member Updated', $existing->member_name);
+        $this->assertSame('ABCDE1234F', $existing->pan_card_no);
+
+        $this->get('/admin/members/update?member_id=' . $existing->member_id)
+            ->assertOk()
+            ->assertDontSeeText('PAN Card Number')
+            ->assertDontSeeText('ABCDE1234F');
     }
 }

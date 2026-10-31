@@ -63,14 +63,8 @@
             </div>
         </x-members.panel>
 
-        <x-members.panel title="KYC and wallet" subtitle="PAN and the withdrawal wallet stay read-only.">
+        <x-members.panel title="Wallet" subtitle="The withdrawal wallet stays read-only.">
             <div class="ds-mm-fields">
-                <div>
-                    <label for="pan_card_no">PAN Card Number</label>
-                    <input type="text" id="pan_card_no" name="pan_card_no" value="{{ $member->pan_card_no }}" readonly aria-readonly="true">
-                    <p class="ds-field-note">{{ $member->pan_card_no ?: 'Not added' }}. Read-only. Changing a PAN needs a verification step that is not available on this account yet.</p>
-                    <div class="validation-message" data-error-for="pan_card_no">@error('pan_card_no'){{ $message }}@enderror</div>
-                </div>
                 <div>
                     <label for="wallet_address">BEP20 Wallet Address</label>
                     <input type="text" id="wallet_address" name="wallet_address" value="{{ $member->wallet_address }}" readonly aria-readonly="true">

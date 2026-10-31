@@ -20,26 +20,11 @@ class MemberRegistrationService
 
     /**
      * @param  array<string, mixed>  $input
-     * @param  array{require_pan?: bool, allow_admin_sponsor?: bool, blank_sponsor_uses_admin?: bool, locked_sponsor?: ?Member, generate_password?: bool}  $options
+     * @param  array{allow_admin_sponsor?: bool, blank_sponsor_uses_admin?: bool, locked_sponsor?: ?Member, generate_password?: bool}  $options
      * @return array{member: Member, temporary_password: ?string}
      */
     public function register(array $input, array $options = []): array
     {
-        $requirePan = (bool) ($options['require_pan'] ?? false);
-        $pan = strtoupper(trim((string) ($input['pan_card_no'] ?? '')));
-
-        if ($requirePan && strlen($pan) !== 10) {
-            throw ValidationException::withMessages([
-                'pan_card_no' => 'PAN Card Number must be exactly 10 characters.',
-            ]);
-        }
-
-        if ($pan !== '' && Member::query()->whereRaw('UPPER(pan_card_no) = ?', [$pan])->count() >= 3) {
-            throw ValidationException::withMessages([
-                'pan_card_no' => 'This PAN card number has already been used 3 times.',
-            ]);
-        }
-
         $mobile = trim((string) ($input['mobile_no'] ?? ''));
         if (Member::query()->where('mobile_no', $mobile)->count() >= 3) {
             throw ValidationException::withMessages([
@@ -57,7 +42,7 @@ class MemberRegistrationService
             'member_name' => trim((string) $input['member_name']),
             'email' => trim((string) $input['email']),
             'mobile_no' => $mobile,
-            'pan_card_no' => $pan !== '' ? $pan : null,
+            'pan_card_no' => null,
             'wallet_address' => filled($input['wallet_address'] ?? null) ? trim((string) $input['wallet_address']) : null,
             'password' => $password === null ? null : Hash::make($password),
             'status' => 'inactive',

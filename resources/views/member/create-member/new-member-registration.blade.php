@@ -73,13 +73,8 @@
             </div>
         </x-members.panel>
 
-        <x-members.panel title="KYC and wallet">
+        <x-members.panel title="Wallet">
             <div class="ds-mm-fields">
-                <div>
-                    <label for="pan_card_no">PAN Card Number <span aria-hidden="true">*</span></label>
-                    <input type="text" id="pan_card_no" name="pan_card_no" placeholder="Enter PAN Card Number" value="{{ old('pan_card_no') }}" required maxlength="10" autocapitalize="characters">
-                    <div class="validation-message" data-error-for="pan_card_no" hidden>@error('pan_card_no'){{ $message }}@enderror</div>
-                </div>
                 <div>
                     <label for="wallet_address">Wallet Address</label>
                     <input type="text" id="wallet_address" name="wallet_address" placeholder="Optional wallet address" value="{{ old('wallet_address') }}" maxlength="255">
@@ -113,7 +108,6 @@
     const sponsorIdInput = document.querySelector('input[name="sponsor_id"]');
     const emailInput = document.querySelector('input[name="email"]');
     const mobileNoInput = document.querySelector('input[name="mobile_no"]');
-    const panCardInput = document.querySelector('input[name="pan_card_no"]');
     const passwordInput = document.getElementById('registrationPassword');
     const passwordConfirmationInput = document.getElementById('registrationPasswordConfirmation');
     const registrationForm = document.getElementById('memberRegistrationForm');
@@ -199,23 +193,6 @@
         return true;
     }
 
-    function validatePanCard(force = false) {
-        const value = (panCardInput?.value || '').trim();
-
-        if (!value) {
-            setError('pan_card_no', shouldShowRequired('pan_card_no', force) ? 'PAN Card Number is required.' : '');
-            return false;
-        }
-
-        if (value.length !== 10) {
-            setError('pan_card_no', 'PAN Card Number must be exactly 10 characters.');
-            return false;
-        }
-
-        setError('pan_card_no', '');
-        return true;
-    }
-
     function validateSponsorId(force = false) {
         const sponsorId = (sponsorIdInput?.value || '').trim().toUpperCase();
 
@@ -261,7 +238,6 @@
             && validateSponsorId(true)
             && validateEmail(true)
             && validateMobileNo(true)
-            && validatePanCard(true)
             && validatePassword(true);
     }
 
@@ -295,16 +271,6 @@
         validateMobileNo(true);
     });
 
-    panCardInput?.addEventListener('input', function () {
-        this.value = this.value.toUpperCase().replace(/\s+/g, '').slice(0, 10);
-        markTouched('pan_card_no');
-        validatePanCard();
-    });
-    panCardInput?.addEventListener('blur', function () {
-        markTouched('pan_card_no');
-        validatePanCard(true);
-    });
-
     passwordInput?.addEventListener('input', function () {
         markTouched('password');
         validatePassword();
@@ -315,7 +281,7 @@
     });
 
     registrationForm?.addEventListener('submit', function (event) {
-        ['member_name', 'sponsor_id', 'email', 'mobile_no', 'pan_card_no', 'password'].forEach(markTouched);
+        ['member_name', 'sponsor_id', 'email', 'mobile_no', 'password'].forEach(markTouched);
         if (!validateAllFields()) {
             event.preventDefault();
         }

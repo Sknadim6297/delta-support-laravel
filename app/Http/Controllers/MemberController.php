@@ -34,7 +34,6 @@ class MemberController extends Controller
                     'sponsor_name' => $member->sponsor_name,
                     'email' => $member->email,
                     'mobile' => $member->mobile_no,
-                    'pan_card_no' => $member->pan_card_no,
                     'investment_amount' => (float) ($member->investment_amount ?? 0),
                     'status' => $member->status,
                     'account_status' => $member->status === 'active' ? 'Active' : 'Inactive',
@@ -398,7 +397,7 @@ class MemberController extends Controller
 
         return response()->streamDownload(function () use ($members) {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Serial No', 'Member ID', 'Member Name', 'Joining Date', 'Sponsor ID', 'Sponsor Name', 'Email', 'Mobile No', 'PAN Card Number', 'Account Status', 'Investment Amount (USDT)']);
+            fputcsv($output, ['Serial No', 'Member ID', 'Member Name', 'Joining Date', 'Sponsor ID', 'Sponsor Name', 'Email', 'Mobile No', 'Account Status', 'Investment Amount (USDT)']);
 
             foreach ($members as $index => $member) {
                 fputcsv($output, [
@@ -410,7 +409,6 @@ class MemberController extends Controller
                     $member->sponsor_name,
                     $member->email,
                     $member->mobile_no,
-                    $member->pan_card_no,
                     $member->status === 'active' ? 'Active' : 'Inactive',
                     $this->formatUsdt($member->investment_amount ?? 0),
                 ]);
@@ -489,7 +487,6 @@ class MemberController extends Controller
             'sponsor_id' => ['nullable', 'string'],
             'wallet_address' => ['nullable', 'string', 'max:255'],
             'mobile_no' => ['required', 'string', 'regex:/^[0-9+\-\s]+$/', 'min:10', 'max:15'],
-            'pan_card_no' => ['required', 'string', 'max:10'],
             'email' => $member
                 ? ['required', 'email', Rule::unique('members', 'email')->ignore($member->id)]
                 : ['required', 'email', 'unique:members,email'],
@@ -526,7 +523,6 @@ class MemberController extends Controller
             'name' => $member->member_name,
             'wallet' => $member->wallet_address,
             'mobile' => $member->mobile_no,
-            'pan_card_no' => $member->pan_card_no,
             'email' => $member->email,
             'account_status' => $member->status,
             'registered_at' => $member->created_at?->format('d M Y'),
@@ -612,14 +608,12 @@ class MemberController extends Controller
             'sponsor_id' => strtoupper(trim((string) $request->input('sponsor_id'))),
             'email' => trim((string) $request->input('email')),
             'mobile_no' => trim((string) $request->input('mobile_no')),
-            'pan_card_no' => strtoupper(trim((string) $request->input('pan_card_no'))),
             'wallet_address' => $wallet === '' ? null : $wallet,
         ]);
 
         $validated = $request->validate($this->memberValidationRules());
 
         $result = app(MemberRegistrationService::class)->register($validated, [
-            'require_pan' => true,
             'allow_admin_sponsor' => true,
             'blank_sponsor_uses_admin' => true,
         ]);
@@ -662,7 +656,6 @@ class MemberController extends Controller
             'member_name' => trim((string) $request->input('member_name')),
             'email' => trim((string) $request->input('email')),
             'mobile_no' => trim((string) $request->input('mobile_no')),
-            'pan_card_no' => strtoupper(trim((string) $request->input('pan_card_no'))),
             'wallet_address' => $wallet === '' ? null : $wallet,
         ]);
 
@@ -678,20 +671,6 @@ class MemberController extends Controller
 
         $validated = $request->validate($this->memberValidationRules($member));
 
-        if (mb_strlen(trim((string) $validated['pan_card_no'])) !== 10) {
-            return back()->withErrors(['pan_card_no' => 'PAN Card Number must be exactly 10 characters.'])->withInput();
-        }
-
-        $validated['pan_card_no'] = strtoupper(trim((string) $validated['pan_card_no']));
-
-        $panCount = Member::whereRaw('UPPER(pan_card_no) = ?', [$validated['pan_card_no']])
-            ->whereKeyNot($member->id)
-            ->count();
-
-        if ($panCount >= 3) {
-            return back()->withErrors(['pan_card_no' => 'This PAN card number has already been used 3 times.'])->withInput();
-        }
-
         $mobileNoValue = trim((string) $validated['mobile_no']);
         $mobileCount = Member::where('mobile_no', $mobileNoValue)
             ->whereKeyNot($member->id)
@@ -705,7 +684,6 @@ class MemberController extends Controller
             'member_name' => $validated['member_name'],
             'wallet_address' => $validated['wallet_address'] ?? null,
             'mobile_no' => $validated['mobile_no'],
-            'pan_card_no' => $validated['pan_card_no'],
             'email' => $validated['email'],
         ];
 
