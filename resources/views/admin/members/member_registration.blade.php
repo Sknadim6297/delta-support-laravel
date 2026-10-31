@@ -82,11 +82,11 @@
                 </div>
             </x-members.panel>
 
-            <x-members.panel title="Security" subtitle="A password is optional. The member can use Forgot Password after the account is created.">
+            <x-members.panel title="Security" subtitle="The password is emailed to the member when the account is created. Leave it blank to send a generated password.">
                 <div class="ds-mm-fields">
                     <div>
                         <label for="registrationPassword">Password</label>
-                        <input type="password" id="registrationPassword" name="password" placeholder="Optional password" autocomplete="new-password">
+                        <input type="password" id="registrationPassword" name="password" placeholder="Leave blank to email a generated password" autocomplete="new-password">
                         <div class="validation-message" data-error-for="password" hidden>
                             @error('password'){{ $message }}@enderror
                         </div>

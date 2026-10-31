@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\MemberWelcomeMail;
 use App\Models\Member;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,7 +29,10 @@ class SponsorRegistrationFlowTest extends TestCase
             ->get(route('admin.members.registration'))
             ->assertOk()
             ->assertSeeText('Member Registration')
+            ->assertSeeText('The password is emailed to the member when the account is created.')
             ->assertSee('name="_token"', false);
+
+        Mail::fake();
 
         $this->actingAs($admin)
             ->post(route('admin.members.store'), [
@@ -40,7 +44,15 @@ class SponsorRegistrationFlowTest extends TestCase
                 'password' => 'secret1',
                 'password_confirmation' => 'secret1',
             ])
-            ->assertRedirect(route('admin.members.registration'));
+            ->assertRedirect(route('admin.members.registration'))
+            ->assertSessionHas('success', function (string $message): bool {
+                return str_contains($message, 'sent to new@example.com')
+                    && ! str_contains($message, 'secret1');
+            });
+
+        Mail::assertSent(MemberWelcomeMail::class, function (MemberWelcomeMail $mail): bool {
+            return $mail->hasTo('new@example.com') && $mail->temporaryPassword === 'secret1';
+        });
 
         $member = Member::where('email', 'new@example.com')->firstOrFail();
         $this->assertMatchesRegularExpression('/^ST\d{6}$/', $member->member_id);
@@ -113,9 +125,12 @@ class SponsorRegistrationFlowTest extends TestCase
             ->get(route('member.registration'))
             ->assertOk()
             ->assertSeeText('Register New Member')
+            ->assertSeeText('The password is emailed to the member when the account is created.')
             ->assertSee('value="ST100001"', false)
             ->assertSee('readonly', false)
             ->assertSee('name="_token"', false);
+
+        Mail::fake();
 
         $this->withSession(['member_context_id' => $sponsor->member_id])
             ->post(route('member.registration.store'), [
@@ -125,9 +140,17 @@ class SponsorRegistrationFlowTest extends TestCase
                 'mobile_no' => '9876543213',
                 'pan_card_no' => 'ABCDE1234F',
             ])
-            ->assertRedirect(route('member.registration'));
+            ->assertRedirect(route('member.registration'))
+            ->assertSessionHas('success', function (string $message): bool {
+                return str_contains($message, 'sent to direct@example.com');
+            });
 
         $child = Member::where('email', 'direct@example.com')->firstOrFail();
+        Mail::assertSent(MemberWelcomeMail::class, function (MemberWelcomeMail $mail) use ($child): bool {
+            return $mail->hasTo('direct@example.com')
+                && $mail->memberId === $child->member_id
+                && Hash::check($mail->temporaryPassword, $child->password);
+        });
         $this->assertSame($sponsor->member_id, $child->sponsor_id);
         $this->assertSame('inactive', $child->status);
         $this->assertNotSame($sponsor->member_id, $child->member_id);

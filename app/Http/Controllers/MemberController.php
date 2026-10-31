@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\MemberWelcomeMail;
 use App\Models\Member;
 use App\Models\Investment;
 use App\Models\InvestmentWithdrawal;
@@ -12,8 +13,10 @@ use App\Models\RoiTransaction;
 use App\Services\MemberRegistrationService;
 use App\Services\RankService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class MemberController extends Controller
 {
@@ -454,6 +457,21 @@ class MemberController extends Controller
         return \App\Support\MoneyDisplay::usdt($amount);
     }
 
+    private function passwordEmailWasSent(Member $member, string $password): bool
+    {
+        try {
+            Mail::to($member->email)->send(new MemberWelcomeMail(
+                $member->member_id,
+                $member->member_name,
+                $password,
+            ));
+
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     protected function memberValidationRules(?Member $member = null): array
     {
         return [
@@ -589,19 +607,23 @@ class MemberController extends Controller
         ]);
 
         $validated = $request->validate($this->memberValidationRules());
+        $typedPassword = filled($validated['password'] ?? null) ? (string) $validated['password'] : null;
 
         $result = app(MemberRegistrationService::class)->register($validated, [
             'require_pan' => true,
             'allow_admin_sponsor' => true,
             'blank_sponsor_uses_admin' => true,
+            'generate_password' => $typedPassword === null,
         ]);
+        $member = $result['member'];
+        $password = $typedPassword ?? (string) $result['temporary_password'];
 
         $request->session()->forget('generated_member_id');
 
-        $message = 'Member registration submitted successfully. Member ID: ' . $result['member']->member_id;
-        if (! filled($validated['password'] ?? null)) {
-            $message .= ' No password was set. The member can create one from Forgot Password.';
-        }
+        $message = 'Member registration submitted successfully. Member ID: ' . $member->member_id;
+        $message .= $this->passwordEmailWasSent($member, $password)
+            ? ' The password was sent to ' . $member->email . '.'
+            : ' The account was created, but the password email could not be sent.';
 
         return redirect()->route('admin.members.registration')
             ->with('success', $message);

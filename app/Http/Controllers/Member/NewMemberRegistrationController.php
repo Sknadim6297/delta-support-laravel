@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
+use App\Mail\MemberWelcomeMail;
 use App\Models\Member;
 use App\Services\MemberRegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class NewMemberRegistrationController extends Controller
 {
@@ -77,15 +80,36 @@ class NewMemberRegistrationController extends Controller
             return redirect()->route('member.registration')->withErrors($validator)->withInput();
         }
 
-        $result = app(MemberRegistrationService::class)->register($validator->validated(), [
+        $validated = $validator->validated();
+        $typedPassword = filled($validated['password'] ?? null) ? (string) $validated['password'] : null;
+        $result = app(MemberRegistrationService::class)->register($validated, [
             'require_pan' => true,
             'locked_sponsor' => $currentMember,
+            'generate_password' => $typedPassword === null,
         ]);
         $member = $result['member'];
+        $password = $typedPassword ?? (string) $result['temporary_password'];
+        $emailSent = true;
+
+        try {
+            Mail::to($member->email)->send(new MemberWelcomeMail(
+                $member->member_id,
+                $member->member_name,
+                $password,
+            ));
+        } catch (Throwable) {
+            $emailSent = false;
+        }
+
+        $message = 'Registration successful. The new account is inactive. Member ID: ' . $member->member_id . '. ';
+        $message .= $emailSent
+            ? 'The password was sent to ' . $member->email . '.'
+            : 'The account was created, but the password email could not be sent.';
+        $message .= ' Package benefits stay locked until activation is verified.';
 
         return redirect()
             ->route('member.registration')
-            ->with('success', 'Registration successful. The new account is inactive. Share the Member ID so the member can log in. Package benefits stay locked until activation is verified.')
+            ->with('success', $message)
             ->with('registration_receipt', [
                 'member_id' => $member->member_id,
                 'member_name' => $member->member_name,
