@@ -28,7 +28,7 @@
                     <td>{{ $payout->payout_network ?: ($payout->network ?: 'Not recorded') }}</td>
                     <td>{{ $payout->payout_txid }}</td>
                     <td class="ds-money">{{ \App\Support\MoneyDisplay::format($payout->net_amount ?? $payout->amount, $payout->denomination) }}</td>
-                    <td>{{ $payout->updated_at?->format('d M Y') }}</td>
+                    <td>{{ $payout->paid_at?->timezone('Asia/Kolkata')->format('d M Y H:i') ?: $payout->updated_at?->timezone('Asia/Kolkata')->format('d M Y H:i') }}</td>
                 </tr>
             @empty
                 <tr><td class="ds-empty-cell" colspan="6">No payouts recorded yet.</td></tr>

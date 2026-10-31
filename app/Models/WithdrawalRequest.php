@@ -25,6 +25,7 @@ class WithdrawalRequest extends Model
         'status',
         'payout_network',
         'payout_txid',
+        'paid_at',
         'rejection_reason',
     ];
 
@@ -32,6 +33,7 @@ class WithdrawalRequest extends Model
         'amount' => 'decimal:4',
         'charge_amount' => 'decimal:4',
         'net_amount' => 'decimal:4',
+        'paid_at' => 'datetime',
     ];
 
     protected static function booted(): void

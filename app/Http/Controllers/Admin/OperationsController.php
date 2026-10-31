@@ -21,6 +21,7 @@ use App\Services\FinancialHistoryQuery;
 use App\Services\FinancialScheduleRegistrar;
 use App\Services\ReferralLevelEligibility;
 use App\Services\WalletBalanceReconciliation;
+use App\Services\WithdrawalBalances;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +40,7 @@ class OperationsController extends Controller
         return view('admin.wallets.overview', [
             'members' => $members,
             'totals' => $this->walletTotals(),
+            'withdrawalBook' => app(WithdrawalBalances::class)->book(),
             'roiCount' => RoiTransaction::query()->count() + PackageRoiAccrual::query()->count(),
             'levelCount' => LevelCommissionTransaction::query()->count() + PackageLevelAccrual::query()->count(),
             'notices' => app(WalletBalanceReconciliation::class)->notices(),

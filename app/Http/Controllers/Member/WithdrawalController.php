@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\WithdrawalRequest;
 use App\Models\WithdrawalSetting;
-use App\Services\FinancialControls;
 use App\Services\WithdrawalWorkflow;
 use App\Support\SecurityPinInput;
 use Illuminate\Http\RedirectResponse;
@@ -16,17 +15,26 @@ use RuntimeException;
 
 class WithdrawalController extends Controller
 {
-    public function requestForm(Request $request): View
+    public function requestForm(Request $request, WithdrawalWorkflow $workflow): View
     {
         $member = $this->member($request);
         $settings = WithdrawalSetting::current();
+        $balances = [];
+        foreach (['roi', 'working', 'activation'] as $wallet) {
+            $column = $wallet.'_wallet_amount';
+            $balances[$wallet] = [
+                'stored' => bcadd((string) ($member->{$column} ?? '0'), '0', 4),
+                'available' => $workflow->availableBalance($member, $wallet),
+            ];
+        }
 
         return view('member.withdrawals.request', [
             'member' => $member,
             'settings' => $settings,
             'wallets' => $settings->configuredWallets(),
             'networks' => $settings->configuredNetworks(),
-            'requestsEnabled' => app(FinancialControls::class)->enabled('withdrawal_requests_enabled'),
+            'balances' => $balances,
+            'requestsEnabled' => $workflow->requestsOpen($settings),
         ]);
     }
 
@@ -47,7 +55,7 @@ class WithdrawalController extends Controller
             abort(403, $exception->getMessage());
         }
 
-        return redirect()->route('member.withdrawals.history')->with('status', 'The withdrawal request was reserved. No external payout was sent.');
+        return redirect()->route('member.withdrawals.history')->with('success', 'The withdrawal request was reserved. No external payout was sent.');
     }
 
     public function history(Request $request): View

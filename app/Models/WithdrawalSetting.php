@@ -40,8 +40,10 @@ class WithdrawalSetting extends Model
     protected static function booted(): void
     {
         static::saving(function (self $settings): void {
-            $settings->submissions_enabled = false;
             $settings->denomination = MoneyDisplay::USDT;
+            if ($settings->submissions_enabled && $settings->configurationErrors() !== []) {
+                $settings->submissions_enabled = false;
+            }
         });
     }
 
@@ -56,7 +58,7 @@ class WithdrawalSetting extends Model
 
     public function isReady(): bool
     {
-        return false;
+        return (bool) $this->submissions_enabled && $this->configurationErrors() === [];
     }
 
     /**
@@ -85,9 +87,13 @@ class WithdrawalSetting extends Model
     }
 
     /**
+     * Rules required before an administrator can turn submissions on.
+     * Daily limits, address policy, and cancellation policy stay in the
+     * database for older rows and are not required.
+     *
      * @return array<string, string>
      */
-    public function enablementErrors(): array
+    public function configurationErrors(): array
     {
         $errors = [];
 
@@ -97,42 +103,41 @@ class WithdrawalSetting extends Model
         if ($this->minimum_amount === null || bccomp((string) $this->minimum_amount, '0', 4) <= 0) {
             $errors['minimum_amount'] = 'Enter the minimum withdrawal in USDT.';
         }
+        if ($this->maximum_amount === null || bccomp((string) $this->maximum_amount, '0', 4) <= 0) {
+            $errors['maximum_amount'] = 'Enter the maximum withdrawal in USDT.';
+        } elseif ($this->minimum_amount !== null && bccomp((string) $this->maximum_amount, (string) $this->minimum_amount, 4) < 0) {
+            $errors['maximum_amount'] = 'The maximum must be at least the minimum withdrawal.';
+        }
         if (! in_array($this->charge_type, self::CHARGE_TYPES, true)) {
-            $errors['charge_type'] = 'Choose an approved withdrawal charge before submissions can be enabled.';
+            $errors['charge_type'] = 'Choose a withdrawal charge before submissions can be enabled.';
         } elseif ($this->charge_type === 'none' && $this->charge_value !== null && bccomp((string) $this->charge_value, '0', 4) !== 0) {
             $errors['charge_value'] = 'A charge value does not apply when the charge type is none.';
         } elseif (in_array($this->charge_type, ['flat', 'percent'], true) && ($this->charge_value === null || bccomp((string) $this->charge_value, '0', 4) <= 0)) {
-            $errors['charge_value'] = 'Enter the approved charge value.';
-        }
-        if ($this->daily_limit === null || bccomp((string) $this->daily_limit, '0', 4) <= 0) {
-            $errors['daily_limit'] = 'Enter the approved daily limit. An unset limit cannot enable submissions.';
-        }
-        if ($this->monthly_limit === null || bccomp((string) $this->monthly_limit, '0', 4) <= 0) {
-            $errors['monthly_limit'] = 'Enter the approved monthly limit. An unset limit cannot enable submissions.';
+            $errors['charge_value'] = 'Enter the charge value.';
+        } elseif ($this->charge_type === 'percent' && bccomp((string) $this->charge_value, '100', 4) > 0) {
+            $errors['charge_value'] = 'A percentage charge cannot exceed 100.';
+        } elseif ($this->charge_type === 'flat' && $this->minimum_amount !== null && bccomp((string) $this->charge_value, (string) $this->minimum_amount, 4) >= 0) {
+            $errors['charge_value'] = 'A flat charge must be less than the minimum withdrawal.';
         }
 
         $wallets = array_values(array_filter((array) $this->eligible_wallets, 'is_string'));
         if ($wallets === [] || array_diff($wallets, self::WALLETS) !== []) {
-            $errors['eligible_wallets'] = 'Select the wallets that are eligible. This choice is still unset.';
+            $errors['eligible_wallets'] = 'Select at least one eligible source wallet.';
         }
 
-        $networks = array_values(array_filter((array) $this->supported_networks, 'is_string'));
-        if ($networks === [] || collect($networks)->contains(fn (string $network): bool => PaymentSetting::isPlaceholder($network) || PaymentSetting::containsSecret($network))) {
-            $errors['supported_networks'] = 'Enter at least one real blockchain network. A placeholder network cannot enable submissions.';
+        $networks = $this->configuredNetworks();
+        if ($networks === []) {
+            $errors['network'] = 'Enter one real blockchain network. A placeholder network cannot enable submissions.';
         }
-
-        $addressPolicy = trim((string) $this->address_validation_policy);
-        if ($addressPolicy === '' || PaymentSetting::containsSecret($addressPolicy)) {
-            $errors['address_validation_policy'] = 'Enter the address validation policy. Do not store a private key or seed phrase.';
-        }
-
-        $cancellation = trim((string) $this->member_cancellation_policy);
-        if ($cancellation === '' || PaymentSetting::containsSecret($cancellation)) {
-            $errors['member_cancellation_policy'] = 'Enter the member cancellation policy.';
-        }
-
-        $errors['submissions_enabled'] = 'Withdrawal submissions cannot be enabled in this phase.';
 
         return $errors;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function enablementErrors(): array
+    {
+        return $this->configurationErrors();
     }
 }

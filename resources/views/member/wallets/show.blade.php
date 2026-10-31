@@ -5,8 +5,10 @@
 <div>
     <p class="ds-lead">Your stored USDT balance. This page cannot credit or withdraw funds.</p>
     <article>
-        <p>Available balance</p>
-        <p>{{ \App\Support\MoneyDisplay::usdt($balance) }}</p>
+        <p>Total balance {{ \App\Support\MoneyDisplay::usdt($figures['stored']) }}</p>
+        <p>Reserved balance {{ \App\Support\MoneyDisplay::usdt($figures['reserved']) }}</p>
+        <p>Available balance {{ \App\Support\MoneyDisplay::usdt($figures['available']) }}</p>
+        <p>Paid withdrawals {{ \App\Support\MoneyDisplay::usdt($figures['paid']) }}</p>
         <p>{{ $count }} stored {{ $wallet === 'roi' ? 'ROI' : 'level income' }} {{ $count === 1 ? 'record' : 'records' }}.</p>
         <a href="{{ $wallet === 'roi' ? route('member.income.roi') : route('member.income.level') }}">View history</a>
     </article>

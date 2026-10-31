@@ -2,21 +2,29 @@
 @section('title', 'Withdrawal Settings')
 @section('page-title', 'Withdrawal Settings')
 @section('content')
+@php
+    $chargeType = old('charge_type', $settings->charge_type);
+    $showCharge = in_array($chargeType, ['flat', 'percent'], true);
+    $networkValue = old('network', $settings->configuredNetworks()[0] ?? '');
+    $enabled = (string) old('submissions_enabled', $settings->submissions_enabled ? '1' : '0') === '1';
+@endphp
 <div class="ds-finance">
-    <x-ui.page-header
-        kicker="Withdrawals"
-        title="Withdrawal Settings"
-        lead="These values are a draft. 20.0000 USDT is only a proposed minimum. Saving this form does not open withdrawal requests, place a hold, debit a wallet, or send a payout."
-    />
     @if($errors->any())
         <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
     @endif
-    <form class="ds-settings-form" method="POST" action="{{ route('admin.withdrawals.settings.update') }}" onsubmit="return confirm('Save this withdrawal settings draft? Submissions, holds, and payouts stay disabled.');">
+    <form class="ds-settings-form" method="POST" action="{{ route('admin.withdrawals.settings.update') }}">
         @csrf
         @method('PUT')
         <div class="ds-field-grid">
-            <label><span>Denomination</span><input value="USDT" readonly></label>
-            <label><span>Submission status</span><input value="Disabled" readonly></label>
+            <div class="ds-span-all">
+                <input type="hidden" name="submissions_enabled" value="0">
+                <label class="ds-switch">
+                    <input type="checkbox" name="submissions_enabled" value="1" @checked($enabled)>
+                    <span class="ds-switch-ui" aria-hidden="true"></span>
+                    <span>Enable withdrawals</span>
+                </label>
+                <p class="ds-switch-note">Members can submit a USDT request only while this is on. The amount stays reserved until you approve or reject it. No blockchain payout is sent automatically.</p>
+            </div>
             <label>
                 <span>Minimum withdrawal (USDT)</span>
                 <input name="minimum_amount" value="{{ old('minimum_amount', $settings->minimum_amount) }}" inputmode="decimal" required>
@@ -24,33 +32,22 @@
             </label>
             <label>
                 <span>Maximum withdrawal (USDT)</span>
-                <input name="maximum_amount" value="{{ old('maximum_amount', $settings->maximum_amount) }}" inputmode="decimal" placeholder="Unset">
+                <input name="maximum_amount" value="{{ old('maximum_amount', $settings->maximum_amount) }}" inputmode="decimal">
                 @error('maximum_amount')<span class="validation-message">{{ $message }}</span>@enderror
             </label>
             <label>
-                <span>Charge type</span>
-                <select name="charge_type">
-                    <option value="" @selected(old('charge_type', $settings->charge_type) === null || old('charge_type', $settings->charge_type) === '')>Unset</option>
-                    <option value="none" @selected(old('charge_type', $settings->charge_type) === 'none')>No charge</option>
-                    <option value="flat" @selected(old('charge_type', $settings->charge_type) === 'flat')>Flat USDT amount</option>
-                    <option value="percent" @selected(old('charge_type', $settings->charge_type) === 'percent')>Percentage</option>
+                <span>Withdrawal charge type</span>
+                <select name="charge_type" data-charge-type>
+                    <option value="none" @selected($chargeType === 'none' || $chargeType === null || $chargeType === '')>None</option>
+                    <option value="flat" @selected($chargeType === 'flat')>Flat</option>
+                    <option value="percent" @selected($chargeType === 'percent')>Percentage</option>
                 </select>
                 @error('charge_type')<span class="validation-message">{{ $message }}</span>@enderror
             </label>
-            <label>
+            <label data-charge-value @if(! $showCharge) hidden @endif>
                 <span>Charge value</span>
-                <input name="charge_value" value="{{ old('charge_value', $settings->charge_value) }}" inputmode="decimal" placeholder="Unset">
+                <input name="charge_value" value="{{ old('charge_value', $settings->charge_value) }}" inputmode="decimal" placeholder="0.0000">
                 @error('charge_value')<span class="validation-message">{{ $message }}</span>@enderror
-            </label>
-            <label>
-                <span>Daily limit (USDT)</span>
-                <input name="daily_limit" value="{{ old('daily_limit', $settings->daily_limit) }}" inputmode="decimal" placeholder="Unset">
-                @error('daily_limit')<span class="validation-message">{{ $message }}</span>@enderror
-            </label>
-            <label>
-                <span>Monthly limit (USDT)</span>
-                <input name="monthly_limit" value="{{ old('monthly_limit', $settings->monthly_limit) }}" inputmode="decimal" placeholder="Unset">
-                @error('monthly_limit')<span class="validation-message">{{ $message }}</span>@enderror
             </label>
             <fieldset class="ds-span-all">
                 <legend>Eligible source wallets</legend>
@@ -65,36 +62,24 @@
                 @error('eligible_wallets')<span class="validation-message">{{ $message }}</span>@enderror
             </fieldset>
             <label class="ds-span-all">
-                <span>Supported networks</span>
-                <textarea name="networks" rows="3" maxlength="2000" placeholder="Enter one network per line. None is assumed.">{{ old('networks', implode("\n", $settings->supported_networks ?? [])) }}</textarea>
-                @error('networks')<span class="validation-message">{{ $message }}</span>@enderror
-            </label>
-            <label class="ds-span-all">
-                <span>Address validation policy</span>
-                <textarea name="address_validation_policy" rows="3" maxlength="5000" placeholder="Unset. Describe how a public receiving address is checked.">{{ old('address_validation_policy', $settings->address_validation_policy) }}</textarea>
-                @error('address_validation_policy')<span class="validation-message">{{ $message }}</span>@enderror
-            </label>
-            <label class="ds-span-all">
-                <span>Member cancellation policy</span>
-                <textarea name="member_cancellation_policy" rows="3" maxlength="5000" placeholder="Unset. Describe whether a member can cancel a pending request.">{{ old('member_cancellation_policy', $settings->member_cancellation_policy) }}</textarea>
-                @error('member_cancellation_policy')<span class="validation-message">{{ $message }}</span>@enderror
-            </label>
-            <div class="ds-form-note ds-span-all">
-                <p>Submissions stay disabled.</p>
-                <ul>
-                    @foreach ($settings->enablementErrors() as $message)
-                        <li>{{ $message }}</li>
-                    @endforeach
-                </ul>
-            </div>
-            <label class="ds-check ds-span-all">
-                <input type="checkbox" name="submissions_enabled" value="1" disabled>
-                <span>Enable withdrawal submissions</span>
+                <span>Supported blockchain network</span>
+                <input name="network" value="{{ $networkValue }}" maxlength="80" placeholder="TRC20" autocomplete="off">
+                @error('network')<span class="validation-message">{{ $message }}</span>@enderror
             </label>
         </div>
         <div class="ds-actions">
-            <button type="submit">Save Draft</button>
+            <button type="submit">Save Changes</button>
         </div>
     </form>
 </div>
+<script>
+    document.querySelector('[data-charge-type]')?.addEventListener('change', function (event) {
+        const field = document.querySelector('[data-charge-value]');
+        if (!field) {
+            return;
+        }
+        const show = event.target.value === 'flat' || event.target.value === 'percent';
+        field.hidden = !show;
+    });
+</script>
 @endsection

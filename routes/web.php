@@ -238,6 +238,7 @@
             Route::get('/payouts', 'payouts')->name('payouts');
             Route::post('/requests/{withdrawalRequest}/approve', 'approve')->name('approve');
             Route::post('/requests/{withdrawalRequest}/reject', 'reject')->name('reject');
+            Route::post('/requests/{withdrawalRequest}/complete', 'complete')->name('complete');
             Route::get('/requests/{withdrawalRequest}', 'show')->name('show');
         });
 

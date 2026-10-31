@@ -10,17 +10,23 @@ use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
 use App\Services\FinancialHistoryQuery;
 use App\Services\ReferralLevelEligibility;
+use App\Services\WithdrawalBalances;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class WalletController extends Controller
 {
-    public function overview(Request $request): View
+    public function overview(Request $request, WithdrawalBalances $balances): View
     {
         $member = $this->member($request);
 
         return view('member.wallets.overview', [
             'member' => $member,
+            'wallets' => [
+                'roi' => $balances->snapshot($member, 'roi'),
+                'working' => $balances->snapshot($member, 'working'),
+                'activation' => $balances->snapshot($member, 'activation'),
+            ],
             'roiCount' => RoiTransaction::query()->where('member_id', $member->member_id)->count()
                 + PackageRoiAccrual::query()->where('member_id', $member->member_id)->count(),
             'levelCount' => LevelCommissionTransaction::query()->where('member_id', $member->member_id)->count()
@@ -28,7 +34,7 @@ class WalletController extends Controller
         ]);
     }
 
-    public function wallet(Request $request, string $wallet): View
+    public function wallet(Request $request, string $wallet, WithdrawalBalances $balances): View
     {
         abort_unless(in_array($wallet, ['roi', 'working'], true), 404);
         $member = $this->member($request);
@@ -38,6 +44,7 @@ class WalletController extends Controller
             'member' => $member,
             'wallet' => $wallet,
             'balance' => $member->{$column},
+            'figures' => $balances->snapshot($member, $wallet),
             'count' => $wallet === 'roi'
                 ? RoiTransaction::query()->where('member_id', $member->member_id)->count()
                     + PackageRoiAccrual::query()->where('member_id', $member->member_id)->count()

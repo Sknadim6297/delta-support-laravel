@@ -43,18 +43,18 @@ class WithdrawalFoundationTest extends TestCase
             ->assertSeeText('Withdrawal Overview')
             ->assertSeeText('Withdrawal Requests')
             ->assertSeeText('Payout History')
-            ->assertSeeText('Submissions stay disabled.')
-            ->assertSeeText('20.0000')
-            ->assertSee('value="USDT"', false)
+            ->assertSeeText('Enable withdrawals')
+            ->assertSee('value="20.0000"', false)
             ->assertSee('name="submissions_enabled"', false)
+            ->assertDontSee('name="daily_limit"', false)
+            ->assertDontSee('name="monthly_limit"', false)
+            ->assertDontSee('name="address_validation_policy"', false)
             ->assertDontSee('admin/withdrawals/approve', false);
 
         $this->actingAs(User::factory()->create(['is_admin' => true]))
             ->put(route('admin.withdrawals.settings.update'), [
                 'minimum_amount' => '25.5000',
-                'networks' => "Admin selected network\nAdmin selected network",
-                'address_validation_policy' => 'Compare the public address with the network format supplied by the administrator.',
-                'member_cancellation_policy' => 'Cancellation remains unset until the client confirms it.',
+                'network' => 'Admin selected network',
             ])->assertRedirect(route('admin.withdrawals.settings'));
 
         $settings = WithdrawalSetting::current()->fresh();
@@ -91,8 +91,8 @@ class WithdrawalFoundationTest extends TestCase
         $this->actingAs($admin)->from(route('admin.withdrawals.settings'))
             ->put(route('admin.withdrawals.settings.update'), [
                 'minimum_amount' => '20.0000',
-                'address_validation_policy' => 'store the wallet private key',
-            ])->assertSessionHasErrors('address_validation_policy');
+                'network' => 'store the wallet private key',
+            ])->assertSessionHasErrors('network');
 
         $this->assertFalse(WithdrawalSetting::current()->fresh()->submissions_enabled);
     }
@@ -105,7 +105,7 @@ class WithdrawalFoundationTest extends TestCase
                 'minimum_amount' => '20.0000',
                 'submissions_enabled' => '1',
             ])->assertRedirect(route('admin.withdrawals.settings'))
-            ->assertSessionHasErrors(['submissions_enabled', 'daily_limit', 'supported_networks']);
+            ->assertSessionHasErrors(['submissions_enabled', 'maximum_amount', 'charge_type', 'eligible_wallets', 'network']);
 
         $settings = WithdrawalSetting::current()->fresh();
         $this->assertFalse($settings->submissions_enabled);
@@ -166,6 +166,7 @@ class WithdrawalFoundationTest extends TestCase
             'admin/withdrawals/requests',
             'admin/withdrawals/requests/{withdrawalRequest}',
             'admin/withdrawals/requests/{withdrawalRequest}/approve',
+            'admin/withdrawals/requests/{withdrawalRequest}/complete',
             'admin/withdrawals/requests/{withdrawalRequest}/reject',
             'admin/withdrawals/settings',
         ], $uris);

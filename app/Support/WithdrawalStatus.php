@@ -35,14 +35,15 @@ class WithdrawalStatus
     ];
 
     /**
-     * Permitted transitions. None of these move a balance.
+     * Permitted transitions. The status map itself does not move a balance.
+     * Manual settlement debits the wallet in the same transaction that records Paid.
      *
      * @var array<string, list<string>>
      */
     public const TRANSITIONS = [
         self::DRAFT => [self::PENDING_REVIEW],
         self::PENDING_REVIEW => [self::APPROVED, self::REJECTED, self::CANCELLED],
-        self::APPROVED => [self::PROCESSING],
+        self::APPROVED => [self::PROCESSING, self::COMPLETED],
         self::PROCESSING => [self::COMPLETED, self::FAILED],
         self::COMPLETED => [],
         self::REJECTED => [],
@@ -57,7 +58,7 @@ class WithdrawalStatus
             self::PENDING_REVIEW => 'Pending Review',
             self::APPROVED => 'Approved',
             self::PROCESSING => 'Processing',
-            self::COMPLETED => 'Completed',
+            self::COMPLETED => 'Paid',
             self::REJECTED => 'Rejected',
             self::CANCELLED => 'Cancelled',
             self::FAILED => 'Failed',

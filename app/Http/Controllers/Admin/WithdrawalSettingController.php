@@ -27,13 +27,9 @@ class WithdrawalSettingController extends Controller
             'maximum_amount' => ['nullable', 'numeric', 'gt:0', 'decimal:0,4'],
             'charge_type' => ['nullable', 'in:none,flat,percent'],
             'charge_value' => ['nullable', 'numeric', 'gte:0', 'decimal:0,4'],
-            'daily_limit' => ['nullable', 'numeric', 'gt:0', 'decimal:0,4'],
-            'monthly_limit' => ['nullable', 'numeric', 'gt:0', 'decimal:0,4'],
             'eligible_wallets' => ['nullable', 'array'],
             'eligible_wallets.*' => ['in:roi,working,activation'],
-            'networks' => ['nullable', 'string', 'max:2000'],
-            'address_validation_policy' => ['nullable', 'string', 'max:5000'],
-            'member_cancellation_policy' => ['nullable', 'string', 'max:5000'],
+            'network' => ['nullable', 'string', 'max:80'],
             'submissions_enabled' => ['nullable', 'boolean'],
         ]);
 
@@ -55,32 +51,17 @@ class WithdrawalSettingController extends Controller
 
         $minimum = $this->money($data['minimum_amount']);
         $maximum = $this->blankToNull($data['maximum_amount'] ?? null);
-        $daily = $this->blankToNull($data['daily_limit'] ?? null);
-        $monthly = $this->blankToNull($data['monthly_limit'] ?? null);
         if ($maximum !== null && bccomp($maximum, $minimum, 4) < 0) {
             throw ValidationException::withMessages([
                 'maximum_amount' => 'The maximum must be at least the minimum withdrawal.',
             ]);
         }
-        if ($daily !== null && $monthly !== null && bccomp($monthly, $daily, 4) < 0) {
-            throw ValidationException::withMessages([
-                'monthly_limit' => 'The monthly limit must be at least the daily limit.',
-            ]);
-        }
 
-        $networks = $this->networks($data['networks'] ?? null);
-        $policy = $this->textOrNull($data['address_validation_policy'] ?? null);
-        $cancellation = $this->textOrNull($data['member_cancellation_policy'] ?? null);
-        foreach ([
-            'networks' => implode(' ', $networks),
-            'address_validation_policy' => (string) $policy,
-            'member_cancellation_policy' => (string) $cancellation,
-        ] as $field => $value) {
-            if (PaymentSetting::containsSecret($value)) {
-                throw ValidationException::withMessages([
-                    $field => 'Do not store a private key or seed phrase.',
-                ]);
-            }
+        $network = $this->network($data['network'] ?? null);
+        if ($network !== null && PaymentSetting::containsSecret($network)) {
+            throw ValidationException::withMessages([
+                'network' => 'Do not store a private key or seed phrase.',
+            ]);
         }
 
         $settings = WithdrawalSetting::current();
@@ -89,35 +70,26 @@ class WithdrawalSettingController extends Controller
             'maximum_amount' => $maximum,
             'charge_type' => $chargeType,
             'charge_value' => $chargeValue,
-            'daily_limit' => $daily,
-            'monthly_limit' => $monthly,
             'eligible_wallets' => array_values($data['eligible_wallets'] ?? []) ?: null,
-            'supported_networks' => $networks !== [] ? $networks : null,
-            'address_validation_policy' => $policy,
-            'member_cancellation_policy' => $cancellation,
-            'submissions_enabled' => false,
+            'supported_networks' => $network !== null ? [$network] : null,
+            'submissions_enabled' => $request->boolean('submissions_enabled'),
             'denomination' => MoneyDisplay::USDT,
         ]);
 
-        if ($request->boolean('submissions_enabled')) {
-            $errors = $settings->enablementErrors();
-            if (isset($errors['supported_networks'])) {
-                $errors['networks'] = $errors['supported_networks'];
+        if ($settings->submissions_enabled) {
+            $errors = $settings->configurationErrors();
+            if ($errors !== []) {
+                $errors['submissions_enabled'] = 'Complete the withdrawal rules before enabling submissions.';
+                throw ValidationException::withMessages($errors);
             }
-            throw ValidationException::withMessages($errors);
         }
 
         $settings->save();
 
         return redirect()->route('admin.withdrawals.settings')
-            ->with('success', 'Withdrawal settings saved. Submissions, holds, and payouts remain disabled.');
-    }
-
-    private function textOrNull(mixed $value): ?string
-    {
-        $value = trim((string) $value);
-
-        return $value === '' ? null : $value;
+            ->with('success', $settings->submissions_enabled
+                ? 'Withdrawal settings saved. Members can submit requests. Funds stay reserved until you approve or reject them. No payout is sent automatically.'
+                : 'Withdrawal settings saved. Withdrawal submissions are disabled.');
     }
 
     private function blankToNull(mixed $value): ?string
@@ -132,31 +104,23 @@ class WithdrawalSettingController extends Controller
         return bcadd((string) $value, '0', 4);
     }
 
-    /**
-     * @return list<string>
-     */
-    private function networks(?string $value): array
+    private function network(?string $value): ?string
     {
-        $lines = preg_split('/\r\n|\r|\n/', (string) $value) ?: [];
-        $networks = [];
-        foreach ($lines as $line) {
-            $network = trim(preg_replace('/\s+/', ' ', $line) ?? '');
-            if ($network === '' || in_array($network, $networks, true)) {
-                continue;
-            }
-            if (PaymentSetting::isPlaceholder($network)) {
-                throw ValidationException::withMessages([
-                    'networks' => 'Enter a real blockchain network. A placeholder network cannot be saved.',
-                ]);
-            }
-            if (strlen($network) > 80) {
-                throw ValidationException::withMessages([
-                    'networks' => 'Each network name must be 80 characters or fewer.',
-                ]);
-            }
-            $networks[] = $network;
+        $network = trim(preg_replace('/\s+/', ' ', (string) $value) ?? '');
+        if ($network === '') {
+            return null;
+        }
+        if (PaymentSetting::isPlaceholder($network)) {
+            throw ValidationException::withMessages([
+                'network' => 'Enter a real blockchain network. A placeholder network cannot be saved.',
+            ]);
+        }
+        if (strlen($network) > 80) {
+            throw ValidationException::withMessages([
+                'network' => 'The network name must be 80 characters or fewer.',
+            ]);
         }
 
-        return $networks;
+        return $network;
     }
 }

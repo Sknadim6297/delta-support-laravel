@@ -55,12 +55,10 @@ class WithdrawalSecurityAuditTest extends TestCase
         $admin = User::factory()->create(['is_admin' => true]);
         $this->actingAs($admin)->post(route('admin.withdrawals.payouts'))->assertStatus(405);
         $this->actingAs($admin)->post(route('admin.withdrawals.index'))->assertStatus(405);
-        foreach (['approve', 'reject'] as $action) {
+        foreach (['approve', 'reject', 'complete'] as $action) {
             $this->actingAs($admin)->post('/admin/withdrawals/requests/'.$own->id.'/'.$action)->assertForbidden();
         }
-        foreach (['complete', 'transfer'] as $action) {
-            $this->actingAs($admin)->post('/admin/withdrawals/requests/'.$own->id.'/'.$action)->assertNotFound();
-        }
+        $this->actingAs($admin)->post('/admin/withdrawals/requests/'.$own->id.'/transfer')->assertNotFound();
 
         $this->assertSame(1, WithdrawalRequest::query()->count());
         $this->assertSame(0, WalletLedgerEntry::query()->count());
@@ -97,14 +95,14 @@ class WithdrawalSecurityAuditTest extends TestCase
         $this->actingAs($admin)->from(route('admin.withdrawals.settings'))
             ->put(route('admin.withdrawals.settings.update'), [
                 'minimum_amount' => '20.0000',
-                'networks' => "Configured network\nTRC20",
-            ])->assertSessionHasErrors('networks');
+                'network' => 'Configured network',
+            ])->assertSessionHasErrors('network');
 
         $this->actingAs($admin)->from(route('admin.withdrawals.settings'))
             ->put(route('admin.withdrawals.settings.update'), [
                 'minimum_amount' => '20.0000',
-                'networks' => 'seed phrase network',
-            ])->assertSessionHasErrors('networks');
+                'network' => 'seed phrase network',
+            ])->assertSessionHasErrors('network');
 
         $settings = WithdrawalSetting::current();
         $settings->submissions_enabled = true;

@@ -8,6 +8,7 @@
     <div><dt>Public receiving address</dt><dd>{{ $withdrawal->receiving_address ?: 'Not recorded' }}</dd></div>
     <div><dt>Payout network</dt><dd>{{ $withdrawal->payout_network ?: 'Not recorded' }}</dd></div>
     <div><dt>Payout transaction ID</dt><dd>{{ $withdrawal->payout_txid ?: 'Not recorded' }}</dd></div>
+    <div><dt>Paid at</dt><dd>{{ $withdrawal->paid_at?->timezone('Asia/Kolkata')->format('d M Y H:i') ?: 'Not recorded' }}</dd></div>
     @if ($withdrawal->rejection_reason)
         <div><dt>Rejection reason</dt><dd>{{ $withdrawal->rejection_reason }}</dd></div>
     @endif

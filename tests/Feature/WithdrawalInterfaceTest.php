@@ -134,9 +134,10 @@ class WithdrawalInterfaceTest extends TestCase
 
         $this->actingAs($admin)->get(route('admin.withdrawals.show', $pending))
             ->assertOk()
-            ->assertSeeText('Read-only request record')
+            ->assertSeeText('Rejecting this request releases the reservation.')
             ->assertSeeText('No status events recorded.')
-            ->assertDontSeeText('>Approve<');
+            ->assertSeeText('Reject request')
+            ->assertDontSeeText('Approve request');
 
         $this->actingAs($admin)->get(route('admin.withdrawals.payouts'))
             ->assertOk()

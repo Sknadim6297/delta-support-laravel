@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\WithdrawalRequest;
-use App\Services\FinancialControls;
 use App\Services\WithdrawalWorkflow;
 use App\Support\WithdrawalStatus;
 use Illuminate\Database\Eloquent\Builder;
@@ -44,14 +43,16 @@ class WithdrawalReviewController extends Controller
         ]);
     }
 
-    public function show(WithdrawalRequest $withdrawalRequest): View
+    public function show(WithdrawalRequest $withdrawalRequest, WithdrawalWorkflow $workflow): View
     {
         $withdrawalRequest->load(['statusEvents' => fn ($query) => $query->orderBy('id')]);
+        $pending = $withdrawalRequest->status === WithdrawalStatus::PENDING_REVIEW;
 
         return view('admin.withdrawals.show', [
             'withdrawal' => $withdrawalRequest,
-            'canReview' => app(FinancialControls::class)->enabled('withdrawal_approval_enabled')
-                && $withdrawalRequest->status === WithdrawalStatus::PENDING_REVIEW,
+            'canApprove' => $pending && $workflow->reviewsOpen(),
+            'canReject' => $pending,
+            'canSettle' => $withdrawalRequest->status === WithdrawalStatus::APPROVED,
         ]);
     }
 
@@ -63,13 +64,17 @@ class WithdrawalReviewController extends Controller
             abort(403, $exception->getMessage());
         }
 
-        return redirect()->route('admin.withdrawals.show', $withdrawalRequest)->with('status', 'The request was approved. No external payout was sent.');
+        return redirect()->route('admin.withdrawals.show', $withdrawalRequest)->with('success', 'The request was approved. The reservation stays in place. No external payout was sent.');
     }
 
     public function reject(Request $request, WithdrawalRequest $withdrawalRequest, WithdrawalWorkflow $workflow): RedirectResponse
     {
-        if (! app(FinancialControls::class)->enabled('withdrawal_approval_enabled')) {
-            abort(403, 'Withdrawal approval is disabled. No balance was changed.');
+        if ($withdrawalRequest->status === WithdrawalStatus::REJECTED) {
+            return redirect()->route('admin.withdrawals.show', $withdrawalRequest)
+                ->with('success', 'The request was already rejected. No further balance change was made.');
+        }
+        if ($withdrawalRequest->status !== WithdrawalStatus::PENDING_REVIEW) {
+            abort(403, 'Only a pending request can be rejected. No balance was changed.');
         }
         $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
         try {
@@ -78,7 +83,33 @@ class WithdrawalReviewController extends Controller
             abort(403, $exception->getMessage());
         }
 
-        return redirect()->route('admin.withdrawals.show', $withdrawalRequest)->with('status', 'The request was rejected and its reservation was released.');
+        return redirect()->route('admin.withdrawals.show', $withdrawalRequest)->with('success', 'The request was rejected and its reservation was released.');
+    }
+
+    public function complete(Request $request, WithdrawalRequest $withdrawalRequest, WithdrawalWorkflow $workflow): RedirectResponse
+    {
+        if (! in_array($withdrawalRequest->status, [WithdrawalStatus::APPROVED, WithdrawalStatus::COMPLETED], true)) {
+            abort(403, 'Only an approved withdrawal can be marked paid. No balance was changed.');
+        }
+        $data = $request->validate([
+            'network' => ['required', 'string', 'max:80'],
+            'txid' => ['required', 'string', 'max:128'],
+            'amount' => ['required', 'string', 'max:40'],
+            'paid_at' => ['required', 'date'],
+        ]);
+        try {
+            $workflow->recordManualPayout($withdrawalRequest, $this->admin(), [
+                'network' => $data['network'],
+                'txid' => $data['txid'],
+                'amount' => $data['amount'],
+                'paid_at' => $data['paid_at'],
+            ]);
+        } catch (RuntimeException $exception) {
+            abort(403, $exception->getMessage());
+        }
+
+        return redirect()->route('admin.withdrawals.show', $withdrawalRequest)
+            ->with('success', 'The payout was recorded and the reserved amount was deducted. No blockchain transfer was sent.');
     }
 
     public function payouts(): View
@@ -87,6 +118,7 @@ class WithdrawalReviewController extends Controller
             'payouts' => WithdrawalRequest::query()
                 ->where('status', WithdrawalStatus::COMPLETED)
                 ->whereNotNull('payout_txid')
+                ->latest('paid_at')
                 ->latest('updated_at')
                 ->paginate(10),
         ]);

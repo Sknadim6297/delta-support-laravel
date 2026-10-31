@@ -30,6 +30,12 @@
         </a>
         <x-ui.stat label="Stored records" :value="$roiCount.' ROI'" :hint="$levelCount.' level income'" />
     </div>
+    <div class="ds-stat-grid">
+        <x-ui.stat label="Total balance" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['stored'])" hint="Stored wallet columns" />
+        <x-ui.stat label="Reserved balance" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['reserved'])" hint="Open withdrawal requests" />
+        <x-ui.stat label="Available balance" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['available'])" hint="Stored balance minus reservations" />
+        <x-ui.stat label="Paid withdrawals" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['paid'])" hint="Gross USDT already settled" />
+    </div>
     <form class="ds-filter" method="GET">
         <label>
             <span>Member</span>
