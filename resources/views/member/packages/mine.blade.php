@@ -44,15 +44,15 @@
                         <dl class="ds-purchase-meta">
                             <div>
                                 <dt>Payment method</dt>
-                                <dd>
-                                    @if($purchase->paymentMethodLabel())
-                                        {{ $purchase->paymentMethodLabel() }}
-                                    @elseif(filled($purchase->currency_label) || filled($purchase->network))
-                                        {{ trim(($purchase->currency_label ?: '').' '.($purchase->network ?: '')) }}
-                                    @else
-                                        Not recorded
-                                    @endif
-                                </dd>
+                                <dd>{{ $purchase->paymentMethodLabel() ?: 'Not recorded' }}</dd>
+                            </div>
+                            <div>
+                                <dt>Token</dt>
+                                <dd>{{ $purchase->currency_label ?: 'Not recorded' }}</dd>
+                            </div>
+                            <div>
+                                <dt>Network</dt>
+                                <dd>{{ $purchase->network ?: 'Not recorded' }}</dd>
                             </div>
                             <div>
                                 <dt>Purchase reference</dt>

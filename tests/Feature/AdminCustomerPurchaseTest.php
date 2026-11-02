@@ -290,6 +290,173 @@ class AdminCustomerPurchaseTest extends TestCase
         $this->assertSame(PackagePurchase::APPROVED, PackagePurchase::query()->where('payment_reference', 'RCPT-PENDING')->value('status'));
     }
 
+    public function test_stored_amount_and_missing_payment_method_stay_accurate_after_the_catalog_price_changes(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $member = $this->member('ST440020', 'active');
+        $member->update([
+            'activation_wallet_amount' => '4.0000',
+            'working_wallet_amount' => '5.0000',
+            'roi_wallet_amount' => '6.0000',
+        ]);
+        $package = $this->package('KEEP-49', '49.0000', true);
+        $controls = FinancialControl::current()->only(FinancialControl::current()->getFillable());
+
+        $legacy = PackagePurchase::query()->create([
+            'reference' => 'PUR-LEGACY-49',
+            'idempotency_key' => (string) Str::uuid(),
+            'member_id' => $member->member_id,
+            'package_id' => $package->id,
+            'package_code' => $package->code,
+            'package_name' => 'Legacy Coastal',
+            'price_usd' => '49.0000',
+            'denomination' => 'USDT',
+            'currency_label' => 'USDT',
+            'network' => 'BEP20 Demo Network',
+            'payment_reference' => 'LEGACY-49',
+            'payment_method' => null,
+            'status' => PackagePurchase::APPROVED,
+            'submitted_at' => '2026-10-27 12:47:18',
+            'reviewed_at' => '2026-10-27 12:47:18',
+        ]);
+        $legacyInvoice = Invoice::query()->create([
+            'invoice_number' => 'DS-INV-LEGACY-49',
+            'package_purchase_id' => $legacy->id,
+            'purchase_reference' => $legacy->reference,
+            'member_id' => $member->member_id,
+            'member_name' => $member->member_name,
+            'package_name' => $legacy->package_name,
+            'package_code' => $legacy->package_code,
+            'price_usd' => '49.0000',
+            'denomination' => 'USDT',
+            'currency_label' => 'USDT',
+            'network' => 'BEP20 Demo Network',
+            'payment_reference' => 'LEGACY-49',
+            'payment_method' => null,
+            'status' => 'approved',
+            'purchased_at' => $legacy->submitted_at,
+            'approved_at' => $legacy->reviewed_at,
+        ]);
+
+        $package->update(['price_usd' => '100.0000']);
+
+        $this->actingAs($admin)
+            ->withSession(['member_context_id' => $member->member_id])
+            ->get(route('member.packages.mine'))
+            ->assertOk()
+            ->assertSeeText('USDT 49.0000')
+            ->assertSeeText('Not recorded')
+            ->assertSeeText('BEP20 Demo Network')
+            ->assertDontSeeText('USDT 100.0000')
+            ->assertDontSeeText('USDT BEP20 Demo Network');
+
+        $this->actingAs($admin)
+            ->withSession(['member_context_id' => $member->member_id])
+            ->get(route('member.payments.show', $legacy))
+            ->assertOk()
+            ->assertSeeText('USDT 49.0000')
+            ->assertSeeText('BEP20 Demo Network')
+            ->assertDontSeeText('USDT 100.0000')
+            ->assertDontSeeText('Payment method');
+
+        $this->actingAs($admin)
+            ->withSession(['member_context_id' => $member->member_id])
+            ->get(route('member.invoices.show', $legacyInvoice))
+            ->assertOk()
+            ->assertSeeText('USDT 49.0000')
+            ->assertSeeText('Payment method')
+            ->assertSeeText('Not recorded')
+            ->assertSeeText('Token USDT')
+            ->assertSeeText('Network BEP20 Demo Network')
+            ->assertDontSeeText('USDT 100.0000')
+            ->assertDontSeeText('USDT BEP20 Demo Network');
+
+        $pdf = $this->actingAs($admin)
+            ->withSession(['member_context_id' => $member->member_id])
+            ->get(route('member.invoices.pdf', $legacyInvoice));
+        $pdf->assertOk();
+        $this->assertStringContainsString('Payment method Not recorded', $pdf->getContent());
+        $this->assertStringContainsString('Token USDT', $pdf->getContent());
+        $this->assertStringNotContainsString('USDT 100.0000', $pdf->getContent());
+        $this->assertStringNotContainsString('Payment USDT BEP20 Demo Network', $pdf->getContent());
+
+        $fresh = $this->package('CASH-KEEP', '49.0000', true);
+        $this->actingAs($admin)
+            ->getJson(route('admin.purchases.preview', [
+                'member_id' => $member->member_id,
+                'package_id' => $fresh->id,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('package.price', 'USDT 49.0000')
+            ->assertJsonPath('package.roi_eligible', 'Eligible')
+            ->assertJsonPath('package.level_eligible', 'Eligible')
+            ->assertJsonPath('blocked', false);
+
+        $this->actingAs($admin)->post(route('admin.purchases.store'), [
+            'member_id' => $member->member_id,
+            'package_id' => $fresh->id,
+            'payment_method' => PackagePurchase::METHOD_CASH,
+            'payment_reference' => 'RCPT-KEEP-49',
+            'idempotency_key' => (string) Str::uuid(),
+        ])->assertRedirect();
+
+        $fresh->update(['price_usd' => '100.0000']);
+        $purchase = PackagePurchase::query()->where('payment_reference', 'RCPT-KEEP-49')->firstOrFail();
+        $invoice = Invoice::query()->where('package_purchase_id', $purchase->id)->firstOrFail();
+        $this->assertSame('49.0000', $purchase->price_usd);
+        $this->assertSame('49.0000', $invoice->price_usd);
+        $this->assertSame(PackagePurchase::METHOD_CASH, $purchase->payment_method);
+        $this->assertSame(PackagePurchase::APPROVED, $purchase->status);
+
+        $this->actingAs($admin)
+            ->from(route('admin.purchases.create'))
+            ->post(route('admin.purchases.store'), [
+                'member_id' => $member->member_id,
+                'package_id' => $fresh->id,
+                'payment_method' => PackagePurchase::METHOD_CASH,
+                'payment_reference' => 'RCPT-KEEP-50',
+                'idempotency_key' => (string) Str::uuid(),
+            ])
+            ->assertRedirect(route('admin.purchases.create'))
+            ->assertSessionHasErrors('package_id');
+
+        $this->actingAs($admin)
+            ->withSession(['member_context_id' => $member->member_id])
+            ->get(route('member.packages.mine'))
+            ->assertOk()
+            ->assertSeeText('USDT 49.0000')
+            ->assertSeeText('Cash')
+            ->assertDontSeeText('USDT 100.0000');
+
+        $this->actingAs($admin)
+            ->withSession(['member_context_id' => $member->member_id])
+            ->get(route('member.payments.show', $purchase))
+            ->assertOk()
+            ->assertSeeText('USDT 49.0000')
+            ->assertSeeText('Cash')
+            ->assertDontSeeText('USDT 100.0000');
+
+        $this->actingAs($admin)
+            ->get(route('admin.invoices.show', $invoice))
+            ->assertOk()
+            ->assertSeeText('USDT 49.0000')
+            ->assertSeeText('Cash')
+            ->assertDontSeeText('USDT 100.0000');
+
+        $member->refresh();
+        $this->assertSame('4.0000', (string) $member->activation_wallet_amount);
+        $this->assertSame('5.0000', (string) $member->working_wallet_amount);
+        $this->assertSame('6.0000', (string) $member->roi_wallet_amount);
+        $this->assertSame($controls, FinancialControl::current()->only(array_keys($controls)));
+        $this->assertSame(0, PackageRoiAccrual::query()->count());
+        $this->assertSame(0, PackageLevelAccrual::query()->count());
+        $this->assertSame(0, RoiTransaction::query()->count());
+        $this->assertSame(0, LevelCommissionTransaction::query()->count());
+        $this->assertSame(0, WalletLedgerEntry::query()->count());
+        $this->assertSame('49.0000', $legacy->fresh()->price_usd);
+        $this->assertNull($legacy->fresh()->payment_method);
+    }
+
     public function test_member_package_history_shows_real_statuses_without_an_invented_expiry(): void
     {
         $member = $this->member('ST440012', 'active');
