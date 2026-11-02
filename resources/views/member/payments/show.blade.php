@@ -25,6 +25,12 @@
                 <dt>Amount</dt>
                 <dd>{{ \App\Support\MoneyDisplay::format($purchase->price_usd, $purchase->denomination) }}</dd>
             </div>
+            @if($purchase->paymentMethodLabel())
+                <div>
+                    <dt>Payment method</dt>
+                    <dd>{{ $purchase->paymentMethodLabel() }}</dd>
+                </div>
+            @endif
             <div>
                 <dt>Token</dt>
                 <dd>{{ $purchase->currency_label ?: 'Not recorded' }}</dd>

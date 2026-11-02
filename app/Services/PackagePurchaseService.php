@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AdminActivityLog;
 use App\Models\CompanySetting;
 use App\Models\Invoice;
 use App\Models\Member;
@@ -10,6 +11,7 @@ use App\Models\PackagePurchase;
 use App\Models\PaymentDecision;
 use App\Models\PaymentSetting;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -131,6 +133,7 @@ class PackagePurchaseService
                 'currency_label' => $locked->currency_label,
                 'network' => $locked->network,
                 'payment_reference' => $locked->payment_reference,
+                'payment_method' => $locked->payment_method,
                 'company_name' => $company->company_name,
                 'company_address' => $company->address,
                 'company_email' => $company->email,
@@ -149,6 +152,117 @@ class PackagePurchaseService
 
             return $invoice;
         });
+    }
+
+    public function recordForCustomer(Member $member, Package $package, User $admin, string $method, string $reference, string $idempotencyKey): Invoice
+    {
+        if (! array_key_exists($method, PackagePurchase::PAYMENT_METHODS)) {
+            throw ValidationException::withMessages([
+                'payment_method' => 'Choose Cash, Bank Transfer, or USDT.',
+            ]);
+        }
+
+        $reference = trim($reference);
+        $this->assertAdminReference($reference);
+
+        return DB::transaction(function () use ($member, $package, $admin, $method, $reference, $idempotencyKey): Invoice {
+            $existing = PackagePurchase::query()->where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
+            if ($existing) {
+                return $this->completeExistingCustomerPurchase($existing, $member, $package, $admin, $method, $reference);
+            }
+
+            Member::query()->whereKey($member->id)->lockForUpdate()->firstOrFail();
+            $lockedPackage = Package::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
+            if (! $lockedPackage->is_active) {
+                throw ValidationException::withMessages([
+                    'package_id' => 'Choose an active package.',
+                ]);
+            }
+
+            $alreadyActive = PackagePurchase::query()
+                ->where('member_id', $member->member_id)
+                ->where('package_id', $lockedPackage->id)
+                ->where('status', PackagePurchase::APPROVED)
+                ->lockForUpdate()
+                ->exists();
+            if ($alreadyActive) {
+                throw ValidationException::withMessages([
+                    'package_id' => 'This customer already has an active purchase of this package.',
+                ]);
+            }
+
+            $network = $this->networkFor($method);
+            $duplicate = PackagePurchase::query()
+                ->where('network', $network)
+                ->where('payment_reference', $reference)
+                ->lockForUpdate()
+                ->exists();
+            if ($duplicate) {
+                throw ValidationException::withMessages([
+                    'payment_reference' => 'This payment reference has already been recorded.',
+                ]);
+            }
+
+            try {
+                $purchase = PackagePurchase::query()->create([
+                    'reference' => $this->uniqueCode('PUR'),
+                    'idempotency_key' => $idempotencyKey,
+                    'member_id' => $member->member_id,
+                    'package_id' => $lockedPackage->id,
+                    'package_code' => $lockedPackage->code,
+                    'package_name' => $lockedPackage->name,
+                    'package_type' => $lockedPackage->package_type ?: Package::TYPE_TOUR,
+                    'price_usd' => $lockedPackage->price_usd,
+                    'denomination' => $lockedPackage->denomination ?: 'USD',
+                    'tour_title' => $lockedPackage->tour_title,
+                    'tour_details' => $lockedPackage->tour_details,
+                    'duration' => $lockedPackage->duration,
+                    'benefits' => $lockedPackage->benefits,
+                    'description' => $lockedPackage->description,
+                    'full_description' => $lockedPackage->full_description,
+                    'destinations' => $lockedPackage->destinations,
+                    'inclusions' => $lockedPackage->inclusions,
+                    'exclusions' => $lockedPackage->exclusions,
+                    'currency_label' => $this->currencyFor($method, $lockedPackage),
+                    'network' => $network,
+                    'payment_reference' => $reference,
+                    'payment_method' => $method,
+                    'status' => PackagePurchase::PENDING,
+                    'submitted_at' => now(),
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                $existing = PackagePurchase::query()->where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
+                if ($existing) {
+                    return $this->completeExistingCustomerPurchase($existing, $member, $package, $admin, $method, $reference);
+                }
+
+                throw ValidationException::withMessages([
+                    'payment_reference' => 'This payment reference has already been recorded.',
+                ]);
+            }
+
+            return $this->completeCustomerPurchase($purchase, $admin);
+        });
+    }
+
+    /**
+     * @return array{active: ?PackagePurchase, pending: ?PackagePurchase, rejected: ?PackagePurchase}
+     */
+    public function customerPackageState(Member $member, ?Package $package): array
+    {
+        if ($package === null) {
+            return ['active' => null, 'pending' => null, 'rejected' => null];
+        }
+
+        $forPackage = PackagePurchase::query()
+            ->where('member_id', $member->member_id)
+            ->where('package_id', $package->id);
+
+        return [
+            'active' => (clone $forPackage)->where('status', PackagePurchase::APPROVED)->latest('reviewed_at')->first(),
+            'pending' => (clone $forPackage)->where('status', PackagePurchase::PENDING)->latest('submitted_at')->first(),
+            'rejected' => (clone $forPackage)->where('status', PackagePurchase::REJECTED)->latest('reviewed_at')->first(),
+        ];
     }
 
     public function reject(PackagePurchase $purchase, User $admin, string $reason): PackagePurchase
@@ -189,6 +303,104 @@ class PackagePurchaseService
         ], fn ($line) => trim((string) $line) !== ''));
 
         return $lines === [] ? null : implode("\n", $lines);
+    }
+
+    private function completeExistingCustomerPurchase(PackagePurchase $existing, Member $member, Package $package, User $admin, string $method, string $reference): Invoice
+    {
+        if ($existing->member_id !== $member->member_id
+            || (int) $existing->package_id !== (int) $package->id
+            || $existing->payment_method !== $method
+            || $existing->payment_reference !== $reference) {
+            throw ValidationException::withMessages([
+                'idempotency_key' => 'This submission was already used for a different purchase.',
+            ]);
+        }
+
+        if ($existing->status === PackagePurchase::REJECTED) {
+            throw ValidationException::withMessages([
+                'payment_reference' => 'This payment reference was already rejected.',
+            ]);
+        }
+
+        return $this->completeCustomerPurchase($existing, $admin);
+    }
+
+    private function completeCustomerPurchase(PackagePurchase $purchase, User $admin): Invoice
+    {
+        $hadInvoice = Invoice::query()->where('package_purchase_id', $purchase->id)->exists();
+        $invoice = $this->approve($purchase, $admin);
+        if ($hadInvoice) {
+            return $invoice;
+        }
+
+        AdminActivityLog::query()->create([
+            'user_id' => $admin->id,
+            'action' => 'customer_package_purchase',
+            'subject' => $invoice->purchase_reference,
+            'format' => null,
+            'scope' => 'admin',
+            'filters' => [
+                'purchase_reference' => $invoice->purchase_reference,
+                'invoice_number' => $invoice->invoice_number,
+                'member_id' => $invoice->member_id,
+                'package_code' => $invoice->package_code,
+                'payment_method' => $invoice->payment_method,
+                'payment_reference' => $invoice->payment_reference,
+                'amount' => (string) $invoice->price_usd,
+                'denomination' => $invoice->denomination,
+            ],
+            'row_count' => 1,
+        ]);
+
+        return $invoice;
+    }
+
+    private function networkFor(string $method): string
+    {
+        return match ($method) {
+            PackagePurchase::METHOD_CASH => 'Cash',
+            PackagePurchase::METHOD_BANK => 'Bank Transfer',
+            default => $this->usdtNetwork(),
+        };
+    }
+
+    private function usdtNetwork(): string
+    {
+        $network = trim((string) PaymentSetting::current()->network);
+        if ($network === '' || PaymentSetting::isPlaceholder($network)) {
+            return 'USDT';
+        }
+
+        return $network;
+    }
+
+    private function currencyFor(string $method, Package $package): string
+    {
+        if ($method === PackagePurchase::METHOD_USDT) {
+            return 'USDT';
+        }
+
+        $denomination = trim((string) ($package->denomination ?: 'USD'));
+
+        return $denomination !== '' ? $denomination : 'USD';
+    }
+
+    private function assertAdminReference(string $reference): void
+    {
+        $this->assertReferenceShape($reference);
+
+        if (mb_strlen($reference) < 4 || PaymentSetting::containsSecret($reference)) {
+            throw ValidationException::withMessages([
+                'payment_reference' => 'Enter the receipt, transfer, or transaction reference.',
+            ]);
+        }
+
+        $normalized = strtolower($reference);
+        if (in_array($normalized, ['n/a', 'na', 'none', 'null', 'test', 'cash', 'pending', 'tbd', 'xxxx', '0000'], true)) {
+            throw ValidationException::withMessages([
+                'payment_reference' => 'Enter the reference from the cash receipt, bank transfer, or USDT transaction.',
+            ]);
+        }
     }
 
     private function assertReferenceShape(string $reference): void

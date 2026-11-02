@@ -54,7 +54,11 @@
     <footer class="ds-invoice-foot">
         <div>
             <p>Payment</p>
-            <strong>{{ trim(($invoice->currency_label ?: '').' '.($invoice->network ?: '')) ?: 'Recorded at approval' }}</strong>
+            @if(filled($invoice->payment_method))
+                <strong>{{ \App\Models\PackagePurchase::PAYMENT_METHODS[$invoice->payment_method] ?? $invoice->payment_method }}</strong>
+            @else
+                <strong>{{ trim(($invoice->currency_label ?: '').' '.($invoice->network ?: '')) ?: 'Recorded at approval' }}</strong>
+            @endif
             <p>Transaction {{ $invoice->payment_reference }}</p>
             @if($invoice->purchase_reference)<p>Purchase {{ $invoice->purchase_reference }}</p>@endif
         </div>

@@ -30,7 +30,8 @@
                 <x-navigation.lux-group icon="ri-archive-line" label="Package Management" :open="request()->routeIs('admin.packages.*', 'admin.purchases.*')">
                     <x-navigation.lux-link :href="route('admin.packages.index')" :active="request()->routeIs('admin.packages.index')">All Packages</x-navigation.lux-link>
                     <x-navigation.lux-link :href="route('admin.packages.create')" :active="request()->routeIs('admin.packages.create')">Add Package</x-navigation.lux-link>
-                    <x-navigation.lux-link :href="route('admin.purchases.index')" :active="request()->routeIs('admin.purchases.*')">Package Purchases</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.purchases.index')" :active="request()->routeIs('admin.purchases.index')">Package Purchases</x-navigation.lux-link>
+                    <x-navigation.lux-link :href="route('admin.purchases.create')" :active="request()->routeIs('admin.purchases.create')">Purchase for Customer</x-navigation.lux-link>
                 </x-navigation.lux-group>
                 <x-navigation.lux-group icon="ri-bank-card-line" label="Payment Management" :open="request()->routeIs('admin.payments.*')">
                     <x-navigation.lux-link :href="route('admin.payments.index', ['status' => 'pending'])" :active="request()->routeIs('admin.payments.index') && request()->query('status', 'pending') === 'pending'">Pending Payments</x-navigation.lux-link>

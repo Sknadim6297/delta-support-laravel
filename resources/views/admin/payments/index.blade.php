@@ -10,6 +10,7 @@
             <h2>{{ $status === 'all' ? 'Package Purchases' : ucfirst($status).' Payments' }}</h2>
             <p>Approve a payment only after you confirm the amount arrived on the configured network. A reference or QR code is not proof.</p>
         </div>
+        <x-ui.button :href="route('admin.purchases.create')">Purchase for Customer</x-ui.button>
         <form class="ds-table-search" method="GET">
             @if($status !== 'all')<input type="hidden" name="status" value="{{ $status }}">@endif
             <i class="ri-search-line" aria-hidden="true"></i>

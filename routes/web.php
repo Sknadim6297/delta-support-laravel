@@ -222,6 +222,10 @@
         });
 
         Route::get('/admin/purchases', [PaymentReviewController::class, 'purchases'])->name('admin.purchases.index');
+        Route::get('/admin/purchases/create', [\App\Http\Controllers\Admin\CustomerPurchaseController::class, 'create'])->name('admin.purchases.create');
+        Route::get('/admin/purchases/member', [\App\Http\Controllers\Admin\CustomerPurchaseController::class, 'member'])->name('admin.purchases.member');
+        Route::get('/admin/purchases/preview', [\App\Http\Controllers\Admin\CustomerPurchaseController::class, 'preview'])->name('admin.purchases.preview');
+        Route::post('/admin/purchases', [\App\Http\Controllers\Admin\CustomerPurchaseController::class, 'store'])->name('admin.purchases.store');
         Route::controller(PaymentReviewController::class)->prefix('admin/payments')->name('admin.payments.')->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/settings', 'settings')->name('settings');

@@ -16,6 +16,27 @@ class PackagePurchase extends Model
 
     public const REJECTED = 'rejected';
 
+    public const METHOD_CASH = 'cash';
+
+    public const METHOD_BANK = 'bank_transfer';
+
+    public const METHOD_USDT = 'usdt';
+
+    public const PAYMENT_METHODS = [
+        self::METHOD_CASH => 'Cash',
+        self::METHOD_BANK => 'Bank Transfer',
+        self::METHOD_USDT => 'USDT',
+    ];
+
+    public function paymentMethodLabel(): ?string
+    {
+        if (! filled($this->payment_method)) {
+            return null;
+        }
+
+        return self::PAYMENT_METHODS[$this->payment_method] ?? (string) $this->payment_method;
+    }
+
     public function statusLabel(): string
     {
         return match ($this->status) {
@@ -71,6 +92,7 @@ class PackagePurchase extends Model
         'currency_label',
         'network',
         'payment_reference',
+        'payment_method',
         'status',
         'rejection_reason',
         'submitted_at',

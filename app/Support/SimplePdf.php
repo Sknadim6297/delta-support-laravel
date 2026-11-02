@@ -40,9 +40,13 @@ class SimplePdf
         $lines[] = 'Purchase '.$invoice->purchase_reference;
         $lines[] = 'Purchased '.optional($invoice->purchased_at)->timezone('Asia/Kolkata')->format('d M Y H:i');
         $lines[] = 'Approved '.optional($invoice->approved_at)->timezone('Asia/Kolkata')->format('d M Y H:i');
-        $payment = trim(((string) $invoice->currency_label).' '.((string) $invoice->network));
-        if ($payment !== '') {
-            $lines[] = 'Payment '.$payment;
+        if (filled($invoice->payment_method)) {
+            $lines[] = 'Payment method '.(\App\Models\PackagePurchase::PAYMENT_METHODS[$invoice->payment_method] ?? $invoice->payment_method);
+        } else {
+            $payment = trim(((string) $invoice->currency_label).' '.((string) $invoice->network));
+            if ($payment !== '') {
+                $lines[] = 'Payment '.$payment;
+            }
         }
         $lines[] = 'Transaction '.$invoice->payment_reference;
         $lines[] = '';

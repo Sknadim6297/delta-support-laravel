@@ -21,6 +21,7 @@ class Invoice extends Model
         'currency_label',
         'network',
         'payment_reference',
+        'payment_method',
         'company_name',
         'company_address',
         'company_email',
