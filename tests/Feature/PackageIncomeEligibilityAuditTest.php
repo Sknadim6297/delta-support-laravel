@@ -40,7 +40,7 @@ class PackageIncomeEligibilityAuditTest extends TestCase
         $reasons = collect($report['ineligible'])->pluck('reason')->implode(' | ');
         $this->assertStringContainsString('Still inside the 10-day wait', $reasons);
         $this->assertStringContainsString('local-test / demonstration', $reasons);
-        $this->assertStringContainsString('no income definition', $reasons);
+        $this->assertStringContainsString('no income definition in config', $reasons);
 
         $this->artisan('financial:eligibility', ['--date' => '2026-10-29'])
             ->assertSuccessful()

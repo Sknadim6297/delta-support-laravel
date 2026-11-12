@@ -33,8 +33,11 @@ class ProductionDatabaseTest extends TestCase
         $this->assertSame(0, PackagePurchase::query()->count());
         $this->assertSame(0, User::query()->count());
         $this->assertSame(3, Package::query()->count());
-        $this->assertSame('100.0000', Package::query()->where('code', 'DEMO-COAST')->value('price_usd'));
-        $this->assertSame('1000.0000', Package::query()->where('code', 'DEMO-HILLS')->value('price_usd'));
+        $this->assertSame('100.0000', Package::query()->where('code', 'DST-ROI-002')->value('price_usd'));
+        $this->assertTrue((bool) Package::query()->where('code', 'DST-ROI-002')->value('roi_eligible'));
+        $this->assertSame('1000.0000', Package::query()->where('code', 'DST-TOUR-003')->value('price_usd'));
+        $this->assertFalse((bool) Package::query()->where('code', 'DST-TOUR-003')->value('roi_eligible'));
+        $this->assertSame(Package::TYPE_TOUR, Package::query()->where('code', 'DST-TOUR-003')->value('package_type'));
         $this->assertSame('USDT', Package::query()->where('code', 'VERIFY-1')->value('denomination'));
         $this->assertSame(20, CommissionPlanLevel::query()->count());
         $this->assertSame(0, CommissionPlanLevel::query()->where('is_active', true)->count());

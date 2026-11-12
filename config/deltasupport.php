@@ -29,7 +29,14 @@ return [
     /*
     | Package ROI and 20-level commission stay off until a later approval.
     | The command records one business date only. It does not backfill.
-    | Hill Station Retreat uses the VIP commission duration below.
+    |
+    | Production codes:
+    | - DST-ROI-002 (Digha Tour + Monthly Income): 0.2500 USDT daily for 800 days.
+    |   Published package benefits match this approved coastal-tier plan.
+    | - DST-TOUR-003 (3-Year Tour Package): tour benefits only. No income definition.
+    |
+    | DEMO-* codes remain for local/demo catalogs and tests.
+    | Hill Station Retreat (DEMO-HILLS) uses the VIP commission duration below.
     */
     'package_income' => [
         'enabled' => false,
@@ -40,6 +47,12 @@ return [
         'chunk_size' => 100,
         'schedule_time' => env('PACKAGE_INCOME_SCHEDULE_TIME', '00:10'),
         'packages' => [
+            'DST-ROI-002' => [
+                'roi_daily' => '0.2500',
+                'roi_days' => 800,
+                'commission_pool' => '0.2400',
+                'commission_days' => 400,
+            ],
             'DEMO-COAST' => [
                 'roi_daily' => '0.2500',
                 'roi_days' => 800,

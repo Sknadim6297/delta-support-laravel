@@ -6,7 +6,7 @@
     <x-ui.page-header
         kicker="ROI Management"
         title="ROI Plans"
-        lead="No ROI percentage is saved on a package. Coastal Weekend and Hill Station Retreat use the configured daily USDT amounts. This page does not credit ROI."
+        lead="No ROI percentage is saved on a package row. Daily USDT amounts come from config: DST-ROI-002 and DEMO-COAST use 0.2500 for 800 days; DEMO-HILLS uses 2.5000 for 1000 days; DST-TOUR-003 has no daily ROI. This page does not credit ROI."
     />
     <div class="ds-stat-grid">
         <x-ui.stat label="Packages" :value="$packages->count()" hint="Saved package records" />

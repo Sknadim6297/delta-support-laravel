@@ -185,6 +185,11 @@ class FinancialActivationGuard
             }
         }
 
+        return $this->demoCatalogApproved() || $this->productionCatalogApproved();
+    }
+
+    private function demoCatalogApproved(): bool
+    {
         $packages = [
             'DEMO-COAST' => '100.0000',
             'DEMO-HILLS' => '1000.0000',
@@ -200,6 +205,36 @@ class FinancialActivationGuard
         }
 
         return true;
+    }
+
+    private function productionCatalogApproved(): bool
+    {
+        $roi = DB::table('packages')->where('code', 'DST-ROI-002')->first();
+        if ($roi === null || (int) $roi->roi_eligible !== 1 || (int) $roi->level_commission_eligible !== 1) {
+            return false;
+        }
+        if (bccomp((string) $roi->price_usd, '100.0000', 4) !== 0) {
+            return false;
+        }
+
+        $definition = config('deltasupport.package_income.packages.DST-ROI-002');
+        if (! is_array($definition)
+            || bccomp((string) ($definition['roi_daily'] ?? '0'), '0.2500', 4) !== 0
+            || (int) ($definition['roi_days'] ?? 0) !== 800
+            || bccomp((string) ($definition['commission_pool'] ?? '0'), '0.2400', 4) !== 0
+            || (int) ($definition['commission_days'] ?? 0) !== 400) {
+            return false;
+        }
+
+        $tour = DB::table('packages')->where('code', 'DST-TOUR-003')->first();
+        if ($tour === null) {
+            return true;
+        }
+
+        return (int) $tour->roi_eligible === 0
+            && (int) $tour->level_commission_eligible === 0
+            && bccomp((string) $tour->price_usd, '1000.0000', 4) === 0
+            && config('deltasupport.package_income.packages.DST-TOUR-003') === null;
     }
 
     private function hasBusinessRecords(): bool

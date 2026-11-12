@@ -119,7 +119,7 @@ class PackageIncomeEligibilityAudit
 
         $definition = $this->policy->definition($purchase->package_code);
         if ($definition === null) {
-            $base['reason'] = 'Package code has no income definition in config (only DEMO-COAST and DEMO-HILLS are configured).';
+            $base['reason'] = 'Package code has no income definition in config (production ROI uses DST-ROI-002; DST-TOUR-003 is tour-only).';
 
             return $base;
         }
