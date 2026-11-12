@@ -56,6 +56,16 @@ class FinancialAutomationStatus extends Command
         $protected = app(ProductionDatabaseTarget::class)->isProtected($db);
         $this->line('Protected development database: '.($protected ? 'yes' : 'no'));
 
+        $planIssues = $guard->inactivePlanIssues();
+        if ($planIssues === []) {
+            $this->info('Approved inactive plan: satisfied.');
+        } else {
+            $this->warn('Approved inactive plan mismatches:');
+            foreach ($planIssues as $issue) {
+                $this->line('- '.$issue);
+            }
+        }
+
         $armProbe = $guard->refusal($db);
         if ($armProbe !== null) {
             $this->line('financial:arm refusal for this database: '.$armProbe);

@@ -157,12 +157,114 @@ class FinancialArmGuardTest extends TestCase
         $this->assertSame(1, AdminActivityLog::query()->where('action', 'financial_automation_arm_refused')->count());
     }
 
+    public function test_production_catalog_alone_can_satisfy_the_inactive_plan_and_arm(): void
+    {
+        User::factory()->create(['is_admin' => true]);
+        $this->prepareProductionApprovedDatabase();
+
+        $issues = app(FinancialActivationGuard::class)->inactivePlanIssues();
+        $this->assertSame([], $issues);
+
+        $this->artisan('financial:arm', $this->armOptions() + [
+            '--allow-existing-business' => 'allow-existing-business-records',
+        ])->assertSuccessful();
+
+        $this->assertTrue(FinancialControl::current()->financial_automation_armed);
+        $this->assertFalse(FinancialControl::current()->external_payouts_enabled);
+    }
+
+    public function test_invalid_production_tour_flags_and_enabled_switches_are_reported_exactly(): void
+    {
+        $this->prepareProductionApprovedDatabase();
+        Package::query()->where('code', 'DST-TOUR-003')->update([
+            'roi_eligible' => true,
+            'level_commission_eligible' => true,
+            'package_type' => Package::TYPE_TOUR_ROI,
+        ]);
+        $row = FinancialControl::current();
+        $row->withdrawal_requests_enabled = true;
+        $row->save();
+
+        $issues = app(FinancialActivationGuard::class)->inactivePlanIssues();
+        $this->assertNotEmpty($issues);
+        $joined = implode(' | ', $issues);
+        $this->assertStringContainsString('withdrawal_requests_enabled must be 0', $joined);
+        $this->assertStringContainsString('DST-TOUR-003 roi_eligible must be 0', $joined);
+
+        $refusal = app(FinancialActivationGuard::class)->refusal($this->connectedName(), true);
+        $this->assertIsString($refusal);
+        $this->assertStringContainsString('approved inactive plan', $refusal);
+        $this->assertStringContainsString('Mismatches:', $refusal);
+        $this->assertStringContainsString('withdrawal_requests_enabled must be 0', $refusal);
+        $this->assertStringContainsString('DST-TOUR-003 roi_eligible must be 0', $refusal);
+
+        $this->artisan('financial:arm', $this->armOptions() + [
+            '--allow-existing-business' => 'allow-existing-business-records',
+        ])->assertFailed()->expectsOutputToContain('approved inactive plan');
+
+        $this->assertFalse(FinancialControl::current()->financial_automation_armed);
+    }
+
+    public function test_status_lists_inactive_plan_mismatches_without_arming(): void
+    {
+        $this->prepareProductionApprovedDatabase();
+        Package::query()->where('code', 'DST-ROI-002')->update(['roi_eligible' => false]);
+
+        $this->artisan('financial:status')
+            ->assertSuccessful()
+            ->expectsOutputToContain('Approved inactive plan mismatches')
+            ->expectsOutputToContain('DST-ROI-002 roi_eligible must be 1');
+
+        $this->assertFalse(FinancialControl::current()->financial_automation_armed);
+    }
+
     private function prepareApprovedDatabase(): void
     {
         $name = $this->connectedName();
         config(['deltasupport.financial_approved_database' => $name]);
         $this->package('DEMO-COAST', 'Coastal Weekend', '100.0000');
         $this->package('DEMO-HILLS', 'Hill Station Retreat', '1000.0000');
+        app(FinancialActivationGuard::class)->recordInitialization((string) DB::getDefaultConnection());
+    }
+
+    private function prepareProductionApprovedDatabase(): void
+    {
+        $name = $this->connectedName();
+        config(['deltasupport.financial_approved_database' => $name]);
+        Package::query()->create([
+            'code' => 'DST-ROI-002',
+            'package_type' => Package::TYPE_TOUR_ROI,
+            'name' => 'Delta Support Digha Tour + Monthly Income',
+            'price_usd' => '100.0000',
+            'denomination' => 'USDT',
+            'roi_eligible' => true,
+            'level_commission_eligible' => true,
+            'is_active' => true,
+            'sort_order' => 20,
+        ]);
+        Package::query()->create([
+            'code' => 'DST-TOUR-003',
+            'package_type' => Package::TYPE_TOUR,
+            'name' => 'Delta Support 3-Year Tour Package',
+            'price_usd' => '1000.0000',
+            'denomination' => 'USDT',
+            'roi_eligible' => false,
+            'level_commission_eligible' => false,
+            'is_active' => true,
+            'sort_order' => 10,
+        ]);
+        Member::query()->create([
+            'member_id' => 'STPROD001',
+            'sponsor_id' => 'ST666666',
+            'sponsor_name' => 'Admin',
+            'member_name' => 'Production Member',
+            'mobile_no' => '9000000099',
+            'email' => 'prod-member@example.test',
+            'status' => 'active',
+            'roi_wallet_amount' => '0.0000',
+            'working_wallet_amount' => '0.0000',
+            'activation_wallet_amount' => '0.0000',
+        ]);
         app(FinancialActivationGuard::class)->recordInitialization((string) DB::getDefaultConnection());
     }
 

@@ -97,8 +97,11 @@ class FinancialActivationGuard
             return 'Refused. Automatic posting is already armed. No change was made.';
         }
 
-        if (! $this->configurationApproved($controls)) {
-            return 'Refused. The financial configuration is not the approved inactive plan. No posting was armed.';
+        $planIssues = $this->inactivePlanIssues($controls);
+        if ($planIssues !== []) {
+            return 'Refused. The financial configuration is not the approved inactive plan. Mismatches: '
+                .implode(' | ', $planIssues)
+                .' No posting was armed.';
         }
 
         if ($this->hasBusinessRecords() && ! $allowExistingBusiness) {
@@ -106,6 +109,30 @@ class FinancialActivationGuard
         }
 
         return null;
+    }
+
+    /**
+     * Exact inactive-plan mismatches. Empty means the approved inactive plan is satisfied.
+     *
+     * @return list<string>
+     */
+    public function inactivePlanIssues(?object $controls = null): array
+    {
+        try {
+            if ($controls === null) {
+                if (! Schema::hasTable('financial_controls')) {
+                    return ['financial_controls table is missing.'];
+                }
+                $controls = DB::table('financial_controls')->first();
+            }
+            if ($controls === null) {
+                return ['financial_controls row is missing.'];
+            }
+
+            return $this->collectInactivePlanIssues($controls);
+        } catch (Throwable) {
+            return ['The inactive-plan inspection failed because the schema state is uncertain.'];
+        }
     }
 
     /**
@@ -160,81 +187,155 @@ class FinancialActivationGuard
 
     private function configurationApproved(object $controls): bool
     {
-        foreach (FinancialControls::FLAGS as $flag) {
-            if ((int) $controls->{$flag} !== 0) {
-                return false;
-            }
-        }
-
-        if ((int) DB::table('member_transfer_settings')->value('member_transfers_enabled') !== 0) {
-            return false;
-        }
-
-        $levels = DB::table('commission_plan_levels')
-            ->where('plan_code', CommissionPlanLevel::PLAN_CODE)
-            ->orderBy('level')
-            ->get();
-        if ($levels->count() !== 20 || $levels->contains(fn (object $level): bool => (int) $level->is_active !== 0)) {
-            return false;
-        }
-
-        foreach ($levels as $level) {
-            $expected = CommissionPlan::RATE_BY_LEVEL[(int) $level->level] ?? null;
-            if ($expected === null || bccomp((string) $level->percentage, $expected, 4) !== 0) {
-                return false;
-            }
-        }
-
-        return $this->demoCatalogApproved() || $this->productionCatalogApproved();
+        return $this->collectInactivePlanIssues($controls) === [];
     }
 
-    private function demoCatalogApproved(): bool
+    /**
+     * @return list<string>
+     */
+    private function collectInactivePlanIssues(object $controls): array
     {
+        $issues = [];
+
+        foreach (FinancialControls::FLAGS as $flag) {
+            if ((int) ($controls->{$flag} ?? 0) !== 0) {
+                $issues[] = 'financial_controls.'.$flag.' must be 0 (inactive) before arming.';
+            }
+        }
+
+        if (! Schema::hasTable('member_transfer_settings')) {
+            $issues[] = 'member_transfer_settings table is missing.';
+        } elseif ((int) DB::table('member_transfer_settings')->value('member_transfers_enabled') !== 0) {
+            $issues[] = 'member_transfer_settings.member_transfers_enabled must be 0.';
+        }
+
+        if (! Schema::hasTable('commission_plan_levels')) {
+            $issues[] = 'commission_plan_levels table is missing.';
+        } else {
+            $levels = DB::table('commission_plan_levels')
+                ->where('plan_code', CommissionPlanLevel::PLAN_CODE)
+                ->orderBy('level')
+                ->get();
+            if ($levels->count() !== 20) {
+                $issues[] = 'commission_plan_levels must contain exactly 20 rows for plan '.CommissionPlanLevel::PLAN_CODE.' (found '.$levels->count().').';
+            }
+            if ($levels->contains(fn (object $level): bool => (int) $level->is_active !== 0)) {
+                $issues[] = 'commission_plan_levels must all stay inactive (is_active=0).';
+            }
+            foreach ($levels as $level) {
+                $expected = CommissionPlan::RATE_BY_LEVEL[(int) $level->level] ?? null;
+                if ($expected === null) {
+                    $issues[] = 'commission_plan_levels has unexpected level '.(int) $level->level.'.';
+                } elseif (bccomp((string) $level->percentage, $expected, 4) !== 0) {
+                    $issues[] = 'commission_plan_levels level '.(int) $level->level.' must be '.$expected.' (found '.(string) $level->percentage.').';
+                }
+            }
+            foreach (array_keys(CommissionPlan::RATE_BY_LEVEL) as $requiredLevel) {
+                if (! $levels->contains(fn (object $level): bool => (int) $level->level === $requiredLevel)) {
+                    $issues[] = 'commission_plan_levels is missing level '.$requiredLevel.'.';
+                }
+            }
+        }
+
+        $demoIssues = $this->demoCatalogIssues();
+        $productionIssues = $this->productionCatalogIssues();
+        if ($demoIssues !== [] && $productionIssues !== []) {
+            $issues[] = 'Neither the demo catalog nor the production catalog satisfies the approved inactive plan.';
+            foreach (array_slice($productionIssues, 0, 8) as $issue) {
+                $issues[] = $issue;
+            }
+            if (count($productionIssues) > 8) {
+                $issues[] = (count($productionIssues) - 8).' more production-catalog issues omitted.';
+            }
+        }
+
+        return $issues;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function demoCatalogIssues(): array
+    {
+        $issues = [];
         $packages = [
             'DEMO-COAST' => '100.0000',
             'DEMO-HILLS' => '1000.0000',
         ];
         foreach ($packages as $code => $price) {
             $package = DB::table('packages')->where('code', $code)->first();
-            if ($package === null || (int) $package->roi_eligible !== 1 || (int) $package->level_commission_eligible !== 1) {
-                return false;
+            if ($package === null) {
+                $issues[] = 'Demo package '.$code.' is missing.';
+                continue;
+            }
+            if ((int) $package->roi_eligible !== 1 || (int) $package->level_commission_eligible !== 1) {
+                $issues[] = 'Demo package '.$code.' must have roi_eligible=1 and level_commission_eligible=1.';
             }
             if (bccomp((string) $package->price_usd, $price, 4) !== 0) {
-                return false;
+                $issues[] = 'Demo package '.$code.' price must be '.$price.' (found '.(string) $package->price_usd.').';
             }
         }
 
-        return true;
+        return $issues;
     }
 
-    private function productionCatalogApproved(): bool
+    /**
+     * @return list<string>
+     */
+    private function productionCatalogIssues(): array
     {
+        $issues = [];
         $roi = DB::table('packages')->where('code', 'DST-ROI-002')->first();
-        if ($roi === null || (int) $roi->roi_eligible !== 1 || (int) $roi->level_commission_eligible !== 1) {
-            return false;
-        }
-        if (bccomp((string) $roi->price_usd, '100.0000', 4) !== 0) {
-            return false;
+        if ($roi === null) {
+            $issues[] = 'Production package DST-ROI-002 is missing.';
+        } else {
+            if ((int) $roi->roi_eligible !== 1) {
+                $issues[] = 'DST-ROI-002 roi_eligible must be 1.';
+            }
+            if ((int) $roi->level_commission_eligible !== 1) {
+                $issues[] = 'DST-ROI-002 level_commission_eligible must be 1.';
+            }
+            if (bccomp((string) $roi->price_usd, '100.0000', 4) !== 0) {
+                $issues[] = 'DST-ROI-002 price must be 100.0000 (found '.(string) $roi->price_usd.').';
+            }
         }
 
         $definition = config('deltasupport.package_income.packages.DST-ROI-002');
-        if (! is_array($definition)
-            || bccomp((string) ($definition['roi_daily'] ?? '0'), '0.2500', 4) !== 0
-            || (int) ($definition['roi_days'] ?? 0) !== 800
-            || bccomp((string) ($definition['commission_pool'] ?? '0'), '0.2400', 4) !== 0
-            || (int) ($definition['commission_days'] ?? 0) !== 400) {
-            return false;
+        if (! is_array($definition)) {
+            $issues[] = 'config deltasupport.package_income.packages.DST-ROI-002 is missing. Deploy the production package income map.';
+        } else {
+            if (bccomp((string) ($definition['roi_daily'] ?? '0'), '0.2500', 4) !== 0) {
+                $issues[] = 'DST-ROI-002 config roi_daily must be 0.2500.';
+            }
+            if ((int) ($definition['roi_days'] ?? 0) !== 800) {
+                $issues[] = 'DST-ROI-002 config roi_days must be 800.';
+            }
+            if (bccomp((string) ($definition['commission_pool'] ?? '0'), '0.2400', 4) !== 0) {
+                $issues[] = 'DST-ROI-002 config commission_pool must be 0.2400.';
+            }
+            if ((int) ($definition['commission_days'] ?? 0) !== 400) {
+                $issues[] = 'DST-ROI-002 config commission_days must be 400.';
+            }
+        }
+
+        if (config('deltasupport.package_income.packages.DST-TOUR-003') !== null) {
+            $issues[] = 'DST-TOUR-003 must not have a package_income config definition (tour-only).';
         }
 
         $tour = DB::table('packages')->where('code', 'DST-TOUR-003')->first();
-        if ($tour === null) {
-            return true;
+        if ($tour !== null) {
+            if ((int) $tour->roi_eligible !== 0) {
+                $issues[] = 'DST-TOUR-003 roi_eligible must be 0 (tour-only).';
+            }
+            if ((int) $tour->level_commission_eligible !== 0) {
+                $issues[] = 'DST-TOUR-003 level_commission_eligible must be 0 (tour-only).';
+            }
+            if (bccomp((string) $tour->price_usd, '1000.0000', 4) !== 0) {
+                $issues[] = 'DST-TOUR-003 price must be 1000.0000 (found '.(string) $tour->price_usd.').';
+            }
         }
 
-        return (int) $tour->roi_eligible === 0
-            && (int) $tour->level_commission_eligible === 0
-            && bccomp((string) $tour->price_usd, '1000.0000', 4) === 0
-            && config('deltasupport.package_income.packages.DST-TOUR-003') === null;
+        return $issues;
     }
 
     private function hasBusinessRecords(): bool
