@@ -44,7 +44,7 @@ class PackageIncomeAdministration
         $missingSponsors = $this->missingSponsors();
         $failedJobs = $this->failedJobs();
 
-        $checklist = $this->checklist($schedule, $reconciliation, $backup, $missingSponsors, $failedJobs);
+        $checklist = $this->checklist($dailySchedule, $reconciliation, $backup, $missingSponsors, $failedJobs, $controls);
 
         return [
             'business_date' => $businessDate,
@@ -67,6 +67,10 @@ class PackageIncomeAdministration
             'demonstration_pending_roi' => count($demonstrationPreview['roi']),
             'demonstration_pending_commissions' => count($demonstrationPreview['commissions']),
             'daily_cycle_registered' => count($dailySchedule->events()) > 0,
+            'daily_cycle_task_count' => count($dailySchedule->events()),
+            'automation_armed' => $controls->automationArmed(),
+            'emergency_stopped' => $controls->emergencyStopped(),
+            'posting_allowed' => $controls->automaticPostingAllowed(),
             'roi_calculation_enabled' => $controls->enabled('roi_calculation_enabled'),
             'roi_wallet_crediting_enabled' => $controls->enabled('roi_wallet_crediting_enabled'),
             'level_calculation_enabled' => $controls->enabled('level_calculation_enabled'),
@@ -79,7 +83,7 @@ class PackageIncomeAdministration
             'missing_sponsors' => $missingSponsors,
             'checklist' => $checklist,
             'blockers' => count(array_filter($checklist, fn (array $item): bool => $item['status'] === 'blocker')),
-            'scheduler' => $this->schedulerHealth($schedule, $prepared),
+            'scheduler' => $this->schedulerHealth($schedule, $prepared, $dailySchedule),
             'ledger_rows' => $this->ledgerRows(),
         ];
     }
@@ -191,7 +195,7 @@ class PackageIncomeAdministration
      * @param  array{package_income: int, total: int, queued: bool}  $failedJobs
      * @return list<array{label: string, status: string, detail: string}>
      */
-    private function checklist($schedule, array $reconciliation, array $backup, array $missingSponsors, array $failedJobs): array
+    private function checklist($dailySchedule, array $reconciliation, array $backup, array $missingSponsors, array $failedJobs, FinancialControls $controls): array
     {
         $coast = $this->policy->definition('DEMO-COAST');
         $hills = $this->policy->definition('DEMO-HILLS');
@@ -231,13 +235,21 @@ class PackageIncomeAdministration
             'Production generation',
             false,
             '',
-            'Package income generation is disabled. This page cannot turn it on.'
+            'Legacy package-income:accrue stays disabled. This page cannot turn it on. Automatic posting uses financial:daily after financial:arm.'
         );
         $items[] = $this->item(
             'Scheduler registration',
-            count($schedule->events()) > 0,
-            'A financial task is registered.',
-            'No financial task is registered. package-income:accrue is prepared for '.$this->reportTime().' '.$this->timezoneLabel().' and is not on the scheduler.'
+            count($dailySchedule->events()) > 0,
+            'financial:daily, financial:recover, and ranks:evaluate are registered for '.$this->reportTime().' '.$this->timezoneLabel().'.',
+            'No daily financial task is registered.'
+        );
+        $items[] = $this->item(
+            'Automation arm',
+            $controls->automaticPostingAllowed(),
+            'Financial automation is armed and the emergency stop is off.',
+            $controls->emergencyStopped()
+                ? 'Emergency stop is on. No automatic wallet credit will be posted.'
+                : 'Financial automation is not armed. financial:daily refuses to credit wallets until financial:arm succeeds.'
         );
         $items[] = $this->item(
             'Sponsor records',
@@ -313,19 +325,29 @@ class PackageIncomeAdministration
     }
 
     /**
-     * @return array{registered_events: int, command: string, expression: string, timezone: string, without_overlapping: bool, on_one_server: bool, overlap_minutes: int, enabled: bool, one_date: bool, backfill: bool}
+     * @return array{registered_events: int, daily_events: int, command: string, daily_command: string, expression: string, daily_expression: string, timezone: string, without_overlapping: bool, on_one_server: bool, overlap_minutes: int, enabled: bool, one_date: bool, backfill: bool}
      */
-    private function schedulerHealth(Schedule $registered, Schedule $prepared): array
+    private function schedulerHealth(Schedule $registered, Schedule $prepared, Schedule $daily): array
     {
         $event = $prepared->events()[0] ?? null;
+        $dailyEvent = null;
+        foreach ($daily->events() as $candidate) {
+            if (str_contains((string) $candidate->command, 'financial:daily')) {
+                $dailyEvent = $candidate;
+                break;
+            }
+        }
 
         return [
             'registered_events' => count($registered->events()),
+            'daily_events' => count($daily->events()),
             'command' => $event ? (string) $event->command : '',
+            'daily_command' => $dailyEvent ? (string) $dailyEvent->command : '',
             'expression' => (string) ($event->expression ?? ''),
-            'timezone' => (string) ($event->timezone ?? ''),
-            'without_overlapping' => (bool) ($event->withoutOverlapping ?? false),
-            'on_one_server' => (bool) ($event->onOneServer ?? false),
+            'daily_expression' => (string) ($dailyEvent->expression ?? ''),
+            'timezone' => (string) ($dailyEvent->timezone ?? $event->timezone ?? ''),
+            'without_overlapping' => (bool) ($dailyEvent->withoutOverlapping ?? $event->withoutOverlapping ?? false),
+            'on_one_server' => (bool) ($dailyEvent->onOneServer ?? $event->onOneServer ?? false),
             'overlap_minutes' => 120,
             'enabled' => $this->policy->enabled(),
             'one_date' => true,

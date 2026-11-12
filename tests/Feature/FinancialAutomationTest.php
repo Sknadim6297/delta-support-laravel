@@ -218,6 +218,60 @@ class FinancialAutomationTest extends TestCase
         $this->assertSame($before, \App\Models\PackageIncomeRun::query()->count());
     }
 
+    public function test_recovery_credits_a_completely_missed_yesterday_once(): void
+    {
+        $this->arm();
+        $member = $this->member('ST100014', 'ST666666', 'missed@example.test');
+        $this->purchase($member, $this->package('DEMO-COAST', 'Coastal Weekend'), '2026-10-01 02:00:00', 'MISS-1');
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-12 00:05:00', 'Asia/Kolkata'));
+        $this->assertSame(0, \App\Models\PackageIncomeRun::query()->whereDate('business_date', '2026-10-11')->count());
+
+        $this->artisan('financial:recover')
+            ->assertSuccessful()
+            ->expectsOutputToContain('has not succeeded')
+            ->expectsOutputToContain('scheduled run has not started');
+        $this->assertSame(1, PackageRoiAccrual::query()->whereDate('business_date', '2026-10-11')->count());
+        $this->assertSame('0.2500', $member->fresh()->roi_wallet_amount);
+        $this->assertSame('succeeded', \App\Models\PackageIncomeRun::query()->whereDate('business_date', '2026-10-11')->latest('id')->value('status'));
+        $this->assertSame(0, \App\Models\PackageIncomeRun::query()->whereDate('business_date', '2026-10-12')->count());
+
+        $this->artisan('financial:recover')->assertSuccessful()->expectsOutputToContain('scheduled run has not started');
+        $this->assertSame(1, PackageRoiAccrual::query()->whereDate('business_date', '2026-10-11')->count());
+        $this->assertSame('0.2500', $member->fresh()->roi_wallet_amount);
+    }
+
+    public function test_recovery_respects_the_configured_schedule_time_and_timezone(): void
+    {
+        $this->arm();
+        config(['deltasupport.package_income.schedule_time' => '02:15']);
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-11 01:00:00', 'Asia/Kolkata'));
+
+        $this->artisan('financial:recover')
+            ->assertSuccessful()
+            ->expectsOutputToContain('has not succeeded')
+            ->expectsOutputToContain('scheduled run has not started');
+        $this->assertSame('succeeded', \App\Models\PackageIncomeRun::query()->whereDate('business_date', '2026-10-10')->latest('id')->value('status'));
+        $this->assertSame(0, \App\Models\PackageIncomeRun::query()->whereDate('business_date', '2026-10-11')->count());
+        $this->assertSame(0, PackageRoiAccrual::query()->count());
+    }
+
+    public function test_missed_audit_lists_unfinished_dates_without_crediting(): void
+    {
+        $this->arm();
+        $member = $this->member('ST100015', 'ST666666', 'audit@example.test');
+        $purchase = $this->purchase($member, $this->package('DEMO-COAST', 'Coastal Weekend'), '2026-10-01 02:00:00', 'AUDIT-1');
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-12 12:00:00', 'Asia/Kolkata'));
+
+        $this->artisan('financial:missed', ['--days' => 3, '--detailed' => true])
+            ->assertSuccessful()
+            ->expectsOutputToContain('2026-10-11')
+            ->expectsOutputToContain('0.2500')
+            ->expectsOutputToContain((string) $purchase->id)
+            ->expectsOutputToContain('financial:recover');
+        $this->assertSame(0, PackageRoiAccrual::query()->count());
+        $this->assertSame('0.0000', $member->fresh()->roi_wallet_amount);
+    }
+
     public function test_the_emergency_stop_blocks_posting_and_the_dashboard_cannot_credit_a_wallet(): void
     {
         $this->arm();

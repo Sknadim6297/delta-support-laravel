@@ -53,6 +53,7 @@ class FinancialArmGuardTest extends TestCase
 
     public function test_existing_business_records_block_activation(): void
     {
+        User::factory()->create(['is_admin' => true]);
         $this->prepareApprovedDatabase();
         Member::query()->create([
             'member_id' => 'ST100001',
@@ -70,6 +71,53 @@ class FinancialArmGuardTest extends TestCase
         $this->artisan('financial:arm', $this->armOptions())
             ->assertFailed()
             ->expectsOutputToContain('already has business records');
+
+        $this->assertFalse(FinancialControl::current()->financial_automation_armed);
+
+        $this->artisan('financial:arm', $this->armOptions() + [
+            '--allow-existing-business' => 'wrong',
+        ])->assertFailed()->expectsOutputToContain('allow-existing-business-records');
+        $this->assertFalse(FinancialControl::current()->financial_automation_armed);
+
+        $this->artisan('financial:arm', $this->armOptions() + [
+            '--allow-existing-business' => 'allow-existing-business-records',
+        ])->assertSuccessful()->expectsOutputToContain('Existing business records were present');
+        $this->assertTrue(FinancialControl::current()->financial_automation_armed);
+        $this->assertSame(1, AdminActivityLog::query()->where('action', 'financial_automation_armed')->count());
+        $this->assertSame(1, AdminActivityLog::query()->where('action', 'financial_automation_arm_refused')->count());
+    }
+
+    public function test_status_reports_posting_blockers_without_writing(): void
+    {
+        $this->artisan('financial:status')
+            ->assertSuccessful()
+            ->expectsOutputToContain('Posting allowed')
+            ->expectsOutputToContain('no');
+        $this->assertFalse(FinancialControl::current()->financial_automation_armed);
+        $this->assertSame(0, AdminActivityLog::query()->count());
+    }
+
+    public function test_existing_business_override_still_refuses_an_unapproved_database(): void
+    {
+        $this->prepareApprovedDatabase();
+        Member::query()->create([
+            'member_id' => 'ST100002',
+            'sponsor_id' => 'ST666666',
+            'sponsor_name' => 'Admin',
+            'member_name' => 'Existing Member',
+            'mobile_no' => '9000000002',
+            'email' => 'blocked@example.test',
+            'status' => 'active',
+            'roi_wallet_amount' => '0.0000',
+            'working_wallet_amount' => '0.0000',
+            'activation_wallet_amount' => '0.0000',
+        ]);
+
+        $this->artisan('financial:arm', [
+            '--confirm' => 'arm-financial-automation',
+            '--database' => 'not_the_approved_database',
+            '--allow-existing-business' => 'allow-existing-business-records',
+        ])->assertFailed()->expectsOutputToContain('not the approved target');
 
         $this->assertFalse(FinancialControl::current()->financial_automation_armed);
     }

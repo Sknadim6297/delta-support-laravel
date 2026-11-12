@@ -63,9 +63,10 @@ class RealIncomeReportTest extends TestCase
             ->assertDontSeeText('LOCAL-TEST-ST100004-DEMO-HILLS');
         $this->actingAs($admin)->get(route('admin.finance.roi-schedule'))
             ->assertOk()
-            ->assertSeeText('Automatic ROI generation is disabled')
+            ->assertSeeText('financial:daily is registered')
             ->assertSeeText('financial:daily')
-            ->assertSeeText('Not registered');
+            ->assertSeeText('Not armed')
+            ->assertSeeText('Registered');
         $this->actingAs($admin)->get(route('admin.demo-income'))
             ->assertOk()
             ->assertSeeText('ST100004')

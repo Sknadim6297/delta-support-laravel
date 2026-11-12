@@ -37,9 +37,10 @@ class PackageIncomeAdministrationTest extends TestCase
         $this->actingAs($admin)->get(route('admin.finance.roi-schedule'))
             ->assertOk()
             ->assertSeeText('Income Control')
-            ->assertSeeText('Automatic ROI generation is disabled')
+            ->assertSeeText('financial:daily is registered')
             ->assertSeeText('No execution has been recorded.')
-            ->assertSeeText('Package income generation is disabled. This page cannot turn it on.')
+            ->assertSeeText('Legacy package-income:accrue stays disabled. This page cannot turn it on.')
+            ->assertSeeText('Financial automation is not armed.')
             ->assertSeeText('Automated test results are not stored in the database.')
             ->assertSeeText('Backup availability')
             ->assertDontSeeText('Enable generation');

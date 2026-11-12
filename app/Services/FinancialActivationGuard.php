@@ -49,16 +49,16 @@ class FinancialActivationGuard
         );
     }
 
-    public function refusal(string $requested): ?string
+    public function refusal(string $requested, bool $allowExistingBusiness = false): ?string
     {
         try {
-            return $this->assess($requested);
+            return $this->assess($requested, $allowExistingBusiness);
         } catch (Throwable) {
             return 'Refused. The production initialization state is uncertain. No posting was armed.';
         }
     }
 
-    private function assess(string $requested): ?string
+    private function assess(string $requested, bool $allowExistingBusiness = false): ?string
     {
         $requested = trim($requested);
         if ($requested === '') {
@@ -101,7 +101,7 @@ class FinancialActivationGuard
             return 'Refused. The financial configuration is not the approved inactive plan. No posting was armed.';
         }
 
-        if ($this->hasBusinessRecords()) {
+        if ($this->hasBusinessRecords() && ! $allowExistingBusiness) {
             return 'Refused. This database already has business records. No posting was armed.';
         }
 

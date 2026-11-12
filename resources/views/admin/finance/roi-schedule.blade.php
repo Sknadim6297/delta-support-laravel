@@ -6,24 +6,24 @@
     <x-ui.page-header
         kicker="ROI Management"
         title="Income Control"
-        lead="Automatic ROI generation is disabled. This page does not register a task or create a transaction. The counts below separate demonstration purchases from the real purchases financial:daily can see."
+        lead="financial:daily is registered for {{ $control['schedule_time'] }} {{ $control['timezone'] }}. Wallet credits post only after financial:arm and while the emergency stop is off. This page does not credit a wallet."
     >
         <x-slot:actions>
             <x-ui.button href="{{ route('admin.finance.roi-history') }}" variant="secondary">Open ROI History</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
     <div class="ds-stat-grid">
-        <x-ui.stat label="Package income status" :value="$control['enabled'] ? 'Enabled' : 'Disabled'" hint="Generation flag" />
-        <x-ui.stat label="ROI engine status" :value="$control['enabled'] ? 'Enabled' : 'Disabled'" hint="Same generation flag" />
-        <x-ui.stat label="Commission engine status" :value="$control['enabled'] ? 'Enabled' : 'Disabled'" hint="Same generation flag" />
-        <x-ui.stat label="Scheduler status" :value="$scheduledTasks === 0 ? 'Not registered' : $scheduledTasks.' registered'" hint="Tasks registered for this application" />
+        <x-ui.stat label="Package income status" :value="$control['enabled'] ? 'Enabled' : 'Disabled'" hint="Legacy package-income:accrue flag" />
+        <x-ui.stat label="Automation arm" :value="$control['automation_armed'] ? 'Armed' : 'Not armed'" hint="Required before financial:daily credits wallets" />
+        <x-ui.stat label="Posting" :value="$control['posting_allowed'] ? 'Will post' : 'Will not post'" :hint="$control['emergency_stopped'] ? 'Emergency stop is on' : $control['timezone']" />
+        <x-ui.stat label="Scheduler status" :value="$scheduledTasks === 0 ? 'Not registered' : $scheduledTasks.' registered'" hint="Daily financial tasks for this application" />
         <x-ui.stat label="Current business date" :value="$control['business_date']" :hint="$control['timezone']" />
         <x-ui.stat label="Stored ROI records" :value="$roiCount" hint="Legacy rows plus package accruals" />
         <x-ui.stat label="Legacy financial actions" :value="$legacyEnabled ? 'Enabled' : 'Disabled'" hint="Does not credit a wallet" />
         <x-ui.stat label="Accelerated testing" :value="$accelerated ? 'Enabled' : 'Disabled'" hint="Schedule testing flag" />
     </div>
 
-    <x-ui.card title="Execution history" subtitle="Rows appear only after package-income:accrue runs. This page does not create one.">
+    <x-ui.card title="Execution history" subtitle="Rows appear after financial:daily or package-income:accrue. This page does not create one.">
         <x-ui.table>
             <table>
                 <thead>
@@ -59,7 +59,7 @@
             <x-ui.stat label="Demonstration ROI rows" :value="$control['demonstration_pending_roi']" hint="Shown on Demo Income Preview. Not written by the daily command." />
             <x-ui.stat label="Demonstration commission rows" :value="$control['demonstration_pending_commissions']" hint="Shown on Demo Income Preview. Not written by the daily command." />
             <x-ui.stat label="Skipped or blocked lines" :value="$control['skipped_count']" hint="From the same read-only check" />
-            <x-ui.stat label="Prepared schedule" :value="$control['schedule_time']" :hint="'Not registered. Chunk size '.$control['chunk_size']" />
+            <x-ui.stat label="Prepared schedule" :value="$control['schedule_time']" :hint="$control['timezone'].'. Chunk size '.$control['chunk_size']" />
         </div>
         @if ($control['skipped'] === [])
             <p>No skipped or blocked line was returned for this date.</p>
@@ -82,16 +82,16 @@
         <p>Wallet ledger posting that moves a balance by itself is disabled. Package accrual writes its ledger row only inside the accrual transaction, and that command is disabled.</p>
     </x-ui.card>
 
-    <x-ui.card title="Scheduler health" subtitle="package-income:accrue stays unregistered. financial:daily is on the 00:10 Asia/Kolkata schedule and posts only after automation is armed.">
+    <x-ui.card title="Scheduler health" subtitle="package-income:accrue stays unregistered. financial:daily runs at the configured Asia/Kolkata time and posts only after automation is armed.">
         <div class="ds-stat-grid">
             <x-ui.stat label="Legacy package-income:accrue" value="Not registered" hint="Generation flag stays disabled. This page cannot turn it on." />
-            <x-ui.stat label="financial:daily" :value="$control['daily_cycle_registered'] ? 'Registered' : 'Not registered'" hint="00:10 Asia/Kolkata. Posting waits for the automation arm and stops on the emergency switch." />
-            <x-ui.stat label="ROI calculation" :value="$control['roi_calculation_enabled'] ? 'On' : 'Off'" hint="Required before an actual daily run stores an ROI row" />
+            <x-ui.stat label="financial:daily" :value="$control['daily_cycle_registered'] ? 'Registered' : 'Not registered'" :hint="$control['schedule_time'].' '.$control['timezone'].'. Posting waits for the automation arm and stops on the emergency switch.'" />
+            <x-ui.stat label="ROI calculation" :value="$control['roi_calculation_enabled'] ? 'On' : 'Off'" hint="On automatically while automation is armed" />
             <x-ui.stat label="ROI wallet crediting" :value="$control['roi_wallet_crediting_enabled'] ? 'On' : 'Off'" hint="Moves the ROI wallet only when on" />
-            <x-ui.stat label="Level calculation" :value="$control['level_calculation_enabled'] ? 'On' : 'Off'" hint="Required before an actual daily run stores a commission row" />
+            <x-ui.stat label="Level calculation" :value="$control['level_calculation_enabled'] ? 'On' : 'Off'" hint="On automatically while automation is armed" />
             <x-ui.stat label="Level wallet crediting" :value="$control['level_wallet_crediting_enabled'] ? 'On' : 'Off'" hint="Moves the working wallet only when on" />
         </div>
-        <p>Prepared legacy command: {{ $control['scheduler']['command'] }}. It is not on the scheduler. Historical backfill is off. financial:daily reads the same package rules, skips every LOCAL-TEST purchase and every @local-test.invalid member, and does not backfill earlier dates. A dry run writes nothing. Wallet crediting stays off unless that switch is saved on Financial Controls.</p>
+        <p>Prepared legacy command: {{ $control['scheduler']['command'] }}. It is not on the scheduler. financial:daily is registered{{ $control['scheduler']['daily_expression'] ? ' as '.$control['scheduler']['daily_expression'] : '' }}. Historical backfill beyond yesterday is off. financial:daily skips every LOCAL-TEST purchase and every @local-test.invalid member. A dry run writes nothing. Use financial:missed to identify unfinished dates without crediting wallets.</p>
         <p><a href="{{ route('admin.finance.real-income') }}">Open Real Income</a> for non-demo purchases and their skipped reasons. <a href="{{ route('admin.demo-income') }}">Demo Income Preview</a> is separate and is not ROI History.</p>
     </x-ui.card>
 

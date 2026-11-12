@@ -12,7 +12,7 @@ class RecoverDailyFinancialCycle extends Command
 {
     protected $signature = 'financial:recover';
 
-    protected $description = 'Retry today after 00:10, or yesterday after a failed run. Successful dates are not credited again.';
+    protected $description = 'Retry today after the configured schedule time, or yesterday when that business date has not succeeded. Successful dates are not credited again.';
 
     public function handle(FinancialControls $controls): int
     {
@@ -23,17 +23,18 @@ class RecoverDailyFinancialCycle extends Command
         }
 
         $timezone = (string) config('deltasupport.package_income.timezone', 'Asia/Kolkata');
+        $scheduleTime = (string) config('deltasupport.package_income.schedule_time', '00:10');
         $now = CarbonImmutable::now($timezone);
         $today = $now->toDateString();
         $yesterday = $now->subDay()->toDateString();
 
-        if ($this->latestStatus($yesterday) === PackageIncomeRun::FAILED) {
-            $this->line('Retrying the failed run for '.$yesterday.'.');
+        if ($this->latestStatus($yesterday) !== PackageIncomeRun::SUCCEEDED) {
+            $this->line('Retrying '.$yesterday.' because it has not succeeded.');
             Artisan::call('financial:daily', ['--date' => $yesterday, '--recover-yesterday' => true]);
             $this->output->write(Artisan::output());
         }
 
-        if ($now->format('H:i') < '00:10') {
+        if ($now->format('H:i') < $scheduleTime) {
             $this->line('Today\'s scheduled run has not started. No wallet was credited.');
 
             return self::SUCCESS;

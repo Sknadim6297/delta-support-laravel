@@ -374,19 +374,27 @@ class PackageIncomeAccrual
         }
 
         if ($this->policy->roiEligible($purchase, $package) && $this->policy->withinWindow($date, $first, $definition['roi_days'])) {
-            $count = PackageRoiAccrual::query()->where('package_purchase_id', $purchase->id)->count();
-            if ($count >= $definition['roi_days']) {
-                $skipped[] = $purchase->reference.' has already reached its ROI duration.';
+            $existingForDate = PackageRoiAccrual::query()
+                ->where('package_purchase_id', $purchase->id)
+                ->whereDate('business_date', $date->toDateString())
+                ->first();
+            if ($existingForDate?->status === 'accrued') {
+                // Fully posted for this business date.
             } else {
-                $roi[] = [
-                    'purchase_id' => (string) $purchase->id,
-                    'reference' => 'PROI-'.$purchase->id.'-'.$date->format('Ymd'),
-                    'member_id' => $purchase->member_id,
-                    'package_code' => $purchase->package_code,
-                    'package_name' => $purchase->package_name,
-                    'business_date' => $date->toDateString(),
-                    'amount' => $definition['roi_daily'],
-                ];
+                $count = PackageRoiAccrual::query()->where('package_purchase_id', $purchase->id)->count();
+                if ($count >= $definition['roi_days'] && $existingForDate === null) {
+                    $skipped[] = $purchase->reference.' has already reached its ROI duration.';
+                } else {
+                    $roi[] = [
+                        'purchase_id' => (string) $purchase->id,
+                        'reference' => 'PROI-'.$purchase->id.'-'.$date->format('Ymd'),
+                        'member_id' => $purchase->member_id,
+                        'package_code' => $purchase->package_code,
+                        'package_name' => $purchase->package_name,
+                        'business_date' => $date->toDateString(),
+                        'amount' => $definition['roi_daily'],
+                    ];
+                }
             }
         }
 

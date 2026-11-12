@@ -38,7 +38,7 @@ return [
         'timezone' => 'Asia/Kolkata',
         'vip_commission_days' => $vipCommissionDays,
         'chunk_size' => 100,
-        'schedule_time' => '00:10',
+        'schedule_time' => env('PACKAGE_INCOME_SCHEDULE_TIME', '00:10'),
         'packages' => [
             'DEMO-COAST' => [
                 'roi_daily' => '0.2500',

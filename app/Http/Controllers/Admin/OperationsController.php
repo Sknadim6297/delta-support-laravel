@@ -17,6 +17,7 @@ use App\Services\PackageIncomeAccrual;
 use App\Services\PackageIncomeAdministration;
 use App\Services\PackageIncomeCalculationPreview;
 use App\Services\PackageIncomePolicy;
+use App\Services\DailyFinancialScheduleRegistrar;
 use App\Services\FinancialHistoryQuery;
 use App\Services\FinancialScheduleRegistrar;
 use App\Services\ReferralLevelEligibility;
@@ -144,14 +145,17 @@ class OperationsController extends Controller
         ]);
     }
 
-    public function roiSchedule(Request $request, FinancialScheduleRegistrar $registrar, PackageIncomeAdministration $administration, PackageIncomeCalculationPreview $preview): View
+    public function roiSchedule(Request $request, FinancialScheduleRegistrar $registrar, DailyFinancialScheduleRegistrar $dailyRegistrar, PackageIncomeAdministration $administration, PackageIncomeCalculationPreview $preview): View
     {
-        $schedule = new Schedule;
-        $registrar->register($schedule);
+        $legacySchedule = new Schedule;
+        $registrar->register($legacySchedule);
+        $dailySchedule = new Schedule;
+        $dailyRegistrar->register($dailySchedule);
         $date = $request->query('date');
 
         return view('admin.finance.roi-schedule', [
-            'scheduledTasks' => count($schedule->events()),
+            'scheduledTasks' => count($dailySchedule->events()),
+            'legacyScheduledTasks' => count($legacySchedule->events()),
             'roiCount' => RoiTransaction::query()->count() + PackageRoiAccrual::query()->count(),
             'legacyEnabled' => (bool) config('deltasupport.legacy_financial_actions'),
             'accelerated' => (bool) config('financial.accelerated.enabled'),
