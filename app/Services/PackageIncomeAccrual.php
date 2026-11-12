@@ -11,7 +11,6 @@ use App\Support\WalletLedgerDirection;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 class PackageIncomeAccrual
@@ -447,22 +446,31 @@ class PackageIncomeAccrual
             $unlocked = $this->eligibility->forMember($sponsor->member_id)['unlocked_levels'];
             $eligible = $recipients[$sponsor->member_id] ??= $this->recipientEligible($sponsor->member_id);
             if ($eligible && $unlocked >= $level && $sponsor->member_id !== $this->policy->adminRootId()) {
-                $amount = $this->policy->levelAmount($pool, $level);
-                if ($amount !== null && bccomp($amount, '0', 4) === 1) {
-                    $commissions[] = [
-                        'purchase_id' => (string) $purchase->id,
-                        'reference' => 'PLVL-'.$purchase->id.'-'.$sponsor->member_id.'-'.$date->format('Ymd'),
-                        'member_id' => $sponsor->member_id,
-                        'from_member_id' => $source->member_id,
-                        'from_member_name' => $source->member_name,
-                        'level' => (string) $level,
-                        'package_code' => $purchase->package_code,
-                        'package_name' => $purchase->package_name,
-                        'business_date' => $date->toDateString(),
-                        'pool' => $pool,
-                        'rate' => CommissionPlan::RATE_BY_LEVEL[$level],
-                        'amount' => $amount,
-                    ];
+                $existingForDate = PackageLevelAccrual::query()
+                    ->where('package_purchase_id', $purchase->id)
+                    ->where('member_id', $sponsor->member_id)
+                    ->whereDate('business_date', $date->toDateString())
+                    ->first();
+                if ($existingForDate?->status === 'accrued') {
+                    // Fully posted for this purchase, recipient, and business date.
+                } else {
+                    $amount = $this->policy->levelAmount($pool, $level);
+                    if ($amount !== null && bccomp($amount, '0', 4) === 1) {
+                        $commissions[] = [
+                            'purchase_id' => (string) $purchase->id,
+                            'reference' => 'PLVL-'.$purchase->id.'-'.$sponsor->member_id.'-'.$date->format('Ymd'),
+                            'member_id' => $sponsor->member_id,
+                            'from_member_id' => $source->member_id,
+                            'from_member_name' => $source->member_name,
+                            'level' => (string) $level,
+                            'package_code' => $purchase->package_code,
+                            'package_name' => $purchase->package_name,
+                            'business_date' => $date->toDateString(),
+                            'pool' => $pool,
+                            'rate' => CommissionPlan::RATE_BY_LEVEL[$level],
+                            'amount' => $amount,
+                        ];
+                    }
                 }
             } else {
                 $skipped[] = $sponsor->member_id.' was not paid at level '.$level.'.';
@@ -555,7 +563,7 @@ class PackageIncomeAccrual
             'roi',
             $row['amount'],
             $row['reference'],
-            (string) Str::uuid(),
+            $row['reference'],
             $reason,
             (int) $row['purchase_id'],
             $opening,
@@ -640,7 +648,7 @@ class PackageIncomeAccrual
             'working',
             $row['amount'],
             $row['reference'],
-            (string) Str::uuid(),
+            $row['reference'],
             $reason,
             (int) $row['purchase_id'],
             $opening,
