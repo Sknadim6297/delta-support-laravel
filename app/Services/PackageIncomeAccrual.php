@@ -20,6 +20,7 @@ class PackageIncomeAccrual
         private readonly ReferralLevelEligibility $eligibility,
         private readonly CommissionPlan $plan,
         private readonly WalletLedgerPoster $ledger,
+        private readonly PackageIncomeActivationGate $activation,
     ) {
     }
 
@@ -367,12 +368,24 @@ class PackageIncomeAccrual
     private function planPurchase(PackagePurchase $purchase, ?Package $package, CarbonImmutable $date, bool $ratesReady, array &$roi, array &$commissions, array &$skipped, array &$recipients): void
     {
         $definition = $this->policy->definition($purchase->package_code);
-        $first = $this->policy->firstAccrualDate($purchase);
-        if ($definition === null || $first === null) {
+        $originalFirst = $this->activation->originalFirstAccrualDate($purchase, $this->policy);
+        if ($definition === null || $originalFirst === null) {
             return;
         }
 
-        if ($this->policy->roiEligible($purchase, $package) && $this->policy->withinWindow($date, $first, $definition['roi_days'])) {
+        if ($this->activation->requiresActivation($purchase->package_code)
+            && $this->activation->activationBusinessDate($purchase->package_code) === null) {
+            $skipped[] = $purchase->package_code.' income activation date is missing. Forward-only posting is closed.';
+
+            return;
+        }
+
+        $allowedFirst = $this->activation->firstAllowedIncomeDate($purchase, $this->policy);
+        if ($allowedFirst === null || $date->lessThan($allowedFirst)) {
+            return;
+        }
+
+        if ($this->policy->roiEligible($purchase, $package) && $this->policy->withinWindow($date, $originalFirst, $definition['roi_days'])) {
             $existingForDate = PackageRoiAccrual::query()
                 ->where('package_purchase_id', $purchase->id)
                 ->whereDate('business_date', $date->toDateString())
@@ -404,7 +417,7 @@ class PackageIncomeAccrual
 
             return;
         }
-        if (! $this->policy->withinWindow($date, $first, (int) $definition['commission_days'])) {
+        if (! $this->policy->withinWindow($date, $originalFirst, (int) $definition['commission_days'])) {
             return;
         }
 

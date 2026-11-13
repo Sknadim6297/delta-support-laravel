@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CommissionPlanLevel;
+use App\Models\Package;
 use App\Services\CommissionPlan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -318,20 +319,51 @@ class FinancialActivationGuard
             }
         }
 
-        if (config('deltasupport.package_income.packages.DST-TOUR-003') !== null) {
-            $issues[] = 'DST-TOUR-003 must not have a package_income config definition (tour-only).';
+        $tourDefinition = config('deltasupport.package_income.packages.DST-TOUR-003');
+        if (! is_array($tourDefinition)) {
+            $issues[] = 'config deltasupport.package_income.packages.DST-TOUR-003 is missing. Deploy the premium tour income map.';
+        } else {
+            if (bccomp((string) ($tourDefinition['roi_daily'] ?? '0'), '2.5000', 4) !== 0) {
+                $issues[] = 'DST-TOUR-003 config roi_daily must be 2.5000.';
+            }
+            if ((int) ($tourDefinition['roi_days'] ?? 0) !== 1000) {
+                $issues[] = 'DST-TOUR-003 config roi_days must be 1000.';
+            }
+            if (bccomp((string) ($tourDefinition['commission_pool'] ?? '0'), '2.4000', 4) !== 0) {
+                $issues[] = 'DST-TOUR-003 config commission_pool must be 2.4000.';
+            }
+            if ((int) ($tourDefinition['commission_days'] ?? 0) !== 400) {
+                $issues[] = 'DST-TOUR-003 config commission_days must be 400.';
+            }
         }
 
         $tour = DB::table('packages')->where('code', 'DST-TOUR-003')->first();
-        if ($tour !== null) {
-            if ((int) $tour->roi_eligible !== 0) {
-                $issues[] = 'DST-TOUR-003 roi_eligible must be 0 (tour-only).';
+        if ($tour === null) {
+            $issues[] = 'Production package DST-TOUR-003 is missing.';
+        } else {
+            if ((string) $tour->package_type !== Package::TYPE_PREMIUM) {
+                $issues[] = 'DST-TOUR-003 package_type must be '.Package::TYPE_PREMIUM.'.';
             }
-            if ((int) $tour->level_commission_eligible !== 0) {
-                $issues[] = 'DST-TOUR-003 level_commission_eligible must be 0 (tour-only).';
+            if ((int) $tour->roi_eligible !== 1) {
+                $issues[] = 'DST-TOUR-003 roi_eligible must be 1.';
+            }
+            if ((int) $tour->level_commission_eligible !== 1) {
+                $issues[] = 'DST-TOUR-003 level_commission_eligible must be 1.';
             }
             if (bccomp((string) $tour->price_usd, '1000.0000', 4) !== 0) {
                 $issues[] = 'DST-TOUR-003 price must be 1000.0000 (found '.(string) $tour->price_usd.').';
+            }
+        }
+
+        if (! Schema::hasTable('package_income_activations')) {
+            $issues[] = 'package_income_activations table is missing. Run migrations before activating DST-TOUR-003 income.';
+        } else {
+            $activation = DB::table('package_income_activations')->where('package_code', 'DST-TOUR-003')->first();
+            if ($activation === null) {
+                $issues[] = 'DST-TOUR-003 income activation business date is missing. Use financial:activate-tour-income after written approval.';
+            } elseif (! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $activation->activation_business_date)
+                && ! preg_match('/^\d{4}-\d{2}-\d{2}/', (string) $activation->activation_business_date)) {
+                $issues[] = 'DST-TOUR-003 income activation business date is invalid.';
             }
         }
 

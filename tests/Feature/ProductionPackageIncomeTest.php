@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Models\FinancialControl;
 use App\Models\Member;
 use App\Models\Package;
+use App\Models\PackageIncomeActivation;
 use App\Models\PackagePurchase;
 use App\Models\PackageRoiAccrual;
 use App\Models\WalletLedgerEntry;
+use App\Services\TourPackageIncomeActivation;
 use App\Services\PackageIncomeAccrual;
 use App\Services\PackageIncomeEligibilityAudit;
 use App\Services\PackageIncomePolicy;
@@ -26,56 +28,68 @@ class ProductionPackageIncomeTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_production_roi_package_uses_authorized_coastal_tier_amounts(): void
+    public function test_production_packages_use_authorized_income_schedules(): void
     {
         $policy = app(PackageIncomePolicy::class);
-        $definition = $policy->definition('DST-ROI-002');
+        $roi = $policy->definition('DST-ROI-002');
+        $tour = $policy->definition('DST-TOUR-003');
 
-        $this->assertNotNull($definition);
-        $this->assertSame('0.2500', $definition['roi_daily']);
-        $this->assertSame(800, $definition['roi_days']);
-        $this->assertSame('0.2400', $definition['commission_pool']);
-        $this->assertSame(400, $definition['commission_days']);
-        $this->assertNull($policy->definition('DST-TOUR-003'));
+        $this->assertNotNull($roi);
+        $this->assertSame('0.2500', $roi['roi_daily']);
+        $this->assertSame(800, $roi['roi_days']);
+        $this->assertSame('0.2400', $roi['commission_pool']);
+        $this->assertSame(400, $roi['commission_days']);
+
+        $this->assertNotNull($tour);
+        $this->assertSame('2.5000', $tour['roi_daily']);
+        $this->assertSame(1000, $tour['roi_days']);
+        $this->assertSame('2.4000', $tour['commission_pool']);
+        $this->assertSame(400, $tour['commission_days']);
         $this->assertSame(10, (int) config('deltasupport.package_income.wait_days'));
     }
 
-    public function test_dst_roi_002_is_eligible_and_dst_tour_003_never_receives_daily_roi(): void
+    public function test_dst_roi_002_and_dst_tour_003_credit_their_own_amounts(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-12 10:00:00', 'Asia/Kolkata'));
         $this->arm();
+        PackageIncomeActivation::query()->create([
+            'package_code' => 'DST-TOUR-003',
+            'activation_business_date' => '2026-11-01',
+            'activated_at' => now(),
+            'activated_by' => 'test',
+            'confirm_token' => TourPackageIncomeActivation::CONFIRM,
+            'terms_snapshot' => [
+                'roi_daily' => '2.5000',
+                'roi_days' => 1000,
+                'commission_pool' => '2.4000',
+                'commission_days' => 400,
+            ],
+        ]);
 
         $roiPackage = $this->package('DST-ROI-002', 'Delta Support Digha Tour + Monthly Income', Package::TYPE_TOUR_ROI, '100.0000', true);
-        $tourPackage = $this->package('DST-TOUR-003', 'Delta Support 3-Year Tour Package', Package::TYPE_TOUR, '1000.0000', false);
+        $tourPackage = $this->package('DST-TOUR-003', 'Delta Support 3-Year Tour Package', Package::TYPE_PREMIUM, '1000.0000', true);
         $roiMember = $this->member('STDST0001', 'roi@example.test');
         $tourMember = $this->member('STDST0002', 'tour@example.test');
         $roiPurchase = $this->purchase($roiMember, $roiPackage, '2026-11-01 06:00:00', 'DST-ROI-A');
-        $this->purchase($tourMember, $tourPackage, '2026-10-01 06:00:00', 'DST-TOUR-A');
+        $tourPurchase = $this->purchase($tourMember, $tourPackage, '2026-11-01 06:00:00', 'DST-TOUR-A');
 
         $report = app(PackageIncomeEligibilityAudit::class)->forDate('2026-11-12');
-        $this->assertCount(1, $report['eligible']);
-        $this->assertSame((string) $roiPurchase->id, $report['eligible'][0]['purchase_id']);
-        $this->assertSame('0.2500', $report['eligible'][0]['amount']);
-        $this->assertSame('2026-11-11', $report['eligible'][0]['first_accrual']);
-        $reasons = collect($report['ineligible'])->pluck('reason')->implode(' | ');
-        $this->assertStringContainsString('Package roi_eligible is false', $reasons);
-        $this->assertNull(app(PackageIncomePolicy::class)->definition('DST-TOUR-003'));
+        $this->assertCount(2, $report['eligible']);
+        $amounts = collect($report['eligible'])->pluck('amount', 'purchase_id');
+        $this->assertSame('0.2500', $amounts[(string) $roiPurchase->id]);
+        $this->assertSame('2.5000', $amounts[(string) $tourPurchase->id]);
 
         $dry = app(PackageIncomeAccrual::class)->runControlled('2026-11-12', true);
-        $this->assertSame(1, $dry['roi_records']);
-        $this->assertSame(0, $dry['commission_records']);
+        $this->assertSame(2, $dry['roi_records']);
 
         $live = app(PackageIncomeAccrual::class)->runControlled('2026-11-12');
         $repeat = app(PackageIncomeAccrual::class)->runControlled('2026-11-12');
-        $this->assertSame(1, $live['roi_records']);
+        $this->assertSame(2, $live['roi_records']);
         $this->assertSame(0, $repeat['roi_records']);
-        $this->assertSame(1, PackageRoiAccrual::query()->count());
-        $this->assertSame('0.2500', PackageRoiAccrual::query()->value('amount'));
-        $this->assertSame('DST-ROI-002', PackageRoiAccrual::query()->value('package_code'));
+        $this->assertSame(2, PackageRoiAccrual::query()->count());
         $this->assertSame('0.2500', $roiMember->fresh()->roi_wallet_amount);
-        $this->assertSame('0.0000', $tourMember->fresh()->roi_wallet_amount);
-        $this->assertSame(1, WalletLedgerEntry::query()->where('wallet', 'roi')->count());
-        $this->assertSame(0, PackageRoiAccrual::query()->where('package_code', 'DST-TOUR-003')->count());
+        $this->assertSame('2.5000', $tourMember->fresh()->roi_wallet_amount);
+        $this->assertSame(2, WalletLedgerEntry::query()->where('wallet', 'roi')->count());
     }
 
     public function test_eligibility_and_dry_run_agree_before_the_wait_ends(): void

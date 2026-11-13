@@ -12,8 +12,10 @@ use Illuminate\Support\Facades\Schema;
 
 class PackageIncomeEligibilityAudit
 {
-    public function __construct(private readonly PackageIncomePolicy $policy)
-    {
+    public function __construct(
+        private readonly PackageIncomePolicy $policy,
+        private readonly PackageIncomeActivationGate $activation,
+    ) {
     }
 
     /**
@@ -119,27 +121,48 @@ class PackageIncomeEligibilityAudit
 
         $definition = $this->policy->definition($purchase->package_code);
         if ($definition === null) {
-            $base['reason'] = 'Package code has no income definition in config (production ROI uses DST-ROI-002; DST-TOUR-003 is tour-only).';
+            $base['reason'] = 'Package code has no income definition in config (production income uses DST-ROI-002 and DST-TOUR-003).';
 
             return $base;
         }
 
         $base['amount'] = $definition['roi_daily'];
-        $first = $this->policy->firstAccrualDate($purchase);
-        $base['first_accrual'] = $first?->toDateString() ?? '';
-        if ($first === null) {
+        $originalFirst = $this->activation->originalFirstAccrualDate($purchase, $this->policy);
+        $base['first_accrual'] = $originalFirst?->toDateString() ?? '';
+        if ($originalFirst === null) {
             $base['reason'] = 'First accrual date could not be calculated.';
 
             return $base;
         }
 
-        if ($date->lessThan($first)) {
-            $base['reason'] = 'Still inside the '.$waitDays.'-day wait. First ROI date is '.$first->toDateString().'.';
+        if ($this->activation->requiresActivation($purchase->package_code)
+            && $this->activation->activationBusinessDate($purchase->package_code) === null) {
+            $base['reason'] = 'Package income activation date is missing. Forward-only posting is closed.';
 
             return $base;
         }
 
-        $last = $this->policy->lastAccrualDate($first, $definition['roi_days']);
+        $allowedFirst = $this->activation->firstAllowedIncomeDate($purchase, $this->policy);
+        $base['first_allowed_income'] = $allowedFirst?->toDateString() ?? '';
+        if ($allowedFirst === null) {
+            $base['reason'] = 'First allowed income date could not be calculated.';
+
+            return $base;
+        }
+
+        if ($date->lessThan($allowedFirst)) {
+            if ($date->lessThan($originalFirst)) {
+                $base['reason'] = 'Still inside the '.$waitDays.'-day wait. First ROI date is '.$originalFirst->toDateString().'.';
+            } else {
+                $activation = $this->activation->activationBusinessDate($purchase->package_code);
+                $base['reason'] = 'Before package income activation. First allowed income date is '.$allowedFirst->toDateString()
+                    .' (activation '.($activation?->toDateString() ?? 'none').').';
+            }
+
+            return $base;
+        }
+
+        $last = $this->policy->lastAccrualDate($originalFirst, $definition['roi_days']);
         if ($last === null || $date->greaterThan($last)) {
             $base['reason'] = 'Outside ROI window. Last ROI date is '.($last?->toDateString() ?? 'none').'.';
 

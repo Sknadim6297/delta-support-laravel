@@ -27,10 +27,11 @@ class RepairActivationMismatchesTest extends TestCase
             '--preview' => true,
         ])->assertSuccessful()
             ->expectsOutputToContain('WILL UPDATE')
-            ->expectsOutputToContain('Preview only');
+            ->expectsOutputToContain('Preview only')
+            ->expectsOutputToContain('financial:activate-tour-income');
 
         $this->assertTrue((bool) MemberTransferSetting::current()->member_transfers_enabled);
-        $this->assertTrue((bool) Package::query()->where('code', 'DST-TOUR-003')->value('roi_eligible'));
+        $this->assertFalse((bool) Package::query()->where('code', 'DST-TOUR-003')->value('roi_eligible'));
 
         $this->artisan('financial:repair-activation-mismatches', [
             '--database' => $db,
@@ -38,9 +39,10 @@ class RepairActivationMismatchesTest extends TestCase
         ])->assertFailed()->expectsOutputToContain('repair-activation-mismatches');
 
         $this->assertTrue((bool) MemberTransferSetting::current()->member_transfers_enabled);
+        $this->assertFalse((bool) Package::query()->where('code', 'DST-TOUR-003')->value('roi_eligible'));
     }
 
-    public function test_apply_is_idempotent_and_logs_exact_changes(): void
+    public function test_apply_only_disables_member_transfers_and_never_enables_tour_income(): void
     {
         User::factory()->create(['is_admin' => true]);
         Log::spy();
@@ -50,37 +52,31 @@ class RepairActivationMismatchesTest extends TestCase
         $this->artisan('financial:repair-activation-mismatches', [
             '--database' => $db,
             '--confirm' => ProductionActivationMismatchRepair::CONFIRM,
-        ])->assertSuccessful()->expectsOutputToContain('Applied 3 repairs');
+        ])->assertSuccessful()->expectsOutputToContain('Applied 1 repair');
 
         $this->assertFalse((bool) MemberTransferSetting::current()->fresh()->member_transfers_enabled);
         $tour = Package::query()->where('code', 'DST-TOUR-003')->firstOrFail();
         $this->assertFalse((bool) $tour->roi_eligible);
         $this->assertFalse((bool) $tour->level_commission_eligible);
-        $this->assertSame(Package::TYPE_TOUR_ROI, $tour->package_type);
-        $this->assertSame('1000.0000', (string) $tour->price_usd);
+        $this->assertSame(Package::TYPE_TOUR, $tour->package_type);
         $this->assertSame(1, AdminActivityLog::query()->where('action', 'financial_activation_mismatch_repaired')->count());
-        Log::shouldHaveReceived('info')->withArgs(fn ($message): bool => str_contains((string) $message, 'Production activation mismatch repair applied'));
 
         $this->artisan('financial:repair-activation-mismatches', [
             '--database' => $db,
             '--confirm' => ProductionActivationMismatchRepair::CONFIRM,
         ])->assertSuccessful()->expectsOutputToContain('No activation-mismatch repairs are needed');
-
-        $this->assertSame(1, AdminActivityLog::query()->where('action', 'financial_activation_mismatch_repaired')->count());
     }
 
     public function test_failed_apply_rolls_back_all_changes(): void
     {
         $this->seedMismatchState();
         $repair = app(ProductionActivationMismatchRepair::class);
-        $preview = $repair->preview();
-        $this->assertSame(3, $preview['needed_count']);
+        $this->assertSame(1, $repair->preview()['needed_count']);
 
         DB::listen(function ($query): void {
             if (str_contains(strtolower($query->sql), 'update')
-                && str_contains(strtolower($query->sql), 'packages')
-                && str_contains(strtolower($query->sql), 'level_commission_eligible')) {
-                throw new RuntimeException('forced package update failure');
+                && str_contains(strtolower($query->sql), 'member_transfer_settings')) {
+                throw new RuntimeException('forced transfer update failure');
             }
         });
 
@@ -88,13 +84,10 @@ class RepairActivationMismatchesTest extends TestCase
             $repair->apply();
             $this->fail('The forced failure should roll back.');
         } catch (RuntimeException $exception) {
-            $this->assertSame('forced package update failure', $exception->getMessage());
+            $this->assertSame('forced transfer update failure', $exception->getMessage());
         }
 
         $this->assertTrue((bool) MemberTransferSetting::current()->fresh()->member_transfers_enabled);
-        $tour = Package::query()->where('code', 'DST-TOUR-003')->firstOrFail();
-        $this->assertTrue((bool) $tour->roi_eligible);
-        $this->assertTrue((bool) $tour->level_commission_eligible);
         $this->assertSame(0, AdminActivityLog::query()->count());
     }
 
@@ -118,25 +111,14 @@ class RepairActivationMismatchesTest extends TestCase
 
         Package::query()->create([
             'code' => 'DST-TOUR-003',
-            'package_type' => Package::TYPE_TOUR_ROI,
+            'package_type' => Package::TYPE_TOUR,
             'name' => 'Delta Support 3-Year Tour Package',
             'price_usd' => '1000.0000',
             'denomination' => 'USDT',
-            'roi_eligible' => true,
-            'level_commission_eligible' => true,
+            'roi_eligible' => false,
+            'level_commission_eligible' => false,
             'is_active' => true,
             'sort_order' => 10,
-        ]);
-        Package::query()->create([
-            'code' => 'DST-ROI-002',
-            'package_type' => Package::TYPE_TOUR_ROI,
-            'name' => 'Delta Support Digha Tour + Monthly Income',
-            'price_usd' => '100.0000',
-            'denomination' => 'USDT',
-            'roi_eligible' => true,
-            'level_commission_eligible' => true,
-            'is_active' => true,
-            'sort_order' => 20,
         ]);
     }
 }

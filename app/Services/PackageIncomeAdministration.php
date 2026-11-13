@@ -200,20 +200,24 @@ class PackageIncomeAdministration
         $coast = $this->policy->definition('DEMO-COAST');
         $hills = $this->policy->definition('DEMO-HILLS');
         $productionRoi = $this->policy->definition('DST-ROI-002');
+        $productionTour = $this->policy->definition('DST-TOUR-003');
         $errors = $this->plan->integrityErrors();
         $items = [];
 
         $items[] = $this->item(
             'Package configuration',
-            $productionRoi !== null || ($coast !== null && $hills !== null),
-            'Production DST-ROI-002 and/or demo Coastal/Hill income definitions are stored.',
+            ($productionRoi !== null && $productionTour !== null) || ($coast !== null && $hills !== null),
+            'Production DST-ROI-002 / DST-TOUR-003 and/or demo Coastal/Hill income definitions are stored.',
             'A required package income definition is missing.'
         );
         $items[] = $this->item(
             'ROI configuration',
-            ($productionRoi !== null && $productionRoi['roi_daily'] === '0.2500' && $productionRoi['roi_days'] === 800)
-                || ($coast !== null && $hills !== null && $coast['roi_daily'] === '0.2500' && $coast['roi_days'] === 800 && $hills['roi_daily'] === '2.5000' && $hills['roi_days'] === 1000),
-            'DST-ROI-002 / Coastal Weekend is 0.2500 for 800 days. DEMO-HILLS remains 2.5000 for 1000 days. DST-TOUR-003 has no daily ROI definition.',
+            (
+                ($productionRoi !== null && $productionRoi['roi_daily'] === '0.2500' && $productionRoi['roi_days'] === 800)
+                && (($productionTour !== null && $productionTour['roi_daily'] === '2.5000' && $productionTour['roi_days'] === 1000)
+                    || ($hills !== null && $hills['roi_daily'] === '2.5000' && $hills['roi_days'] === 1000))
+            ) || ($coast !== null && $hills !== null && $coast['roi_daily'] === '0.2500' && $coast['roi_days'] === 800 && $hills['roi_daily'] === '2.5000' && $hills['roi_days'] === 1000),
+            'DST-ROI-002 / Coastal Weekend is 0.2500 for 800 days. DST-TOUR-003 / DEMO-HILLS is 2.5000 for 1000 days.',
             'A daily ROI amount or duration does not match the approved rule.'
         );
         $items[] = $this->item(
@@ -226,10 +230,11 @@ class PackageIncomeAdministration
             'VIP 400-day duration',
             (int) config('deltasupport.package_income.vip_commission_days') === 400
                 && (
-                    ($productionRoi !== null && $productionRoi['commission_days'] === 400 && $productionRoi['commission_pool'] === '0.2400')
+                    ($productionRoi !== null && $productionRoi['commission_days'] === 400 && $productionRoi['commission_pool'] === '0.2400'
+                        && $productionTour !== null && $productionTour['commission_days'] === 400 && $productionTour['commission_pool'] === '2.4000')
                     || ($hills !== null && $hills['commission_days'] === 400 && $coast !== null && $coast['commission_days'] === 400 && $hills['commission_pool'] === '2.4000')
                 ),
-            'ROI-bearing coastal-tier packages use a 400-day commission duration. The coastal pool is 0.2400. DEMO-HILLS VIP pool stays 2.4000 when present.',
+            'Coastal-tier packages use pool 0.2400 for 400 days. DST-TOUR-003 / DEMO-HILLS use pool 2.4000 for 400 days.',
             'The VIP or Coastal commission duration is not 400 days.'
         );
         $items[] = $this->item(

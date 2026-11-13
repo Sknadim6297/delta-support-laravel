@@ -51,7 +51,8 @@ class AuditPostedFinancialCycle extends Command
 
         $roiConfig = $report['package_income']['DST-ROI-002'];
         $this->line('DST-ROI-002 config: '.($roiConfig === null ? 'MISSING' : json_encode($roiConfig)));
-        $this->line('DST-TOUR-003 income config: '.($report['package_income']['DST-TOUR-003'] === null ? 'absent (correct)' : 'PRESENT (tour-only violation)'));
+        $tourConfig = $report['package_income']['DST-TOUR-003'];
+        $this->line('DST-TOUR-003 config: '.($tourConfig === null ? 'MISSING' : json_encode($tourConfig)));
 
         $rateMismatch = array_values(array_filter($report['rates'], fn (array $rate): bool => ! $rate['matches']));
         if ($rateMismatch === []) {
@@ -98,7 +99,7 @@ class AuditPostedFinancialCycle extends Command
             || ! $report['unique_indexes']['ledger_reference']
             || ! $report['unique_indexes']['ledger_idempotency']
             || $report['package_income']['DST-ROI-002'] === null
-            || $report['package_income']['DST-TOUR-003'] !== null
+            || $report['package_income']['DST-TOUR-003'] === null
             || collect($report['dates'])->contains(fn (array $day): bool => ! $day['ok']);
 
         return $failed ? self::FAILURE : self::SUCCESS;

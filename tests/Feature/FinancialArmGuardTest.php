@@ -6,7 +6,9 @@ use App\Models\AdminActivityLog;
 use App\Models\FinancialControl;
 use App\Models\Member;
 use App\Models\Package;
+use App\Models\PackageIncomeActivation;
 use App\Models\User;
+use App\Services\TourPackageIncomeActivation;
 use App\Services\FinancialActivationGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -177,9 +179,9 @@ class FinancialArmGuardTest extends TestCase
     {
         $this->prepareProductionApprovedDatabase();
         Package::query()->where('code', 'DST-TOUR-003')->update([
-            'roi_eligible' => true,
-            'level_commission_eligible' => true,
-            'package_type' => Package::TYPE_TOUR_ROI,
+            'roi_eligible' => false,
+            'level_commission_eligible' => false,
+            'package_type' => Package::TYPE_TOUR,
         ]);
         $row = FinancialControl::current();
         $row->withdrawal_requests_enabled = true;
@@ -189,14 +191,15 @@ class FinancialArmGuardTest extends TestCase
         $this->assertNotEmpty($issues);
         $joined = implode(' | ', $issues);
         $this->assertStringContainsString('withdrawal_requests_enabled must be 0', $joined);
-        $this->assertStringContainsString('DST-TOUR-003 roi_eligible must be 0', $joined);
+        $this->assertStringContainsString('DST-TOUR-003 roi_eligible must be 1', $joined);
+        $this->assertStringContainsString('DST-TOUR-003 package_type must be '.Package::TYPE_PREMIUM, $joined);
 
         $refusal = app(FinancialActivationGuard::class)->refusal($this->connectedName(), true);
         $this->assertIsString($refusal);
         $this->assertStringContainsString('approved inactive plan', $refusal);
         $this->assertStringContainsString('Mismatches:', $refusal);
         $this->assertStringContainsString('withdrawal_requests_enabled must be 0', $refusal);
-        $this->assertStringContainsString('DST-TOUR-003 roi_eligible must be 0', $refusal);
+        $this->assertStringContainsString('DST-TOUR-003 roi_eligible must be 1', $refusal);
 
         $this->artisan('financial:arm', $this->armOptions() + [
             '--allow-existing-business' => 'allow-existing-business-records',
@@ -244,14 +247,27 @@ class FinancialArmGuardTest extends TestCase
         ]);
         Package::query()->create([
             'code' => 'DST-TOUR-003',
-            'package_type' => Package::TYPE_TOUR,
+            'package_type' => Package::TYPE_PREMIUM,
             'name' => 'Delta Support 3-Year Tour Package',
             'price_usd' => '1000.0000',
             'denomination' => 'USDT',
-            'roi_eligible' => false,
-            'level_commission_eligible' => false,
+            'roi_eligible' => true,
+            'level_commission_eligible' => true,
             'is_active' => true,
             'sort_order' => 10,
+        ]);
+        PackageIncomeActivation::query()->create([
+            'package_code' => 'DST-TOUR-003',
+            'activation_business_date' => '2026-11-14',
+            'activated_at' => now(),
+            'activated_by' => 'test',
+            'confirm_token' => TourPackageIncomeActivation::CONFIRM,
+            'terms_snapshot' => [
+                'roi_daily' => '2.5000',
+                'roi_days' => 1000,
+                'commission_pool' => '2.4000',
+                'commission_days' => 400,
+            ],
         ]);
         Member::query()->create([
             'member_id' => 'STPROD001',

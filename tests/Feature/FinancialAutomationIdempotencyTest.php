@@ -238,9 +238,9 @@ class FinancialAutomationIdempotencyTest extends TestCase
         $this->assertTrue($report['unique_indexes']['ledger_idempotency']);
         $this->assertSame([], array_values(array_filter($report['rates'], fn (array $rate): bool => ! $rate['matches'])));
 
-        // DST-ROI-002 config is present in app config; tour income stays absent.
         $this->assertNotNull($report['package_income']['DST-ROI-002']);
-        $this->assertNull($report['package_income']['DST-TOUR-003']);
+        $this->assertNotNull($report['package_income']['DST-TOUR-003']);
+        $this->assertSame('2.5000', $report['package_income']['DST-TOUR-003']['roi_daily']);
 
         $this->artisan('financial:audit-posted', [
             '--database' => (string) DB::connection()->getDatabaseName(),

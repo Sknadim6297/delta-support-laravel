@@ -33,10 +33,14 @@ return [
     | Production codes:
     | - DST-ROI-002 (Digha Tour + Monthly Income): 0.2500 USDT daily for 800 days.
     |   Published package benefits match this approved coastal-tier plan.
-    | - DST-TOUR-003 (3-Year Tour Package): tour benefits only. No income definition.
+    | - DST-TOUR-003 (3-Year Premium Tour + ROI): 2.5000 USDT daily for 1000 days.
+    |   Commission pool 2.4000 for 400 days. Tour benefits stay unchanged.
+    |   Income is forward-only from package_income_activations.activation_business_date.
+    |   Duration stays anchored to each purchase's original first accrual (approval + wait);
+    |   activation is a posting floor, not a restarted 1000/400-day window.
     |
     | DEMO-* codes remain for local/demo catalogs and tests.
-    | Hill Station Retreat (DEMO-HILLS) uses the VIP commission duration below.
+    | Hill Station Retreat (DEMO-HILLS) mirrors the DST-TOUR-003 income schedule.
     */
     'package_income' => [
         'enabled' => false,
@@ -46,12 +50,19 @@ return [
         'vip_commission_days' => $vipCommissionDays,
         'chunk_size' => 100,
         'schedule_time' => env('PACKAGE_INCOME_SCHEDULE_TIME', '00:10'),
+        'activation_required_packages' => ['DST-TOUR-003'],
         'packages' => [
             'DST-ROI-002' => [
                 'roi_daily' => '0.2500',
                 'roi_days' => 800,
                 'commission_pool' => '0.2400',
                 'commission_days' => 400,
+            ],
+            'DST-TOUR-003' => [
+                'roi_daily' => '2.5000',
+                'roi_days' => 1000,
+                'commission_pool' => '2.4000',
+                'commission_days' => $vipCommissionDays,
             ],
             'DEMO-COAST' => [
                 'roi_daily' => '0.2500',

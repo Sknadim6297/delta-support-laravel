@@ -15,7 +15,7 @@ class RepairActivationMismatches extends Command
         {--confirm= : Type repair-activation-mismatches to apply}
         {--preview : Show the planned changes without writing}';
 
-    protected $description = 'Preview or apply the three approved inactive-plan data fixes for member transfers and DST-TOUR-003 flags. Does not arm posting or credit wallets.';
+    protected $description = 'Preview or apply member_transfer_settings inactive-plan fix only. DST-TOUR-003 income uses financial:activate-tour-income. Does not arm posting or credit wallets.';
 
     public function handle(ProductionActivationMismatchRepair $repair): int
     {
@@ -49,9 +49,10 @@ class RepairActivationMismatches extends Command
             ], $preview['changes'])
         );
 
-        if ($preview['tour_missing']) {
-            $this->warn(ProductionActivationMismatchRepair::TOUR_CODE.' was not found. Transfer setting can still be previewed, but apply is refused until the package exists.');
+        if ($preview['tour_income_config_missing']) {
+            $this->warn('DST-TOUR-003 package_income config is missing from the deployed map.');
         }
+        $this->line('Tour income flags/date are not changed here. Use financial:activate-tour-income after written approval.');
 
         if ($preview['needed_count'] === 0) {
             $this->info('No activation-mismatch repairs are needed.');
@@ -93,7 +94,7 @@ class RepairActivationMismatches extends Command
             ], $result['applied'])
         );
         $this->line('Next: php artisan financial:status');
-        $this->line('Automation remains unarmed.');
+        $this->line('This command never arms automation and never credits wallets.');
 
         return self::SUCCESS;
     }
