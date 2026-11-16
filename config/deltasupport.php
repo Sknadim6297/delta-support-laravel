@@ -86,4 +86,16 @@ return [
     'wallet_ledger' => [
         'enabled' => false,
     ],
+
+    /*
+    | Windows Plesk in-process scheduler (deltasupport:scheduler-tick).
+    | Default mode is dry-run/verify. Financial Artisan jobs stay blocked until
+    | allow_financial is explicitly enabled after written authorization.
+    | recover is due at minute 25 Asia/Kolkata (UTC schedule listings may show :55).
+    */
+    'scheduler' => [
+        'mode' => env('DELTASUPPORT_SCHEDULER_MODE', 'dry-run'),
+        'allow_financial' => filter_var(env('DELTASUPPORT_SCHEDULER_ALLOW_FINANCIAL', false), FILTER_VALIDATE_BOOLEAN),
+    ],
 ];
+
