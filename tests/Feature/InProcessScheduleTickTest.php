@@ -21,6 +21,7 @@ class InProcessScheduleTickTest extends TestCase
     {
         CarbonImmutable::setTestNow();
         Cache::flush();
+        config(['deltasupport.scheduler.verification_log' => 'logs/scheduler-tick-verify.log']);
         parent::tearDown();
     }
 
@@ -58,6 +59,47 @@ class InProcessScheduleTickTest extends TestCase
             }
         }
         $this->assertSame(0, PackageRoiAccrual::query()->count());
+    }
+
+    public function test_verify_mode_writes_persistent_timestamped_job_log_without_executing(): void
+    {
+        $path = storage_path('logs/scheduler-tick-verify-test.log');
+        if (is_file($path)) {
+            unlink($path);
+        }
+        config(['deltasupport.scheduler.verification_log' => 'logs/scheduler-tick-verify-test.log']);
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-16 00:10:05', 'Asia/Kolkata'));
+
+        $tick = app(InProcessScheduleTick::class);
+        $this->assertSame($path, $tick->verificationLogPath());
+        $results = $tick->run(InProcessScheduleTick::MODE_VERIFY);
+
+        $this->assertFileExists($path);
+        $contents = (string) file_get_contents($path);
+        $this->assertStringContainsString('mode=verify', $contents);
+        $this->assertStringContainsString('2026-11-16 00:10:05 Asia/Kolkata', $contents);
+        $this->assertStringContainsString('job=financial:daily due=yes ran=no', $contents);
+        $this->assertStringContainsString('skip=verify-only: execution disabled', $contents);
+        $this->assertStringContainsString('job=financial:recover due=no ran=no', $contents);
+        $this->assertTrue(collect($results)->every(fn (array $row): bool => $row['ran'] === false));
+        $this->assertSame(0, PackageRoiAccrual::query()->count());
+
+        unlink($path);
+    }
+
+    public function test_artisan_verify_reports_log_path_for_plesk_file_manager(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-16 00:11:00', 'Asia/Kolkata'));
+        config(['deltasupport.scheduler.verification_log' => 'logs/scheduler-tick-verify.log']);
+
+        $exit = Artisan::call('deltasupport:scheduler-tick', ['--verify-only' => true]);
+        $output = Artisan::output();
+
+        $this->assertSame(0, $exit);
+        $this->assertStringContainsString('Verification log:', $output);
+        $this->assertStringContainsString('scheduler-tick-verify.log', $output);
+        $this->assertStringContainsString('Plesk may truncate', $output);
+        $this->assertFileExists(storage_path('logs/scheduler-tick-verify.log'));
     }
 
     public function test_live_mode_blocks_financial_jobs_without_allow_flag(): void

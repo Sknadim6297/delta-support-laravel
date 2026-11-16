@@ -71,6 +71,8 @@ class RunInProcessScheduleTick extends Command
                 (string) ($row['error'] ?? ''),
             ], $results)
         );
+        $this->line('Verification log: '.$tick->verificationLogPath());
+        $this->line('Plesk may truncate task output; use the verification log for every-minute confirmation.');
 
         return self::SUCCESS;
     }

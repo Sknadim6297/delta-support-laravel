@@ -96,6 +96,9 @@ return [
     'scheduler' => [
         'mode' => env('DELTASUPPORT_SCHEDULER_MODE', 'dry-run'),
         'allow_financial' => filter_var(env('DELTASUPPORT_SCHEDULER_ALLOW_FINANCIAL', false), FILTER_VALIDATE_BOOLEAN),
+        // Relative to storage_path(). Readable in Plesk File Manager under storage/logs.
+        'verification_log' => env('DELTASUPPORT_SCHEDULER_VERIFY_LOG', 'logs/scheduler-tick-verify.log'),
     ],
 ];
+
 

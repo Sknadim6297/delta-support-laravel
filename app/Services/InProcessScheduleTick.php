@@ -38,6 +38,22 @@ class InProcessScheduleTick
     ];
 
     /**
+     * Persistent verification log for every tick (including verify/dry-run).
+     * Readable via Plesk File Manager under storage/logs.
+     */
+    public function verificationLogPath(): string
+    {
+        $configured = config('deltasupport.scheduler.verification_log');
+        $relative = is_string($configured) && trim($configured) !== ''
+            ? trim($configured)
+            : 'logs/scheduler-tick-verify.log';
+
+        $relative = str_replace('\\', '/', ltrim($relative, '/\\'));
+
+        return storage_path($relative);
+    }
+
+    /**
      * @return list<array{
      *   command: string,
      *   due: bool,
@@ -60,7 +76,58 @@ class InProcessScheduleTick
             $results[] = $this->processJob($job, $mode, $now, $timezone);
         }
 
+        $this->writeVerificationLog($mode, $now, $timezone, $results);
+
         return $results;
+    }
+
+    /**
+     * @param  list<array{command: string, due: bool, ran: bool, skipped: ?string, exit_code: ?int, error: ?string}>  $results
+     */
+    public function writeVerificationLog(string $mode, CarbonImmutable $now, string $timezone, array $results): string
+    {
+        $path = $this->verificationLogPath();
+        $directory = dirname($path);
+        if (! is_dir($directory)) {
+            mkdir($directory, 0775, true);
+        }
+
+        $dueCount = count(array_filter($results, fn (array $row): bool => $row['due']));
+        $ranCount = count(array_filter($results, fn (array $row): bool => $row['ran']));
+        $lines = [];
+        $lines[] = sprintf(
+            '[%s %s] tick mode=%s due=%d ran=%d jobs=%d',
+            $now->toDateTimeString(),
+            $timezone,
+            $mode,
+            $dueCount,
+            $ranCount,
+            count($results)
+        );
+        foreach ($results as $row) {
+            $lines[] = sprintf(
+                '  job=%s due=%s ran=%s skip=%s exit=%s error=%s',
+                $row['command'],
+                $row['due'] ? 'yes' : 'no',
+                $row['ran'] ? 'yes' : 'no',
+                $row['skipped'] === null || $row['skipped'] === '' ? '-' : str_replace(["\r", "\n"], ' ', $row['skipped']),
+                $row['exit_code'] === null ? '-' : (string) $row['exit_code'],
+                $row['error'] === null || $row['error'] === '' ? '-' : str_replace(["\r", "\n"], ' ', $row['error'])
+            );
+        }
+        $lines[] = '';
+
+        file_put_contents($path, implode(PHP_EOL, $lines), FILE_APPEND);
+        Log::info('Scheduler tick verification recorded.', [
+            'mode' => $mode,
+            'at' => $now->toDateTimeString(),
+            'timezone' => $timezone,
+            'due' => $dueCount,
+            'ran' => $ranCount,
+            'log' => $path,
+        ]);
+
+        return $path;
     }
 
     /**
