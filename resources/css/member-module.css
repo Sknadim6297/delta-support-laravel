@@ -211,6 +211,21 @@
     letter-spacing: 0.01em;
 }
 
+.ds-mm-package-cell {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 14rem;
+    max-width: 22rem;
+}
+
+.ds-mm-package-line {
+    color: #122033;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
 .wrapper .ds-mm .ds-mm-empty td {
     padding: 36px 16px;
     background: #fff;

@@ -27,8 +27,19 @@
                 <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
             </select>
         </div>
+        <div>
+            <label for="member-package">Approved package</label>
+            <select id="member-package" name="package">
+                <option value="">All packages</option>
+                @foreach ($packageOptions as $option)
+                    <option value="{{ $option->package_code }}" @selected($packageFilter === $option->package_code)>
+                        {{ $option->package_code }} — {{ $option->package_name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
         <button class="ds-btn" type="submit">Search</button>
-        @if (request()->filled('q') || request()->filled('status'))
+        @if (request()->filled('q') || request()->filled('status') || request()->filled('package'))
             <a class="ds-btn ds-btn-secondary" href="{{ route('admin.members.directory') }}">Clear</a>
         @endif
     </form>
@@ -64,7 +75,12 @@
                             <x-ui.badge :tone="$member->status === 'active' ? 'success' : 'warning'">{{ $member->status === 'active' ? 'Active' : 'Inactive' }}</x-ui.badge>
                         </td>
                         <td>
-                            <x-ui.badge :tone="$member->has_approved_package ? 'success' : ($member->has_pending_package ? 'warning' : 'muted')">{{ $member->has_approved_package ? 'Approved package' : ($member->has_pending_package ? 'Pending package' : 'Unpaid') }}</x-ui.badge>
+                            @php($packageDisplay = $member->packageDirectoryDisplay())
+                            <x-members.package-cell
+                                :tone="$packageDisplay['tone']"
+                                :badge="$packageDisplay['badge']"
+                                :lines="$packageDisplay['lines']"
+                            />
                         </td>
                         <td>
                             <div class="ds-row-actions">

@@ -58,7 +58,11 @@
                             <td>{{ $member['joining_date'] }}</td>
                             <td><x-ui.badge tone="success">{{ $member['account_status'] }}</x-ui.badge></td>
                             <td>
-                                <x-ui.badge :tone="$member['package_status'] === 'Approved package' ? 'success' : ($member['package_status'] === 'Pending package' ? 'warning' : 'muted')">{{ $member['package_status'] }}</x-ui.badge>
+                                <x-members.package-cell
+                                    :tone="$member['package_tone'] ?? 'muted'"
+                                    :badge="$member['package_status']"
+                                    :lines="$member['package_lines'] ?? []"
+                                />
                             </td>
                             <td>
                                 <div class="ds-row-actions">

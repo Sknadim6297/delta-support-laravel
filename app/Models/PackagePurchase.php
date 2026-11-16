@@ -70,6 +70,34 @@ class PackagePurchase extends Model
         };
     }
 
+    /**
+     * Compact label for admin member lists: code, amount, and package name.
+     */
+    public function directoryLabel(): string
+    {
+        $code = trim((string) $this->package_code);
+        $name = trim((string) $this->package_name);
+        $amount = bcadd((string) ($this->price_usd ?? '0'), '0', 4);
+        $amount = rtrim(rtrim($amount, '0'), '.');
+        if ($amount === '') {
+            $amount = '0';
+        }
+        $denom = trim((string) ($this->denomination ?: 'USDT'));
+        $price = $amount.' '.$denom;
+
+        if ($code !== '' && $name !== '') {
+            return $code.' · '.$price.' — '.$name;
+        }
+        if ($code !== '') {
+            return $code.' · '.$price;
+        }
+        if ($name !== '') {
+            return $price.' — '.$name;
+        }
+
+        return $price;
+    }
+
     protected $fillable = [
         'reference',
         'idempotency_key',

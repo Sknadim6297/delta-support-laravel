@@ -24,6 +24,8 @@ class MemberController extends Controller
     {
         return $members
             ->map(function (Member $member, $index) {
+                $packageDisplay = $member->packageDirectoryDisplay();
+
                 return [
                     'serial' => $index + 1,
                     'id' => $member->id,
@@ -37,9 +39,9 @@ class MemberController extends Controller
                     'investment_amount' => (float) ($member->investment_amount ?? 0),
                     'status' => $member->status,
                     'account_status' => $member->status === 'active' ? 'Active' : 'Inactive',
-                    'package_status' => $member->has_approved_package
-                        ? 'Approved package'
-                        : ($member->has_pending_package ? 'Pending package' : 'Unpaid'),
+                    'package_status' => $packageDisplay['badge'],
+                    'package_tone' => $packageDisplay['tone'],
+                    'package_lines' => $packageDisplay['lines'],
                 ];
             })
             ->values()
@@ -309,6 +311,7 @@ class MemberController extends Controller
     protected function memberList(Request $request, string $status, string $view)
     {
         $query = Member::where('status', $status)
+            ->with('directoryPackagePurchases')
             ->withSum(['investments as investment_amount' => function ($investmentQuery) {
                 $investmentQuery->where('status', 'active')->where('amount', '>=', 100);
             }], 'amount')
@@ -512,9 +515,8 @@ class MemberController extends Controller
             ], 404);
         }
 
-        $approvedPackage = $member->packagePurchases()
-            ->where('status', \App\Models\PackagePurchase::APPROVED)
-            ->exists();
+        $member->load('directoryPackagePurchases');
+        $packageDisplay = $member->packageDirectoryDisplay();
 
         return response()->json([
             'member_id' => $member->member_id,
@@ -527,7 +529,8 @@ class MemberController extends Controller
             'account_status' => $member->status,
             'registered_at' => $member->created_at?->format('d M Y'),
             'direct_referrals' => $member->sponsoredMembers()->count(),
-            'package_status' => $approvedPackage ? 'Approved package' : 'Unpaid',
+            'package_status' => $packageDisplay['badge'],
+            'package_lines' => $packageDisplay['lines'],
         ]);
     }
 

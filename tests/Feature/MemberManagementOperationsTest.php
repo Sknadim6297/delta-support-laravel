@@ -160,7 +160,9 @@ class MemberManagementOperationsTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.members.inactive', ['member_id' => $member->member_id]))
             ->assertOk()
-            ->assertSeeText('Pending package');
+            ->assertSeeText('Pending package')
+            ->assertSeeText($package->code)
+            ->assertSeeText($package->name);
 
         $purchase = PackagePurchase::query()->firstOrFail();
         $this->actingAs($admin)->post(route('admin.payments.reject', $purchase), [
@@ -190,7 +192,16 @@ class MemberManagementOperationsTest extends TestCase
             ->get(route('admin.members.active', ['member_id' => $member->member_id]))
             ->assertOk()
             ->assertSeeText('Approved package')
+            ->assertSeeText($package->code)
+            ->assertSeeText($package->name)
             ->assertSeeText($member->member_id);
+
+        $this->actingAs($admin)
+            ->get(route('admin.members.directory', ['package' => $package->code, 'q' => $member->member_id]))
+            ->assertOk()
+            ->assertSeeText($member->member_id)
+            ->assertSeeText($package->code)
+            ->assertSeeText($package->name);
 
         $this->actingAs($admin)
             ->get(route('admin.members.inactive', ['member_id' => $member->member_id]))

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Member;
+use App\Models\PackagePurchase;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -12,10 +13,13 @@ class MemberDirectoryController extends Controller
 {
     public function index(Request $request): View
     {
+        $packageFilter = trim((string) $request->query('package', ''));
+
         $members = Member::query()
+            ->with('directoryPackagePurchases')
             ->withExists([
-                'packagePurchases as has_approved_package' => fn ($query) => $query->where('status', \App\Models\PackagePurchase::APPROVED),
-                'packagePurchases as has_pending_package' => fn ($query) => $query->where('status', \App\Models\PackagePurchase::PENDING),
+                'packagePurchases as has_approved_package' => fn ($query) => $query->where('status', PackagePurchase::APPROVED),
+                'packagePurchases as has_pending_package' => fn ($query) => $query->where('status', PackagePurchase::PENDING),
             ])
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $term = '%' . trim((string) $request->query('q')) . '%';
@@ -29,6 +33,12 @@ class MemberDirectoryController extends Controller
                 });
             })
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->query('status')))
+            ->when($packageFilter !== '', function ($query) use ($packageFilter): void {
+                $query->whereHas('packagePurchases', function ($purchaseQuery) use ($packageFilter): void {
+                    $purchaseQuery->where('status', PackagePurchase::APPROVED)
+                        ->where('package_code', $packageFilter);
+                });
+            })
             ->latest('id')
             ->paginate(20)
             ->withQueryString();
@@ -40,10 +50,16 @@ class MemberDirectoryController extends Controller
         $activeMemberCount = (int) $statusCounts->get('active', 0);
         $inactiveMemberCount = (int) $statusCounts->get('inactive', 0);
         $totalMembers = (int) Member::query()->count();
-        $approvedPackageCount = \App\Models\PackagePurchase::query()
-            ->where('status', \App\Models\PackagePurchase::APPROVED)
+        $approvedPackageCount = PackagePurchase::query()
+            ->where('status', PackagePurchase::APPROVED)
             ->distinct()
             ->count('member_id');
+        $packageOptions = PackagePurchase::query()
+            ->where('status', PackagePurchase::APPROVED)
+            ->select('package_code', 'package_name')
+            ->distinct()
+            ->orderBy('package_code')
+            ->get();
 
         return view('admin.members.directory', compact(
             'members',
@@ -51,6 +67,8 @@ class MemberDirectoryController extends Controller
             'activeMemberCount',
             'inactiveMemberCount',
             'approvedPackageCount',
+            'packageOptions',
+            'packageFilter',
         ));
     }
 

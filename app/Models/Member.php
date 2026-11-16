@@ -86,6 +86,55 @@ class Member extends Model
         return $this->hasMany(PackagePurchase::class, 'member_id', 'member_id');
     }
 
+    /**
+     * Approved and pending purchases used on admin member directories.
+     */
+    public function directoryPackagePurchases(): HasMany
+    {
+        return $this->packagePurchases()
+            ->whereIn('status', [PackagePurchase::APPROVED, PackagePurchase::PENDING])
+            ->orderByDesc('id');
+    }
+
+    /**
+     * @return array{tone: string, badge: string, lines: list<string>}
+     */
+    public function packageDirectoryDisplay(): array
+    {
+        $purchases = $this->relationLoaded('directoryPackagePurchases')
+            ? $this->directoryPackagePurchases
+            : ($this->relationLoaded('packagePurchases')
+                ? $this->packagePurchases
+                    ->whereIn('status', [PackagePurchase::APPROVED, PackagePurchase::PENDING])
+                    ->sortByDesc('id')
+                    ->values()
+                : $this->directoryPackagePurchases()->get());
+
+        $approved = $purchases->where('status', PackagePurchase::APPROVED)->values();
+        if ($approved->isNotEmpty()) {
+            return [
+                'tone' => 'success',
+                'badge' => 'Approved package',
+                'lines' => $approved->map(fn (PackagePurchase $purchase): string => $purchase->directoryLabel())->unique()->values()->all(),
+            ];
+        }
+
+        $pending = $purchases->where('status', PackagePurchase::PENDING)->values();
+        if ($pending->isNotEmpty()) {
+            return [
+                'tone' => 'warning',
+                'badge' => 'Pending package',
+                'lines' => $pending->map(fn (PackagePurchase $purchase): string => $purchase->directoryLabel())->unique()->values()->all(),
+            ];
+        }
+
+        return [
+            'tone' => 'muted',
+            'badge' => 'Unpaid',
+            'lines' => [],
+        ];
+    }
+
     public function roiTransactions(): HasMany
     {
         return $this->hasMany(RoiTransaction::class, 'member_id', 'member_id');
