@@ -62,6 +62,20 @@ class PackageIncomeActivationGate
     }
 
     /**
+     * Fail-closed Tour wallet posting authorization.
+     * Distinct from storing an activation business date (floor). Defaults false.
+     */
+    public function tourPostingAuthorized(): bool
+    {
+        return config('deltasupport.package_income.tour_posting_authorized') === true;
+    }
+
+    public function tourPostingAuthorizationMessage(): string
+    {
+        return self::TOUR_CODE.' posting is not authorized. Activation floor alone is insufficient; written approval is required (DELTASUPPORT_TOUR_INCOME_POSTING_AUTHORIZED).';
+    }
+
+    /**
      * Original first accrual from approval + wait. Unaffected by activation.
      */
     public function originalFirstAccrualDate(PackagePurchase $purchase, PackageIncomePolicy $policy): ?CarbonImmutable

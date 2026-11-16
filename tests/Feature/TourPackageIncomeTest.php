@@ -223,6 +223,7 @@ class TourPackageIncomeTest extends TestCase
 
     private function activateTour(string $date): void
     {
+        config(['deltasupport.package_income.tour_posting_authorized' => true]);
         PackageIncomeActivation::query()->create([
             'package_code' => 'DST-TOUR-003',
             'activation_business_date' => $date,

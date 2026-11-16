@@ -380,6 +380,13 @@ class PackageIncomeAccrual
             return;
         }
 
+        if ($this->activation->requiresActivation($purchase->package_code)
+            && ! $this->activation->tourPostingAuthorized()) {
+            $skipped[] = $this->activation->tourPostingAuthorizationMessage();
+
+            return;
+        }
+
         $allowedFirst = $this->activation->firstAllowedIncomeDate($purchase, $this->policy);
         if ($allowedFirst === null || $date->lessThan($allowedFirst)) {
             return;

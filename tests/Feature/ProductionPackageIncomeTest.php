@@ -52,6 +52,7 @@ class ProductionPackageIncomeTest extends TestCase
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-12 10:00:00', 'Asia/Kolkata'));
         $this->arm();
+        config(['deltasupport.package_income.tour_posting_authorized' => true]);
         PackageIncomeActivation::query()->create([
             'package_code' => 'DST-TOUR-003',
             'activation_business_date' => '2026-11-01',

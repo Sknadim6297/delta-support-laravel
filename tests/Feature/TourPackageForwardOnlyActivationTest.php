@@ -198,8 +198,41 @@ class TourPackageForwardOnlyActivationTest extends TestCase
         $this->assertSame(0, PackageRoiAccrual::query()->count());
     }
 
+    public function test_activation_floor_alone_does_not_authorize_tour_wallet_posting(): void
+    {
+        $this->arm();
+        PackageIncomeActivation::query()->create([
+            'package_code' => 'DST-TOUR-003',
+            'activation_business_date' => '2026-11-12',
+            'activated_at' => now(),
+            'activated_by' => 'test',
+            'confirm_token' => TourPackageIncomeActivation::CONFIRM,
+            'terms_snapshot' => [
+                'roi_daily' => '2.5000',
+                'roi_days' => 1000,
+                'commission_pool' => '2.4000',
+                'commission_days' => 400,
+            ],
+        ]);
+        config(['deltasupport.package_income.tour_posting_authorized' => false]);
+        $member = $this->member('STTOURF08', 'unauth@example.test');
+        $this->purchase($member, $this->tourPackage(true), '2026-10-01 06:00:00', 'UNAUTH');
+
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-12 00:30:00', 'Asia/Kolkata'));
+        $dry = app(PackageIncomeAccrual::class)->runControlled('2026-11-12', true);
+        $live = app(PackageIncomeAccrual::class)->runControlled('2026-11-12');
+
+        $this->assertSame(0, $dry['roi_records']);
+        $this->assertSame(0, $live['roi_records']);
+        $this->assertSame(0, PackageRoiAccrual::query()->count());
+        $this->assertTrue(collect($dry['skipped'])->contains(
+            fn (string $reason): bool => str_contains($reason, 'posting is not authorized')
+        ));
+    }
+
     private function activateTour(string $date): void
     {
+        config(['deltasupport.package_income.tour_posting_authorized' => true]);
         PackageIncomeActivation::query()->create([
             'package_code' => 'DST-TOUR-003',
             'activation_business_date' => $date,

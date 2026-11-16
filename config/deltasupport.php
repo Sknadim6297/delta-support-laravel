@@ -51,6 +51,15 @@ return [
         'chunk_size' => 100,
         'schedule_time' => env('PACKAGE_INCOME_SCHEDULE_TIME', '00:10'),
         'activation_required_packages' => ['DST-TOUR-003'],
+        /*
+        | Separate from package_income_activations.activation_business_date.
+        | Activation floor alone must not authorize Tour wallet posting.
+        | Keep false until written approval of Tour terms and posting is recorded.
+        */
+        'tour_posting_authorized' => filter_var(
+            env('DELTASUPPORT_TOUR_INCOME_POSTING_AUTHORIZED', false),
+            FILTER_VALIDATE_BOOLEAN
+        ),
         'packages' => [
             'DST-ROI-002' => [
                 'roi_daily' => '0.2500',

@@ -256,6 +256,7 @@ class FinancialArmGuardTest extends TestCase
             'is_active' => true,
             'sort_order' => 10,
         ]);
+        config(['deltasupport.package_income.tour_posting_authorized' => true]);
         PackageIncomeActivation::query()->create([
             'package_code' => 'DST-TOUR-003',
             'activation_business_date' => '2026-11-14',

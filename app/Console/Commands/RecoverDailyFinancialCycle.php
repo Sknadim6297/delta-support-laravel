@@ -27,29 +27,41 @@ class RecoverDailyFinancialCycle extends Command
         $now = CarbonImmutable::now($timezone);
         $today = $now->toDateString();
         $yesterday = $now->subDay()->toDateString();
+        $failed = false;
 
         if ($this->latestStatus($yesterday) !== PackageIncomeRun::SUCCEEDED) {
             $this->line('Retrying '.$yesterday.' because it has not succeeded.');
-            Artisan::call('financial:daily', ['--date' => $yesterday, '--recover-yesterday' => true]);
+            $yesterdayCode = Artisan::call('financial:daily', [
+                '--date' => $yesterday,
+                '--recover-yesterday' => true,
+            ]);
             $this->output->write(Artisan::output());
+            if ($yesterdayCode !== 0) {
+                $this->error('Yesterday recovery failed with exit code '.$yesterdayCode.'.');
+                $failed = true;
+            }
         }
 
         if ($now->format('H:i') < $scheduleTime) {
             $this->line('Today\'s scheduled run has not started. No wallet was credited.');
 
-            return self::SUCCESS;
+            return $failed ? self::FAILURE : self::SUCCESS;
         }
 
         if ($this->latestStatus($today) === PackageIncomeRun::SUCCEEDED) {
             $this->line('Today already succeeded. No wallet was credited again.');
 
-            return self::SUCCESS;
+            return $failed ? self::FAILURE : self::SUCCESS;
         }
 
-        Artisan::call('financial:daily', ['--date' => $today]);
+        $todayCode = Artisan::call('financial:daily', ['--date' => $today]);
         $this->output->write(Artisan::output());
+        if ($todayCode !== 0) {
+            $this->error('Today recovery failed with exit code '.$todayCode.'.');
+            $failed = true;
+        }
 
-        return self::SUCCESS;
+        return $failed ? self::FAILURE : self::SUCCESS;
     }
 
     private function latestStatus(string $date): ?string
