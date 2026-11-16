@@ -60,6 +60,14 @@ return [
             env('DELTASUPPORT_TOUR_INCOME_POSTING_AUTHORIZED', false),
             FILTER_VALIDATE_BOOLEAN
         ),
+        /*
+        | Controlled historical recovery (financial:recover-historical).
+        | Standard packages only. Tour codes are always refused for historical apply.
+        */
+        'historical_recovery' => [
+            'allowed_packages' => ['DST-ROI-002'],
+            'max_days' => 90,
+        ],
         'packages' => [
             'DST-ROI-002' => [
                 'roi_daily' => '0.2500',

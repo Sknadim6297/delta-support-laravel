@@ -96,7 +96,7 @@ class PackageIncomeAccrual
      * One business date for the controlled daily cycle. Demo purchases are excluded.
      * A dry run writes nothing. Wallet columns move only when that crediting switch is on.
      *
-     * @return array{dry_run: bool, roi_records: int, commission_records: int, skipped: list<string>}
+     * @return array{dry_run: bool, roi_records: int, commission_records: int, skipped: list<string>, roi_amount?: string, commission_amount?: string, roi?: list<array<string,string>>, commissions?: list<array<string,string>>}
      */
     public function runControlled(string $businessDate, bool $dryRun = false, bool $recoverYesterday = false): array
     {
@@ -114,15 +114,108 @@ class PackageIncomeAccrual
             }
         }
 
+        return $this->executeControlledPlan($date, $dryRun, function ($query): void {
+            $this->excludeDemonstrationPurchases($query);
+        }, 'Package ROI accrual', 'Package level commission accrual');
+    }
+
+    /**
+     * Controlled historical recovery for an explicit Standard-package allowlist.
+     * Does not process Tour / activation-gated packages. Does not accept future dates.
+     * Daily today/yesterday restrictions remain unchanged on runControlled().
+     *
+     * @param  list<string>  $packageCodes
+     * @return array{dry_run: bool, roi_records: int, commission_records: int, skipped: list<string>, roi_amount: string, commission_amount: string, roi: list<array<string,string>>, commissions: list<array<string,string>>}
+     */
+    public function runStandardHistorical(string $businessDate, bool $dryRun, array $packageCodes): array
+    {
+        $controls = app(FinancialControls::class);
+        $date = $this->date($businessDate);
+        $timezone = (string) config('deltasupport.package_income.timezone', 'Asia/Kolkata');
+        $today = CarbonImmutable::now($timezone)->startOfDay();
+        if ($date->greaterThan($today)) {
+            throw new RuntimeException('Future business dates are not accepted for historical recovery. No wallet was credited.');
+        }
+
+        $packageCodes = array_values(array_unique(array_filter(array_map('strval', $packageCodes))));
+        if ($packageCodes === []) {
+            throw new RuntimeException('Historical recovery requires an explicit Standard package allowlist. No wallet was credited.');
+        }
+
+        $gated = app(PackageIncomeActivationGate::class)->gatedPackageCodes();
+        $tourCode = PackageIncomeActivationGate::TOUR_CODE;
+        foreach ($packageCodes as $code) {
+            if ($code === $tourCode || in_array($code, $gated, true)) {
+                throw new RuntimeException('Historical recovery refuses Tour/activation-gated package '.$code.'. No wallet was credited.');
+            }
+        }
+
+        if (! $dryRun) {
+            if ($controls->emergencyStopped()) {
+                throw new RuntimeException('Emergency stop is on. Historical recovery credited nothing.');
+            }
+            if (! $controls->automaticPostingAllowed() && ! $controls->enabled('daily_financial_cycle_enabled')) {
+                throw new RuntimeException('Financial automation is not posting. Historical recovery credited nothing.');
+            }
+            if (! $controls->enabled('daily_financial_cycle_enabled')) {
+                throw new RuntimeException('The daily financial cycle is disabled. Historical recovery credited nothing.');
+            }
+        }
+
+        return $this->executeControlledPlan(
+            $date,
+            $dryRun,
+            function ($query) use ($packageCodes): void {
+                $this->excludeDemonstrationPurchases($query);
+                $query->whereIn('package_code', $packageCodes);
+            },
+            'Historical Standard package ROI recovery',
+            'Historical Standard package level commission recovery',
+            true
+        );
+    }
+
+    /**
+     * @param  callable(object): void  $constrain
+     * @return array{dry_run: bool, roi_records: int, commission_records: int, skipped: list<string>, roi_amount: string, commission_amount: string, roi: list<array<string,string>>, commissions: list<array<string,string>>}
+     */
+    private function executeControlledPlan(
+        CarbonImmutable $date,
+        bool $dryRun,
+        callable $constrain,
+        string $roiReason,
+        string $commissionReason,
+        bool $excludeTour = false,
+    ): array {
+        $controls = app(FinancialControls::class);
         $calculateRoi = $dryRun || $controls->enabled('roi_calculation_enabled');
         $calculateLevel = $dryRun || $controls->enabled('level_calculation_enabled');
         if (! $dryRun && ! $calculateRoi && ! $calculateLevel) {
             throw new RuntimeException('ROI and level calculation are disabled. No wallet was credited.');
         }
 
-        $plan = $this->plan($date, function ($query): void {
-            $this->excludeDemonstrationPurchases($query);
-        });
+        $plan = $this->plan($date, $constrain);
+        if ($excludeTour) {
+            // Defense in depth for historical recovery only. Daily path may still post Tour when authorized.
+            $tourCode = PackageIncomeActivationGate::TOUR_CODE;
+            $plan['roi'] = array_values(array_filter(
+                $plan['roi'],
+                fn (array $row): bool => ($row['package_code'] ?? '') !== $tourCode
+            ));
+            $plan['commissions'] = array_values(array_filter(
+                $plan['commissions'],
+                fn (array $row): bool => ($row['package_code'] ?? '') !== $tourCode
+            ));
+        }
+
+        $roiAmount = '0.0000';
+        foreach ($plan['roi'] as $row) {
+            $roiAmount = bcadd($roiAmount, (string) $row['amount'], 4);
+        }
+        $commissionAmount = '0.0000';
+        foreach ($plan['commissions'] as $row) {
+            $commissionAmount = bcadd($commissionAmount, (string) $row['amount'], 4);
+        }
 
         if ($dryRun) {
             return [
@@ -130,6 +223,10 @@ class PackageIncomeAccrual
                 'roi_records' => $calculateRoi ? count($plan['roi']) : 0,
                 'commission_records' => $calculateLevel ? count($plan['commissions']) : 0,
                 'skipped' => $plan['skipped'],
+                'roi_amount' => $calculateRoi ? $roiAmount : '0.0000',
+                'commission_amount' => $calculateLevel ? $commissionAmount : '0.0000',
+                'roi' => $calculateRoi ? $plan['roi'] : [],
+                'commissions' => $calculateLevel ? $plan['commissions'] : [],
             ];
         }
 
@@ -143,17 +240,25 @@ class PackageIncomeAccrual
             $creditLevel = $controls->enabled('level_wallet_crediting_enabled');
             $roi = 0;
             $commissions = 0;
+            $postedRoiAmount = '0.0000';
+            $postedCommissionAmount = '0.0000';
             if ($calculateRoi) {
                 foreach ($plan['roi'] as $row) {
-                    if ($this->creditRoi($row, 'Package ROI accrual', $creditRoi, false)) {
+                    if ($this->creditRoi($row, $roiReason, $creditRoi, false)) {
                         $roi++;
+                        if ($creditRoi) {
+                            $postedRoiAmount = bcadd($postedRoiAmount, (string) $row['amount'], 4);
+                        }
                     }
                 }
             }
             if ($calculateLevel) {
                 foreach ($plan['commissions'] as $row) {
-                    if ($this->creditCommission($row, 'Package level commission accrual', $creditLevel, false)) {
+                    if ($this->creditCommission($row, $commissionReason, $creditLevel, false)) {
                         $commissions++;
+                        if ($creditLevel) {
+                            $postedCommissionAmount = bcadd($postedCommissionAmount, (string) $row['amount'], 4);
+                        }
                     }
                 }
             }
@@ -163,6 +268,10 @@ class PackageIncomeAccrual
                 'roi_records' => $roi,
                 'commission_records' => $commissions,
                 'skipped' => $plan['skipped'],
+                'roi_amount' => $postedRoiAmount,
+                'commission_amount' => $postedCommissionAmount,
+                'roi' => $plan['roi'],
+                'commissions' => $plan['commissions'],
             ];
         } finally {
             $lock->release();
