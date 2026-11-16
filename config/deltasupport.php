@@ -43,6 +43,7 @@ return [
     | Hill Station Retreat (DEMO-HILLS) mirrors the DST-TOUR-003 income schedule.
     */
     'package_income' => [
+        // Legacy flag for package-income:accrue only. financial:daily uses FinancialControls / arm / Tour auth.
         'enabled' => false,
         'admin_root_id' => 'ST666666',
         'wait_days' => 10,

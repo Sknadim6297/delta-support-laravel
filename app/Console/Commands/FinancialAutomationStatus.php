@@ -6,6 +6,7 @@ use App\Models\FinancialControl;
 use App\Models\PackageIncomeRun;
 use App\Services\FinancialActivationGuard;
 use App\Services\FinancialControls;
+use App\Services\PackageIncomeActivationGate;
 use App\Services\ProductionDatabaseTarget;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -18,7 +19,7 @@ class FinancialAutomationStatus extends Command
 
     protected $description = 'Show why automatic ROI posting will or will not credit wallets. This writes nothing.';
 
-    public function handle(FinancialControls $controls, FinancialActivationGuard $guard): int
+    public function handle(FinancialControls $controls, FinancialActivationGuard $guard, PackageIncomeActivationGate $activation): int
     {
         $timezone = (string) config('deltasupport.package_income.timezone', 'Asia/Kolkata');
         $scheduleTime = (string) config('deltasupport.package_income.schedule_time', '00:10');
@@ -31,6 +32,14 @@ class FinancialAutomationStatus extends Command
         $markerCount = Schema::hasTable('production_initializations')
             ? (int) DB::table('production_initializations')->where('marker', FinancialActivationGuard::MARKER)->count()
             : 0;
+        $schedulerMode = (string) (
+            env('DELTASUPPORT_SCHEDULER_MODE')
+            ?: config('deltasupport.scheduler.mode', 'dry-run')
+        );
+        $allowFinancial = filter_var(
+            env('DELTASUPPORT_SCHEDULER_ALLOW_FINANCIAL', config('deltasupport.scheduler.allow_financial', false)),
+            FILTER_VALIDATE_BOOLEAN
+        );
 
         $this->table(['Check', 'Value'], [
             ['Connected database', $db],
@@ -40,6 +49,11 @@ class FinancialAutomationStatus extends Command
             ['Automation armed', $controls->automationArmed() ? 'yes' : 'no'],
             ['Emergency stop', $controls->emergencyStopped() ? 'yes' : 'no'],
             ['Posting allowed', $controls->automaticPostingAllowed() ? 'yes' : 'no'],
+            ['Scheduler mode', $schedulerMode],
+            ['Scheduler allow financial', $allowFinancial ? 'yes' : 'no'],
+            ['Legacy package_income.enabled', config('deltasupport.package_income.enabled') ? 'yes (legacy accrue only)' : 'no (does not block financial:daily)'],
+            ['Tour activation floor', $activation->activationBusinessDate(PackageIncomeActivationGate::TOUR_CODE)?->toDateString() ?? '(missing)'],
+            ['Tour posting authorized', $activation->tourPostingAuthorized() ? 'yes' : 'no (fail-closed)'],
             ['Schedule time', $scheduleTime.' '.$timezone],
             ['Current business date', $today],
             ['financial_controls.armed column', ((int) $row->financial_automation_armed) === 1 ? '1' : '0'],
@@ -50,7 +64,10 @@ class FinancialAutomationStatus extends Command
         if (! $controls->automaticPostingAllowed()) {
             $this->warn('Scheduler may be running, but wallets will not be credited until automation is armed and the emergency stop is off.');
         } else {
-            $this->info('Posting is allowed. financial:daily at '.$scheduleTime.' '.$timezone.' can credit eligible purchases.');
+            $this->info('Posting is allowed for Standard packages when due. financial:daily at '.$scheduleTime.' '.$timezone.' can credit DST-ROI-002.');
+        }
+        if (! $activation->tourPostingAuthorized()) {
+            $this->warn('DST-TOUR-003 posting is fail-closed until DELTASUPPORT_TOUR_INCOME_POSTING_AUTHORIZED=true after written approval.');
         }
 
         $protected = app(ProductionDatabaseTarget::class)->isProtected($db);

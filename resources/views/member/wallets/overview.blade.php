@@ -3,7 +3,7 @@
 @section('page-title', 'My Wallets')
 @section('content')
 <div>
-    <p class="ds-lead">{{ $member->member_id }} · @if (str_ends_with(strtolower((string) $member->email), '@local-test.invalid'))Local test data. Production payout generation remains disabled.@else Wallet balances are USDT. ROI and level income are not being credited.@endif</p>
+    <p class="ds-lead">{{ $member->member_id }} · {{ $incomeStatus }}</p>
     <div>
         <article>
             <p>ROI Wallet</p>

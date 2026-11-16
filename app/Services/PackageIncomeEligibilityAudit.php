@@ -142,6 +142,13 @@ class PackageIncomeEligibilityAudit
             return $base;
         }
 
+        if ($this->activation->requiresActivation($purchase->package_code)
+            && ! $this->activation->tourPostingAuthorized()) {
+            $base['reason'] = $this->activation->tourPostingAuthorizationMessage();
+
+            return $base;
+        }
+
         $allowedFirst = $this->activation->firstAllowedIncomeDate($purchase, $this->policy);
         $base['first_allowed_income'] = $allowedFirst?->toDateString() ?? '';
         if ($allowedFirst === null) {
