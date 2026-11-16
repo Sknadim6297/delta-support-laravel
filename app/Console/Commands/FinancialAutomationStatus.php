@@ -68,6 +68,8 @@ class FinancialAutomationStatus extends Command
         }
         if (! $activation->tourPostingAuthorized()) {
             $this->warn('DST-TOUR-003 posting is fail-closed until DELTASUPPORT_TOUR_INCOME_POSTING_AUTHORIZED=true after written approval.');
+        } else {
+            $this->line('Tour posting is authorized for forward financial:daily. Missed Tour dates require explicit financial:recover-tour (one date per confirmation).');
         }
 
         $protected = app(ProductionDatabaseTarget::class)->isProtected($db);

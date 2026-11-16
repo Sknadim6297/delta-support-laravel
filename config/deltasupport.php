@@ -69,6 +69,15 @@ return [
             'allowed_packages' => ['DST-ROI-002'],
             'max_days' => 90,
         ],
+        /*
+        | Explicit Tour recovery (financial:recover-tour).
+        | Separate from Standard historical recovery. Requires Tour posting auth,
+        | activation floor, explicit dates, and per-date apply confirmation.
+        | Never recovers dates before package_income_activations.activation_business_date.
+        */
+        'tour_recovery' => [
+            'max_dates' => 7,
+        ],
         'packages' => [
             'DST-ROI-002' => [
                 'roi_daily' => '0.2500',

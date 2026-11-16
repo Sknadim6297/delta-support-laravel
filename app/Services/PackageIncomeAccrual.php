@@ -176,6 +176,64 @@ class PackageIncomeAccrual
     }
 
     /**
+     * Explicit Tour recovery for one approved business date.
+     * Distinct from Standard historical recovery (which always excludes Tour).
+     * Requires Tour posting authorization and refuses dates before the activation floor.
+     *
+     * @return array{dry_run: bool, roi_records: int, commission_records: int, skipped: list<string>, roi_amount: string, commission_amount: string, roi: list<array<string,string>>, commissions: list<array<string,string>>}
+     */
+    public function runTourRecovery(string $businessDate, bool $dryRun): array
+    {
+        $controls = app(FinancialControls::class);
+        $gate = app(PackageIncomeActivationGate::class);
+        $tourCode = PackageIncomeActivationGate::TOUR_CODE;
+        $date = $this->date($businessDate);
+        $timezone = (string) config('deltasupport.package_income.timezone', 'Asia/Kolkata');
+        $today = CarbonImmutable::now($timezone)->startOfDay();
+
+        if ($date->greaterThan($today)) {
+            throw new RuntimeException('Future business dates are not accepted for Tour recovery. No wallet was credited.');
+        }
+
+        $floor = $gate->activationBusinessDate($tourCode);
+        if ($floor === null) {
+            throw new RuntimeException($tourCode.' activation floor is missing. Tour recovery credited nothing.');
+        }
+        if ($date->lessThan($floor)) {
+            throw new RuntimeException(
+                'Tour recovery refuses '.$date->toDateString().' because it is before the activation floor '.$floor->toDateString().'. No wallet was credited.'
+            );
+        }
+        if (! $gate->tourPostingAuthorized()) {
+            throw new RuntimeException($gate->tourPostingAuthorizationMessage().' Tour recovery credited nothing.');
+        }
+
+        if (! $dryRun) {
+            if ($controls->emergencyStopped()) {
+                throw new RuntimeException('Emergency stop is on. Tour recovery credited nothing.');
+            }
+            if (! $controls->automaticPostingAllowed() && ! $controls->enabled('daily_financial_cycle_enabled')) {
+                throw new RuntimeException('Financial automation is not posting. Tour recovery credited nothing.');
+            }
+            if (! $controls->enabled('daily_financial_cycle_enabled')) {
+                throw new RuntimeException('The daily financial cycle is disabled. Tour recovery credited nothing.');
+            }
+        }
+
+        return $this->executeControlledPlan(
+            $date,
+            $dryRun,
+            function ($query) use ($tourCode): void {
+                $this->excludeDemonstrationPurchases($query);
+                $query->where('package_code', $tourCode);
+            },
+            'Authorized Tour package ROI recovery',
+            'Authorized Tour package level commission recovery',
+            false
+        );
+    }
+
+    /**
      * @param  callable(object): void  $constrain
      * @return array{dry_run: bool, roi_records: int, commission_records: int, skipped: list<string>, roi_amount: string, commission_amount: string, roi: list<array<string,string>>, commissions: list<array<string,string>>}
      */
