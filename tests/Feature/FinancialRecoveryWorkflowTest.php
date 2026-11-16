@@ -40,6 +40,7 @@ class FinancialRecoveryWorkflowTest extends TestCase
             ->expectsOutputToContain('Connected database')
             ->expectsOutputToContain('NOT eligible for automatic recovery')
             ->expectsOutputToContain('eligible via financial:recover (yesterday)')
+            ->expectsOutputToContain('Expected DST-ROI-002')
             ->expectsOutputToContain('Stage A only');
 
         $this->assertSame(0, PackageRoiAccrual::query()->count());
@@ -62,6 +63,11 @@ class FinancialRecoveryWorkflowTest extends TestCase
             '--database' => $db,
             '--confirm' => 'wrong-token',
         ])->assertFailed()->expectsOutputToContain('Refused');
+
+        $this->artisan('financial:recovery-apply', [
+            '--database' => $db,
+            '--confirm' => ApplyFinancialRecovery::CONFIRM,
+        ])->assertFailed()->expectsOutputToContain('database-backup-confirmed');
 
         $this->assertSame(0, PackageRoiAccrual::query()->count());
     }
@@ -129,6 +135,8 @@ class FinancialRecoveryWorkflowTest extends TestCase
         $this->artisan('financial:recovery-apply', [
             '--database' => $db,
             '--confirm' => ApplyFinancialRecovery::CONFIRM,
+            '--backup-confirmed' => ApplyFinancialRecovery::BACKUP_CONFIRM,
+            '--rules-confirmed' => ApplyFinancialRecovery::RULES_CONFIRM,
         ])->assertSuccessful();
 
         $this->assertSame(1, PackageRoiAccrual::query()->whereDate('business_date', '2026-11-15')->count());
