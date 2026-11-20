@@ -7,6 +7,7 @@ use App\Models\ImpersonationLog;
 use App\Models\Member;
 use App\Services\Reports\CatalogReport;
 use App\Services\Reports\TabularExport;
+use App\Services\Rewards\TeamBusinessCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -36,7 +37,7 @@ class CatalogReportController extends Controller
         ]);
     }
 
-    public function member(string $member): View
+    public function member(string $member, TeamBusinessCalculationService $business): View
     {
         $record = Member::query()->where('member_id', $member)->firstOrFail();
         $purchases = $record->packagePurchases()
@@ -52,9 +53,11 @@ class CatalogReportController extends Controller
             ->orderByDesc('id')
             ->limit(20)
             ->get();
+        $packageBusiness = $business->businessForMembers([$record->member_id])[$record->member_id];
 
         return view('admin.reports.member', [
             'member' => $record,
+            'packageBusiness' => $packageBusiness,
             'purchases' => $purchases,
             'activity' => $activity,
         ]);

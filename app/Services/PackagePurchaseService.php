@@ -179,18 +179,6 @@ class PackagePurchaseService
                 ]);
             }
 
-            $alreadyActive = PackagePurchase::query()
-                ->where('member_id', $member->member_id)
-                ->where('package_id', $lockedPackage->id)
-                ->where('status', PackagePurchase::APPROVED)
-                ->lockForUpdate()
-                ->exists();
-            if ($alreadyActive) {
-                throw ValidationException::withMessages([
-                    'package_id' => 'This customer already has an active purchase of this package.',
-                ]);
-            }
-
             $network = $this->networkFor($method);
             $duplicate = PackagePurchase::query()
                 ->where('network', $network)

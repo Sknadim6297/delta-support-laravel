@@ -58,6 +58,8 @@
                         <th>Registration Date</th>
                         <th>Account</th>
                         <th>Package</th>
+                        <th>First Level Business</th>
+                        <th>Total Team Business</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -82,6 +84,8 @@
                                 :lines="$packageDisplay['lines']"
                             />
                         </td>
+                        <td>{{ \App\Support\MoneyDisplay::usdt($businessSummaries[$member->member_id]['first_level_business'] ?? '0.0000') }}</td>
+                        <td>{{ \App\Support\MoneyDisplay::usdt($businessSummaries[$member->member_id]['total_team_business'] ?? '0.0000') }}</td>
                         <td>
                             <div class="ds-row-actions">
                                 <x-ui.button variant="secondary" size="sm" :href="route('admin.members.update', ['member_id' => $member->member_id])">View / Edit</x-ui.button>
@@ -90,7 +94,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr class="ds-mm-empty"><td colspan="10">No members yet.</td></tr>
+                    <tr class="ds-mm-empty"><td colspan="12">No members yet.</td></tr>
                 @endforelse
                 </tbody>
             </table>

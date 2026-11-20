@@ -3,9 +3,6 @@
 @section('page-title', 'Purchase for Customer')
 
 @section('content')
-@php
-    $activeConflict = $errors->first('package_id') === 'This customer already has an active purchase of this package.';
-@endphp
 <div class="ds-catalog">
     <x-ui.page-header
         lead="Record a payment already received for an existing customer. An inactive customer is marked active. Wallet balances, ROI, level commission, and financial controls are not changed."
@@ -64,16 +61,16 @@
                     </dl>
                     <p class="ds-customer-note">Eligibility is stored on the package. Recording this purchase does not credit ROI or level commission.</p>
                 </div>
-                <div id="package-warning" class="ds-alert ds-alert-warning" @unless($activeConflict) hidden @endunless>
-                    <p>This customer already has an active purchase of this package.</p>
+                <div id="package-previous" class="ds-alert" hidden>
+                    <p>This customer has an approved purchase of this package. You can record another purchase; it will have its own reference and invoice.</p>
                     <dl>
                         <div><dt>Purchase reference</dt><dd id="active-reference">—</dd></div>
                         <div><dt>Approval date</dt><dd id="active-approved">—</dd></div>
-                        <div><dt>Status</dt><dd id="active-status">Approved</dd></div>
+                        <div><dt>Status</dt><dd id="active-status">Approved · Active</dd></div>
                     </dl>
                 </div>
                 <div id="package-pending" class="ds-alert" hidden>
-                    <p>This customer has a pending purchase of this package. It is not active.</p>
+                    <p>This customer has a pending purchase of this package. It is not active; you can still record another purchase with a different payment reference.</p>
                     <dl>
                         <div><dt>Purchase reference</dt><dd id="pending-reference">—</dd></div>
                         <div><dt>Request date</dt><dd id="pending-requested">—</dd></div>
@@ -98,12 +95,12 @@
             </label>
         </div>
 
-        @if($errors->any() && ! $activeConflict)
+        @if($errors->any())
             <div class="ds-alert ds-alert-error">{{ $errors->first() }}</div>
         @endif
 
         <div class="ds-form-actions">
-            <button type="submit" class="ds-btn" id="record-purchase" @disabled($activeConflict)>Record Purchase</button>
+            <button type="submit" class="ds-btn" id="record-purchase">Record Purchase</button>
             <a class="ds-btn ds-btn-secondary" href="{{ route('admin.purchases.index') }}">Cancel</a>
         </div>
     </form>
@@ -115,10 +112,9 @@
     const packageInput = document.getElementById('package-id');
     const methodInput = document.getElementById('payment-method');
     const referenceLabel = document.getElementById('payment-reference-label');
-    const recordButton = document.getElementById('record-purchase');
     const customerPanel = document.getElementById('customer-panel');
     const packagePanel = document.getElementById('package-panel');
-    const warningPanel = document.getElementById('package-warning');
+    const previousPanel = document.getElementById('package-previous');
     const pendingPanel = document.getElementById('package-pending');
     const previewUrl = @json(route('admin.purchases.preview'));
     const referenceLabels = {
@@ -144,13 +140,12 @@
         document.getElementById('package-level').textContent = option.dataset.level || '—';
     }
 
-    function setBlocked(blocked) {
-        recordButton.disabled = blocked;
-        warningPanel.hidden = !blocked;
-        if (!blocked) {
+    function setPreviousPurchase(visible) {
+        previousPanel.hidden = !visible;
+        if (!visible) {
             document.getElementById('active-reference').textContent = '—';
             document.getElementById('active-approved').textContent = '—';
-            document.getElementById('active-status').textContent = 'Approved';
+            document.getElementById('active-status').textContent = 'Approved · Active';
         }
     }
 
@@ -172,7 +167,7 @@
         if (!memberId) {
             customerPanel.hidden = true;
             lookupResult.textContent = 'Enter a Member ID.';
-            setBlocked(false);
+            setPreviousPurchase(false);
             document.getElementById('package-status').textContent = 'No purchase yet';
             return;
         }
@@ -191,7 +186,7 @@
             if (!data.found) {
                 customerPanel.hidden = true;
                 lookupResult.textContent = data.message || 'No customer found for that Member ID.';
-                setBlocked(false);
+                setPreviousPurchase(false);
                 document.getElementById('package-status').textContent = 'No purchase yet';
                 return;
             }
@@ -203,7 +198,7 @@
             lookupResult.textContent = '';
 
             if (!data.package) {
-                setBlocked(false);
+                setPreviousPurchase(false);
                 document.getElementById('package-status').textContent = packageInput?.value ? 'Choose an active package.' : 'No purchase yet';
                 return;
             }
@@ -213,15 +208,15 @@
             document.getElementById('package-roi').textContent = data.package.roi_eligible;
             document.getElementById('package-level').textContent = data.package.level_eligible;
 
-            if (data.blocked && data.active_purchase) {
-                setBlocked(true);
+            if (data.active_purchase) {
+                setPreviousPurchase(true);
                 fillPurchase('active', data.active_purchase);
                 pendingPanel.hidden = true;
                 document.getElementById('package-status').textContent = data.active_purchase.status + ' · ' + data.active_purchase.activation;
                 return;
             }
 
-            setBlocked(false);
+            setPreviousPurchase(false);
             if (data.pending_purchase) {
                 pendingPanel.hidden = false;
                 fillPurchase('pending', data.pending_purchase);

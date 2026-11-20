@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\PackagePurchase;
+use App\Services\Rewards\TeamBusinessCalculationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class MemberDirectoryController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, TeamBusinessCalculationService $business): View
     {
         $packageFilter = trim((string) $request->query('package', ''));
 
@@ -42,6 +43,7 @@ class MemberDirectoryController extends Controller
             ->latest('id')
             ->paginate(20)
             ->withQueryString();
+        $businessSummaries = $business->businessForMembers($members->getCollection()->pluck('member_id')->all());
 
         $statusCounts = Member::query()
             ->selectRaw('status, COUNT(*) as aggregate')
@@ -69,6 +71,7 @@ class MemberDirectoryController extends Controller
             'approvedPackageCount',
             'packageOptions',
             'packageFilter',
+            'businessSummaries',
         ));
     }
 

@@ -13,6 +13,7 @@ use App\Services\MailDeliveryNotice;
 use App\Services\MemberPasswordSetupMailer;
 use App\Services\MemberRegistrationService;
 use App\Services\RankService;
+use App\Services\Rewards\TeamBusinessCalculationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -231,6 +232,8 @@ class MemberController extends Controller
             $member->refresh();
         }
         $rankData = $rankService->calculateForMember($member);
+        $packageBusiness = app(TeamBusinessCalculationService::class)
+            ->businessForMembers([$member->member_id])[$member->member_id];
 
         $request->session()->put('member_context_id', $member->member_id);
 
@@ -278,6 +281,7 @@ class MemberController extends Controller
                 'inactiveMembers' => Member::where('sponsor_id', $member->member_id)->where('status', 'inactive')->count(),
                 'rank' => $rankData['current_rank']?->name ?? 'Unranked',
                 'rankSummary' => $rankData,
+                'packageBusiness' => $packageBusiness,
                 'teamActiveInvestment' => $teamActiveInvestment,
                 'teamInactiveInvestment' => $teamInactiveInvestment,
                 'teamActiveInvestmentRatio' => $teamActiveInvestment . ':'. $teamInactiveInvestment,

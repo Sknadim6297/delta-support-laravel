@@ -55,7 +55,7 @@ class AdminCustomerPurchaseTest extends TestCase
             ->assertSeeText('Find Customer')
             ->assertSeeText('Customer details')
             ->assertSeeText('Record Purchase')
-            ->assertSeeText('This customer already has an active purchase of this package.')
+            ->assertSeeText('You can record another purchase')
             ->assertSeeText('Cash')
             ->assertSeeText('Bank Transfer')
             ->assertSeeText('USDT')
@@ -185,7 +185,7 @@ class AdminCustomerPurchaseTest extends TestCase
         $this->assertSame(2, Invoice::query()->count());
     }
 
-    public function test_an_active_package_cannot_be_purchased_again_and_a_different_package_can(): void
+    public function test_member_can_purchase_the_same_package_repeatedly_with_separate_records(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $member = $this->member('ST440010', 'active');
@@ -208,15 +208,14 @@ class AdminCustomerPurchaseTest extends TestCase
                 'package_id' => $package->id,
             ]))
             ->assertOk()
-            ->assertJsonPath('blocked', true)
-            ->assertJsonPath('message', 'This customer already has an active purchase of this package.')
+            ->assertJsonPath('blocked', false)
+            ->assertJsonPath('message', null)
             ->assertJsonPath('active_purchase.reference', $existing->reference)
             ->assertJsonPath('active_purchase.status', 'Approved')
             ->assertJsonPath('active_purchase.activation', 'Active')
             ->assertJsonPath('pending_purchase', null);
 
         $this->actingAs($admin)
-            ->from(route('admin.purchases.create'))
             ->post(route('admin.purchases.store'), [
                 'member_id' => $member->member_id,
                 'package_id' => $package->id,
@@ -224,13 +223,7 @@ class AdminCustomerPurchaseTest extends TestCase
                 'payment_reference' => 'NEFT-3002',
                 'idempotency_key' => (string) Str::uuid(),
             ])
-            ->assertRedirect(route('admin.purchases.create'))
-            ->assertSessionHasErrors([
-                'package_id' => 'This customer already has an active purchase of this package.',
-            ]);
-
-        $this->assertSame(1, Invoice::query()->count());
-        $this->assertDatabaseMissing('package_purchases', ['payment_reference' => 'NEFT-3002']);
+            ->assertRedirect();
 
         $this->actingAs($admin)->post(route('admin.purchases.store'), [
             'member_id' => $member->member_id,
@@ -240,7 +233,17 @@ class AdminCustomerPurchaseTest extends TestCase
             'idempotency_key' => (string) Str::uuid(),
         ])->assertRedirect();
 
-        $this->assertSame(2, Invoice::query()->count());
+        $purchases = PackagePurchase::query()->where('member_id', $member->member_id)->orderBy('id')->get();
+        $this->assertCount(3, $purchases);
+        $this->assertSame([$package->id, $package->id, $other->id], $purchases->pluck('package_id')->all());
+        $this->assertSame(3, $purchases->pluck('reference')->unique()->count());
+        $this->assertSame(3, Invoice::query()->count());
+        $this->assertSame(3, Invoice::query()->whereIn('package_purchase_id', $purchases->pluck('id'))->distinct()->count('package_purchase_id'));
+        $this->assertSame(3, PaymentDecision::query()->whereIn('package_purchase_id', $purchases->pluck('id'))->where('action', 'approved')->count());
+        $this->assertSame(
+            [PackagePurchase::APPROVED, PackagePurchase::APPROVED, PackagePurchase::APPROVED],
+            $purchases->pluck('status')->all()
+        );
         $this->assertSame(PackagePurchase::APPROVED, PackagePurchase::query()->where('package_id', $other->id)->value('status'));
     }
 
@@ -409,24 +412,32 @@ class AdminCustomerPurchaseTest extends TestCase
         $this->assertSame(PackagePurchase::APPROVED, $purchase->status);
 
         $this->actingAs($admin)
-            ->from(route('admin.purchases.create'))
             ->post(route('admin.purchases.store'), [
                 'member_id' => $member->member_id,
                 'package_id' => $fresh->id,
                 'payment_method' => PackagePurchase::METHOD_CASH,
                 'payment_reference' => 'RCPT-KEEP-50',
                 'idempotency_key' => (string) Str::uuid(),
-            ])
-            ->assertRedirect(route('admin.purchases.create'))
-            ->assertSessionHasErrors('package_id');
+            ])->assertRedirect();
+
+        $repeatPurchase = PackagePurchase::query()->where('payment_reference', 'RCPT-KEEP-50')->firstOrFail();
+        $repeatInvoice = Invoice::query()->where('package_purchase_id', $repeatPurchase->id)->firstOrFail();
+        $this->assertNotSame($purchase->id, $repeatPurchase->id);
+        $this->assertNotSame($invoice->invoice_number, $repeatInvoice->invoice_number);
+        $this->assertSame('100.0000', $repeatPurchase->price_usd);
+        $this->assertSame('100.0000', $repeatInvoice->price_usd);
+        $this->assertSame('49.0000', $purchase->fresh()->price_usd);
+        $this->assertSame('49.0000', $invoice->fresh()->price_usd);
 
         $this->actingAs($admin)
             ->withSession(['member_context_id' => $member->member_id])
             ->get(route('member.packages.mine'))
             ->assertOk()
             ->assertSeeText('USDT 49.0000')
-            ->assertSeeText('Cash')
-            ->assertDontSeeText('USDT 100.0000');
+            ->assertSeeText('USDT 100.0000')
+            ->assertSeeText($purchase->reference)
+            ->assertSeeText($repeatPurchase->reference)
+            ->assertSeeText('Cash');
 
         $this->actingAs($admin)
             ->withSession(['member_context_id' => $member->member_id])

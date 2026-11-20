@@ -34,6 +34,17 @@
 
     <section class="ds-report-block">
         <header class="ds-dash-head">
+            <h2>Package business</h2>
+            <p>Lifetime totals from eligible approved USDT package purchase snapshots. Each approved purchase is counted once; zero means no qualifying purchases are recorded.</p>
+        </header>
+        <div class="ds-stat-grid">
+            <x-ui.stat label="First Level Business" :value="\App\Support\MoneyDisplay::usdt($packageBusiness['first_level_business'])" hint="Direct referrals only" />
+            <x-ui.stat label="Total Team Business" :value="\App\Support\MoneyDisplay::usdt($packageBusiness['total_team_business'])" hint="Member plus complete downline" />
+        </div>
+    </section>
+
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
             <h2>Purchase and payment history</h2>
             <p>Purchase amounts are shown in USDT.</p>
         </header>
