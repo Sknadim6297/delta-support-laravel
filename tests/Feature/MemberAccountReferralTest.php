@@ -115,13 +115,13 @@ class MemberAccountReferralTest extends TestCase
         $this->post(route('member.registration.store'), [
             'member_name' => 'Rimaa Das',
             'sponsor_id' => $sponsor->member_id,
-            'email' => 'rahul@example.com',
+            'email' => 'rimaa-second@example.com',
             'mobile_no' => '9876543212',
             'pan_card_no' => 'ABCDE1234F',
             'password' => 'secret1',
             'password_confirmation' => 'secret1',
         ])->assertRedirect(route('member.registration'))
-            ->assertSessionHasErrors(['email']);
+            ->assertSessionHas('registration_receipt');
 
         $this->post(route('member.registration.store'), [
             'member_name' => 'Rimaa Das',

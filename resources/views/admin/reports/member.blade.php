@@ -34,6 +34,86 @@
 
     <section class="ds-report-block">
         <header class="ds-dash-head">
+            <h2>Wallet and fund summary</h2>
+            <p>USDT balances are read from stored member wallet columns. Reserved funds are excluded from available totals.</p>
+        </header>
+        <div class="ds-stat-grid">
+            <x-ui.stat label="Total stored" :value="\App\Support\MoneyDisplay::usdt($fundSummary['total']['stored'])" hint="All existing USDT wallets" />
+            <x-ui.stat label="Reserved" :value="\App\Support\MoneyDisplay::usdt($fundSummary['total']['reserved'])" hint="Pending or open reservations" />
+            <x-ui.stat label="Available" :value="\App\Support\MoneyDisplay::usdt($fundSummary['total']['available'])" hint="Stored minus reserved" />
+            <x-ui.stat label="Total withdrawn" :value="\App\Support\MoneyDisplay::usdt($fundSummary['total']['paid'])" hint="Gross settled withdrawals" />
+        </div>
+        <div class="ds-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Wallet</th>
+                        <th>Current balance</th>
+                        <th>Reserved</th>
+                        <th>Available</th>
+                        <th>Total credited</th>
+                        <th>Total debited</th>
+                        <th>Withdrawn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (['roi' => 'ROI Wallet', 'working' => 'Working Wallet', 'activation' => 'Activation Wallet'] as $wallet => $label)
+                    @php($row = $fundSummary['wallets'][$wallet])
+                    <tr>
+                        <td>{{ $label }}</td>
+                        <td>{{ \App\Support\MoneyDisplay::usdt($row['stored']) }}</td>
+                        <td>{{ \App\Support\MoneyDisplay::usdt($row['reserved']) }}</td>
+                        <td>{{ \App\Support\MoneyDisplay::usdt($row['available']) }}</td>
+                        <td>{{ \App\Support\MoneyDisplay::usdt($row['credited']) }}</td>
+                        <td>{{ \App\Support\MoneyDisplay::usdt($row['debits']) }}</td>
+                        <td>{{ \App\Support\MoneyDisplay::usdt($row['paid']) }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Recent wallet transactions</h2>
+            <p>Latest immutable ledger rows only. This does not recalculate or change balances.</p>
+        </header>
+        <div class="ds-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Wallet</th>
+                        <th>Direction</th>
+                        <th>Amount</th>
+                        <th>Opening</th>
+                        <th>Closing</th>
+                        <th>Recorded</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @forelse ($walletTransactions as $entry)
+                    <tr>
+                        <td>{{ $entry->reference }}</td>
+                        <td>{{ ucfirst($entry->wallet) }}</td>
+                        <td>{{ ucfirst($entry->direction) }}</td>
+                        <td>{{ \App\Support\MoneyDisplay::usdt($entry->amount) }}</td>
+                        <td>{{ $entry->opening_balance === null ? 'Not recorded' : \App\Support\MoneyDisplay::usdt($entry->opening_balance) }}</td>
+                        <td>{{ $entry->closing_balance === null ? 'Not recorded' : \App\Support\MoneyDisplay::usdt($entry->closing_balance) }}</td>
+                        <td>{{ $entry->created_at?->timezone('Asia/Kolkata')->format('d M Y, H:i') }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7">No wallet ledger transactions recorded for this member.</td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div>{{ $walletTransactions->links('pagination::bootstrap-5') }}</div>
+    </section>
+
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
             <h2>Package business</h2>
             <p>Lifetime totals from eligible approved USDT package purchase snapshots. Each approved purchase is counted once; zero means no qualifying purchases are recorded.</p>
         </header>

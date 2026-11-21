@@ -280,13 +280,13 @@ class SponsorRegistrationFlowTest extends TestCase
 
         $this->from(route('member.register'))
             ->post(route('member.register.store'), [
-                'member_name' => 'Duplicate Email',
+                'member_name' => 'Second Public Account',
                 'sponsor_id' => $sponsor->member_id,
                 'mobile_no' => '9876543218',
                 'email' => 'public@example.com',
             ])
             ->assertRedirect(route('member.register'))
-            ->assertSessionHasErrors(['email']);
+            ->assertSessionDoesntHaveErrors();
 
         $this->assertDatabaseMissing('members', ['email' => 'nosponsor@example.com']);
         $this->assertDatabaseMissing('members', ['sponsor_id' => 'ST666666', 'email' => 'nosponsor@example.com']);

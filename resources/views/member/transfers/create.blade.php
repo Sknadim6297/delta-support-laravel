@@ -40,6 +40,9 @@
                         <span>Transfer amount (USDT)</span>
                         <input name="amount" value="{{ old('amount') }}" inputmode="decimal" autocomplete="off" required>
                     </label>
+                    <p class="ds-customer-note" data-transfer-breakdown>
+                        Admin fee: {{ $settings->effectiveFeeLabel() }}.
+                    </p>
                 </div>
                 <div class="ds-form-actions">
                     <button type="submit">Review transfer</button>

@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\Member;
 use App\Models\WithdrawalRequest;
+use App\Models\WalletLedgerEntry;
+use App\Models\PackagePurchaseReservation;
+use App\Support\WalletLedgerDirection;
 use App\Support\WithdrawalStatus;
 use Illuminate\Support\Facades\Schema;
 
@@ -38,11 +41,31 @@ class WithdrawalBalances
             return '0.0000';
         }
 
-        return bcadd((string) WithdrawalRequest::query()
+        $reserved = bcadd((string) WithdrawalRequest::query()
             ->where('member_id', $member->member_id)
             ->where('source_wallet', $wallet)
             ->whereIn('status', self::RESERVED)
             ->sum('amount'), '0', 4);
+
+        if ($wallet === 'working') {
+            if (Schema::hasTable('wallet_ledger_entries')) {
+                $reserved = bcadd($reserved, (string) WalletLedgerEntry::query()
+                    ->where('member_id', $member->member_id)
+                    ->where('wallet', 'working')
+                    ->where('direction', WalletLedgerDirection::HOLD)
+                    ->whereNull('withdrawal_request_id')
+                    ->sum('amount'), 4);
+            }
+            if (Schema::hasTable('package_purchase_reservations')) {
+                $reserved = bcadd($reserved, (string) PackagePurchaseReservation::query()
+                    ->where('member_id', $member->member_id)
+                    ->where('wallet', 'working')
+                    ->where('status', PackagePurchaseReservation::ACTIVE)
+                    ->sum('reserved_amount'), 4);
+            }
+        }
+
+        return bcadd($reserved, '0', 4);
     }
 
     public function available(Member $member, string $wallet): string

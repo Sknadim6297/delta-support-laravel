@@ -11,6 +11,24 @@ class Member extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $member): void {
+            $email = is_string($member->email) ? trim($member->email) : '';
+            if ($email !== '' && \Illuminate\Support\Facades\Schema::hasTable('member_email_account_locks')) {
+                app(\App\Services\MemberEmailAccountPolicy::class)->lockAndAssertAvailable($email);
+            }
+            $member->email = mb_strtolower($email, 'UTF-8');
+            $member->normalized_email = mb_strtolower($email, 'UTF-8');
+        });
+        static::saving(function (self $member): void {
+            if (is_string($member->email)) {
+                $member->email = mb_strtolower(trim($member->email), 'UTF-8');
+                $member->normalized_email = mb_strtolower(trim($member->email), 'UTF-8');
+            }
+        });
+    }
+
     public const NAME_PATTERN = '/^[\p{L}\p{M}][\p{L}\p{M} .\'\x{2019}-]*$/u';
 
     /**
@@ -39,6 +57,7 @@ class Member extends Model
         'mobile_no',
         'pan_card_no',
         'email',
+        'normalized_email',
         'password',
         'status',
     ];

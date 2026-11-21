@@ -58,6 +58,16 @@
                                 <dt>Purchase reference</dt>
                                 <dd>{{ $purchase->reference }}</dd>
                             </div>
+                            @if($purchase->funding_source === \App\Models\PackagePurchase::FUNDING_WORKING_WALLET && $purchase->walletReservation)
+                                <div>
+                                    <dt>Funding source</dt>
+                                    <dd>Working Wallet · {{ ucfirst($purchase->walletReservation->status) }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Reserved amount</dt>
+                                    <dd>{{ \App\Support\MoneyDisplay::usdt($purchase->walletReservation->reserved_amount) }}</dd>
+                                </div>
+                            @endif
                             <div>
                                 <dt>Request date</dt>
                                 <dd>{{ optional($purchase->submitted_at)->timezone('Asia/Kolkata')->format('d M Y H:i') ?: 'Not recorded' }}</dd>

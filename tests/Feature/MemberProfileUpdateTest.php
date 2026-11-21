@@ -218,7 +218,7 @@ class MemberProfileUpdateTest extends TestCase
         ]);
     }
 
-    public function test_other_members_email_cannot_be_used_on_update(): void
+    public function test_member_update_respects_the_five_account_email_limit(): void
     {
         $this->signIn();
         $member = $this->member();
@@ -241,6 +241,53 @@ class MemberProfileUpdateTest extends TestCase
             'mobile_no' => $member->mobile_no,
             'pan_card_no' => $member->pan_card_no,
             'email' => 'other@example.com',
-        ])->assertSessionHasErrors(['email']);
+        ])
+            ->assertSessionDoesntHaveErrors(['email']);
+
+        for ($index = 3; $index <= 5; $index++) {
+            Member::create([
+                'member_id' => 'ST1000'.$index,
+                'sponsor_id' => 'ST666666',
+                'sponsor_name' => 'Admin',
+                'member_name' => 'Other Member '.match ($index) {
+                    3 => 'Three',
+                    4 => 'Four',
+                    5 => 'Five',
+                },
+                'mobile_no' => '987654322'.$index,
+                'email' => $index % 2 === 0 ? 'OTHER@example.com' : 'other@example.com',
+                'status' => 'inactive',
+            ]);
+        }
+
+        $this->post(route('admin.members.update-member'), [
+            'member_id' => $member->member_id,
+            'sponsor_id' => 'ST666666',
+            'member_name' => 'Rahul Das',
+            'mobile_no' => $member->mobile_no,
+            'pan_card_no' => $member->pan_card_no,
+            'email' => 'other@example.com',
+        ])->assertSessionDoesntHaveErrors(['email']);
+
+        $sixth = Member::create([
+            'member_id' => 'ST100006',
+            'sponsor_id' => 'ST666666',
+            'sponsor_name' => 'Admin',
+            'member_name' => 'Sixth Candidate',
+            'mobile_no' => '9876543260',
+            'email' => 'candidate@example.com',
+            'status' => 'inactive',
+        ]);
+
+        $this->post(route('admin.members.update-member'), [
+            'member_id' => $sixth->member_id,
+            'sponsor_id' => 'ST666666',
+            'member_name' => 'Sixth Candidate',
+            'mobile_no' => $sixth->mobile_no,
+            'pan_card_no' => $sixth->pan_card_no,
+            'email' => 'other@example.com',
+        ])->assertSessionHasErrors([
+            'email' => 'This email address has already reached the maximum limit of 5 member accounts.',
+        ]);
     }
 }

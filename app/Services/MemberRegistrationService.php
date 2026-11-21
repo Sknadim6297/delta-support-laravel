@@ -15,6 +15,7 @@ class MemberRegistrationService
 
     public function __construct(
         private readonly ?SponsorChain $sponsors = null,
+        private readonly ?MemberEmailAccountPolicy $emailPolicy = null,
     ) {
     }
 
@@ -122,6 +123,10 @@ class MemberRegistrationService
         for ($attempt = 0; $attempt < 5; $attempt++) {
             try {
                 return DB::transaction(function () use ($attributes): Member {
+                    $policy = $this->emailPolicy ?? new MemberEmailAccountPolicy;
+                    $attributes['email'] = $policy->normalize((string) $attributes['email']);
+                    $attributes['normalized_email'] = $attributes['email'];
+                    $policy->lockAndAssertAvailable($attributes['email']);
                     $attributes['member_id'] = $this->nextMemberId();
 
                     return Member::query()->create($attributes);

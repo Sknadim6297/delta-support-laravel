@@ -28,6 +28,63 @@
             </article>
         </div>
 
+        <section id="memberFundSummary" class="ds-report-block" @if(! $fundSummary) hidden @endif>
+            <header class="ds-dash-head">
+                <h2>Wallet and fund summary</h2>
+                <p>Read-only USDT balances. Reserved funds are excluded from available balances.</p>
+            </header>
+            <div class="ds-mm-stats">
+                <article class="ds-mm-stat"><span>Total stored</span><strong id="fundTotalStored">{{ $fundSummary ? \App\Support\MoneyDisplay::usdt($fundSummary['total']['stored']) : '' }}</strong></article>
+                <article class="ds-mm-stat"><span>Reserved</span><strong id="fundTotalReserved">{{ $fundSummary ? \App\Support\MoneyDisplay::usdt($fundSummary['total']['reserved']) : '' }}</strong></article>
+                <article class="ds-mm-stat"><span>Available</span><strong id="fundTotalAvailable">{{ $fundSummary ? \App\Support\MoneyDisplay::usdt($fundSummary['total']['available']) : '' }}</strong></article>
+                <article class="ds-mm-stat"><span>Total withdrawn</span><strong id="fundTotalPaid">{{ $fundSummary ? \App\Support\MoneyDisplay::usdt($fundSummary['total']['paid']) : '' }}</strong></article>
+            </div>
+            <div class="ds-table-wrap">
+                <table>
+                    <thead><tr><th>Wallet</th><th>Current balance</th><th>Reserved</th><th>Available</th><th>Total credited</th><th>Total debited</th><th>Withdrawn</th></tr></thead>
+                    <tbody id="fundWalletRows">
+                    @if ($fundSummary)
+                        @foreach (['roi' => 'ROI Wallet', 'working' => 'Working Wallet', 'activation' => 'Activation Wallet'] as $wallet => $label)
+                            @php($row = $fundSummary['wallets'][$wallet])
+                            <tr>
+                                <td>{{ $label }}</td>
+                                <td>{{ \App\Support\MoneyDisplay::usdt($row['stored']) }}</td>
+                                <td>{{ \App\Support\MoneyDisplay::usdt($row['reserved']) }}</td>
+                                <td>{{ \App\Support\MoneyDisplay::usdt($row['available']) }}</td>
+                                <td>{{ \App\Support\MoneyDisplay::usdt($row['credited']) }}</td>
+                                <td>{{ \App\Support\MoneyDisplay::usdt($row['debits']) }}</td>
+                                <td>{{ \App\Support\MoneyDisplay::usdt($row['paid']) }}</td>
+                            </tr>
+                        @endforeach
+                    @endif
+                    </tbody>
+                </table>
+            </div>
+            <div class="ds-dash-head">
+                <h3>Recent wallet transactions</h3>
+            </div>
+            <div class="ds-table-wrap">
+                <table>
+                    <thead><tr><th>Reference</th><th>Wallet</th><th>Direction</th><th>Amount</th><th>Opening</th><th>Closing</th><th>Recorded</th></tr></thead>
+                    <tbody id="fundWalletTransactions">
+                    @forelse ($walletTransactions as $entry)
+                        <tr>
+                            <td>{{ $entry->reference }}</td>
+                            <td>{{ ucfirst($entry->wallet) }}</td>
+                            <td>{{ ucfirst($entry->direction) }}</td>
+                            <td>{{ \App\Support\MoneyDisplay::usdt($entry->amount) }}</td>
+                            <td>{{ $entry->opening_balance === null ? 'Not recorded' : \App\Support\MoneyDisplay::usdt($entry->opening_balance) }}</td>
+                            <td>{{ $entry->closing_balance === null ? 'Not recorded' : \App\Support\MoneyDisplay::usdt($entry->closing_balance) }}</td>
+                            <td>{{ $entry->created_at?->timezone('Asia/Kolkata')->format('d M Y, H:i') }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7">No wallet ledger transactions recorded for this member.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <x-members.panel title="Find a member" subtitle="Enter the member ID and load the saved profile.">
             <div class="ds-mm-filters ds-member-lookup">
                 <div>
@@ -36,7 +93,7 @@
                         id="memberId"
                         name="member_id"
                         form="memberUpdateForm"
-                        value="{{ old('member_id', request('member_id')) }}"
+                        value="{{ old('member_id', $member?->member_id ?? request('member_id')) }}"
                         placeholder="Enter Member ID"
                         autocomplete="off">
                 </div>
@@ -50,11 +107,11 @@
                 <div class="ds-mm-fields">
                     <div>
                         <label for="sponsorId">Sponsor ID <span>*</span></label>
-                        <input type="text" id="sponsorId" name="sponsor_id" readonly value="{{ old('sponsor_id') }}" placeholder="Enter Sponsor ID">
+                        <input type="text" id="sponsorId" name="sponsor_id" readonly value="{{ old('sponsor_id', $member?->sponsor_id) }}" placeholder="Enter Sponsor ID">
                     </div>
                     <div>
                         <label for="sponsorName">Sponsor Name <span>*</span></label>
-                        <input type="text" id="sponsorName" name="sponsor_name" value="{{ old('sponsor_name') }}" placeholder="Enter Sponsor Name">
+                        <input type="text" id="sponsorName" name="sponsor_name" value="{{ old('sponsor_name', $member?->sponsor_name) }}" placeholder="Enter Sponsor Name">
                     </div>
                 </div>
             </x-members.panel>
@@ -63,15 +120,15 @@
                 <div class="ds-mm-fields">
                     <div>
                         <label for="memberName">Member Name <span>*</span></label>
-                        <input type="text" id="memberName" name="member_name" value="{{ old('member_name') }}" placeholder="Enter Member Name">
+                        <input type="text" id="memberName" name="member_name" value="{{ old('member_name', $member?->member_name) }}" placeholder="Enter Member Name">
                     </div>
                     <div>
                         <label for="email">Email ID <span>*</span></label>
-                        <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="Enter Email ID" autocomplete="off">
+                        <input type="email" id="email" name="email" value="{{ old('email', $member?->email) }}" placeholder="Enter Email ID" autocomplete="off">
                     </div>
                     <div>
                         <label for="mobileNo">Mobile No <span>*</span></label>
-                        <input type="text" id="mobileNo" name="mobile_no" value="{{ old('mobile_no') }}" placeholder="Enter Mobile No" required maxlength="10">
+                        <input type="text" id="mobileNo" name="mobile_no" value="{{ old('mobile_no', $member?->mobile_no) }}" placeholder="Enter Mobile No" required maxlength="10">
                     </div>
                 </div>
             </x-members.panel>
@@ -80,7 +137,7 @@
                 <div class="ds-mm-fields">
                     <div>
                         <label for="walletAddress">BEP20 Wallet Address</label>
-                        <input type="text" id="walletAddress" name="wallet_address" value="{{ old('wallet_address') }}" placeholder="Enter BEP20 Wallet Address">
+                        <input type="text" id="walletAddress" name="wallet_address" value="{{ old('wallet_address', $member?->wallet_address) }}" placeholder="Enter BEP20 Wallet Address">
                     </div>
                 </div>
             </x-members.panel>
@@ -434,6 +491,29 @@
                         document.getElementById('summaryRegistered').textContent = member.registered_at || '';
                         document.getElementById('summaryPackage').textContent = member.package_status || '';
                         document.getElementById('summaryReferrals').textContent = String(member.direct_referrals ?? 0);
+                    }
+                    const fund = member.fund_summary;
+                    const fundSection = document.getElementById('memberFundSummary');
+                    if (fund && fundSection) {
+                        fundSection.hidden = false;
+                        document.getElementById('fundTotalStored').textContent = 'USDT ' + fund.total.stored;
+                        document.getElementById('fundTotalReserved').textContent = 'USDT ' + fund.total.reserved;
+                        document.getElementById('fundTotalAvailable').textContent = 'USDT ' + fund.total.available;
+                        document.getElementById('fundTotalPaid').textContent = 'USDT ' + fund.total.paid;
+                        const labels = { roi: 'ROI Wallet', working: 'Working Wallet', activation: 'Activation Wallet' };
+                        const rows = Object.keys(labels).map(function (wallet) {
+                            const row = fund.wallets[wallet];
+                            return '<tr><td>' + labels[wallet] + '</td><td>USDT ' + row.stored + '</td><td>USDT ' + row.reserved + '</td><td>USDT ' + row.available + '</td><td>USDT ' + row.credited + '</td><td>USDT ' + row.debits + '</td><td>USDT ' + row.paid + '</td></tr>';
+                        }).join('');
+                        document.getElementById('fundWalletRows').innerHTML = rows;
+                        const transactions = member.wallet_transactions || [];
+                        document.getElementById('fundWalletTransactions').innerHTML = transactions.length
+                            ? transactions.map(function (entry) {
+                                const opening = entry.opening_balance === null ? 'Not recorded' : 'USDT ' + entry.opening_balance;
+                                const closing = entry.closing_balance === null ? 'Not recorded' : 'USDT ' + entry.closing_balance;
+                                return '<tr><td>' + entry.reference + '</td><td>' + entry.wallet + '</td><td>' + entry.direction + '</td><td>USDT ' + entry.amount + '</td><td>' + opening + '</td><td>' + closing + '</td><td>' + (entry.created_at || '') + '</td></tr>';
+                            }).join('')
+                            : '<tr><td colspan="7">No wallet ledger transactions recorded for this member.</td></tr>';
                     }
                 })
                 .catch(function (error) {

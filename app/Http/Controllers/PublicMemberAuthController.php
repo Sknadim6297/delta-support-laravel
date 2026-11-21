@@ -9,12 +9,14 @@ use App\Models\User;
 use App\Services\MailDeliveryNotice;
 use App\Services\MemberPasswordSetupMailer;
 use App\Services\MemberRegistrationService;
+use App\Services\MemberEmailAccountPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class PublicMemberAuthController extends Controller
@@ -85,7 +87,7 @@ class PublicMemberAuthController extends Controller
             'member_name' => trim((string) $request->input('member_name')),
             'sponsor_id' => strtoupper(trim((string) $request->input('sponsor_id'))),
             'mobile_no' => trim((string) $request->input('mobile_no')),
-            'email' => trim((string) $request->input('email')),
+            'email' => mb_strtolower(trim((string) $request->input('email')), 'UTF-8'),
         ]);
 
         $lockedSponsor = $request->session()->get(self::REFERRAL_SPONSOR);
@@ -99,7 +101,7 @@ class PublicMemberAuthController extends Controller
             'member_name' => Member::nameRules(),
             'sponsor_id' => ['required', 'string'],
             'mobile_no' => ['required', 'string', 'regex:/^[0-9+\-\s]+$/', 'min:10', 'max:15'],
-            'email' => ['required', 'email', 'unique:members,email'],
+            'email' => ['required', 'email', app(MemberEmailAccountPolicy::class)->validationRule()],
         ]);
 
         $result = app(MemberRegistrationService::class)->register($validated, [
@@ -153,6 +155,37 @@ class PublicMemberAuthController extends Controller
             $request->session()->put('member_context_id', $member->member_id);
 
             return redirect()->intended(route('member.dashboard'));
+        }
+
+        if ($emailInput !== '' && $memberInput === '') {
+            $normalizedEmail = app(MemberEmailAccountPolicy::class)->normalize($emailInput);
+            $matches = Member::query()
+                ->where(function ($query) use ($normalizedEmail): void {
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('members', 'normalized_email')) {
+                        $query->where('normalized_email', $normalizedEmail);
+                    } else {
+                        $query->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail]);
+                    }
+                })
+                ->get();
+
+            if ($matches->count() > 1) {
+                return back()
+                    ->withErrors([
+                        'email' => 'Multiple member accounts use this email. Sign in with your Member ID.',
+                    ])
+                    ->onlyInput('email');
+            }
+            if ($matches->count() === 1) {
+                $emailMember = $matches->first();
+                if ($this->memberCanAuthenticate($emailMember)
+                    && $this->passwordMatches($emailMember, $credentials['password'])) {
+                    $request->session()->regenerate();
+                    $request->session()->put('member_context_id', $emailMember->member_id);
+
+                    return redirect()->intended(route('member.dashboard'));
+                }
+            }
         }
 
         if ($memberId === MemberRegistrationService::ADMIN_SPONSOR_ID) {

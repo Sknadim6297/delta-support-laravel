@@ -47,7 +47,7 @@ class MemberTransferWorkflow
         $this->assertDistinct($sender, $receiver);
         $settings = $this->settings();
         $this->assertLimits($settings, $amount);
-        $fee = bcadd((string) $settings->fee_amount, '0', 4);
+        $fee = $settings->calculateFee($amount);
         $total = bcadd($amount, $fee, 4);
         $available = $this->funds->available($sender->fresh() ?? $sender);
         if (bccomp($available, $total, 4) === -1) {
@@ -107,7 +107,7 @@ class MemberTransferWorkflow
                 $this->assertParty($lockedReceiver, 'receiver');
                 $settings = MemberTransferSetting::current();
                 $this->assertLimits($settings, $amount);
-                $fee = bcadd((string) $settings->fee_amount, '0', 4);
+                $fee = $settings->calculateFee($amount);
                 $total = bcadd($amount, $fee, 4);
 
                 return $this->post($lockedSender, $lockedReceiver, $amount, $fee, $total, $key, (string) $settings->daily_limit);
@@ -130,14 +130,17 @@ class MemberTransferWorkflow
         }
 
         return DB::transaction(function () use ($transfer, $admin, $reason): MemberTransfer {
+            $parties = MemberTransfer::query()->whereKey($transfer->id)->first();
+            if (! $parties) {
+                throw new RuntimeException('Member transfer was not found.');
+            }
+            $sender = Member::query()->where('member_id', $parties->sender_member_id)->firstOrFail();
+            $receiver = Member::query()->where('member_id', $parties->receiver_member_id)->firstOrFail();
+            [$lockedSender, $lockedReceiver] = $this->lockPair($sender, $receiver);
             $locked = MemberTransfer::query()->whereKey($transfer->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== MemberTransfer::COMPLETED) {
                 throw new RuntimeException('Only a completed transfer can be reversed. No funds were moved.');
             }
-
-            $sender = Member::query()->where('member_id', $locked->sender_member_id)->firstOrFail();
-            $receiver = Member::query()->where('member_id', $locked->receiver_member_id)->firstOrFail();
-            [$lockedSender, $lockedReceiver] = $this->lockPair($sender, $receiver);
             $amount = bcadd((string) $locked->amount, '0', 4);
             $fee = bcadd((string) $locked->fee_amount, '0', 4);
             $total = bcadd($amount, $fee, 4);
@@ -253,7 +256,7 @@ class MemberTransferWorkflow
             $total,
             $reference.'-DR',
             (string) Str::uuid(),
-            'Member transfer to '.$receiver->member_id,
+            'Member transfer to '.$receiver->member_id.'. Transfer amount '.$amount.' USDT; admin fee '.$fee.' USDT; total debit '.$total.' USDT.',
             null,
             $senderOpening,
             $senderClosing,
@@ -267,7 +270,7 @@ class MemberTransferWorkflow
             $amount,
             $reference.'-CR',
             (string) Str::uuid(),
-            'Member transfer from '.$sender->member_id,
+            'Member transfer from '.$sender->member_id.'. Receiver credit '.$amount.' USDT; admin fee '.$fee.' USDT.',
             null,
             $receiverOpening,
             $receiverClosing,

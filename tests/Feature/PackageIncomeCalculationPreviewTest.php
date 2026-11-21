@@ -196,7 +196,7 @@ class PackageIncomeCalculationPreviewTest extends TestCase
             ->assertSeeText('Main database calculation preview')
             ->assertSeeText('These figures are not stored credits and are not income history.')
             ->assertSeeText('Scheduler health')
-            ->assertSeeText('Historical backfill is off.')
+            ->assertSeeText('Historical backfill beyond yesterday is off.')
             ->assertSeeText('Wallet debit ledger')
             ->assertSeeText('No recipient is payable on this date.')
             ->assertDontSeeText('Enable generation');

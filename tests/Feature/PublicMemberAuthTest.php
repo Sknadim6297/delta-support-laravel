@@ -103,7 +103,7 @@ class PublicMemberAuthTest extends TestCase
         ])->assertRedirect(route('member.dashboard'));
     }
 
-    public function test_invalid_sponsor_and_duplicate_email_are_rejected(): void
+    public function test_invalid_sponsor_is_rejected_and_second_member_account_sharing_email_is_allowed(): void
     {
         $this->createMember('ST100001', 'Rahul Das', 'rahul@example.com');
 
@@ -122,10 +122,10 @@ class PublicMemberAuthTest extends TestCase
                 'member_name' => 'Another Member',
                 'sponsor_id' => 'ST100001',
                 'mobile_no' => '9876543213',
-                'email' => 'rahul@example.com',
+                'email' => ' Rahul@Example.com ',
             ])
             ->assertRedirect(route('member.register'))
-            ->assertSessionHasErrors(['email']);
+            ->assertSessionDoesntHaveErrors();
     }
 
     public function test_default_admin_sponsor_id_is_accepted(): void

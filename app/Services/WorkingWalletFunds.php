@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Member;
 use App\Models\WalletLedgerEntry;
 use App\Models\WithdrawalRequest;
+use App\Models\PackagePurchaseReservation;
 use App\Support\WalletLedgerDirection;
 use App\Support\WithdrawalStatus;
 use Illuminate\Support\Facades\Schema;
@@ -48,7 +49,16 @@ class WorkingWalletFunds
                 ->sum('amount'), '0', 4);
         }
 
-        return bcadd($requests, $holds, 4);
+        $packageReservations = '0.0000';
+        if (Schema::hasTable('package_purchase_reservations')) {
+            $packageReservations = bcadd((string) PackagePurchaseReservation::query()
+                ->where('member_id', $member->member_id)
+                ->where('wallet', 'working')
+                ->where('status', PackagePurchaseReservation::ACTIVE)
+                ->sum('reserved_amount'), '0', 4);
+        }
+
+        return bcadd(bcadd($requests, $holds, 4), $packageReservations, 4);
     }
 
     public function available(Member $member): string

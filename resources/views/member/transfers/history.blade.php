@@ -16,6 +16,8 @@
                     <th>Direction</th>
                     <th>Counterparty</th>
                     <th class="ds-money">Amount</th>
+                    <th class="ds-money">Fee</th>
+                    <th class="ds-money">Total debit</th>
                     <th>Status</th>
                     <th></th>
                 </tr>
@@ -31,11 +33,13 @@
                     <td>{{ $sent ? 'Sent' : 'Received' }}</td>
                     <td>{{ $sent ? $transfer->receiver_member_id : $transfer->sender_member_id }}</td>
                     <td class="ds-money">{{ \App\Support\MoneyDisplay::usdt($transfer->amount) }}</td>
+                    <td class="ds-money">{{ $sent ? \App\Support\MoneyDisplay::usdt($transfer->fee_amount) : '—' }}</td>
+                    <td class="ds-money">{{ $sent ? \App\Support\MoneyDisplay::usdt(bcadd((string) $transfer->amount, (string) $transfer->fee_amount, 4)) : '—' }}</td>
                     <td>{{ ucfirst($transfer->status) }}</td>
                     <td><a href="{{ route('member.transfers.show', $transfer) }}">Receipt</a></td>
                 </tr>
             @empty
-                <tr><td class="ds-empty-cell" colspan="7">No transfers yet.</td></tr>
+                <tr><td class="ds-empty-cell" colspan="9">No transfers yet.</td></tr>
             @endforelse
             </tbody>
         </table>

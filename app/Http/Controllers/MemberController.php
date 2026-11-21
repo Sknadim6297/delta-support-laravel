@@ -13,7 +13,10 @@ use App\Services\MailDeliveryNotice;
 use App\Services\MemberPasswordSetupMailer;
 use App\Services\MemberRegistrationService;
 use App\Services\RankService;
+use App\Services\MemberEmailAccountPolicy;
 use App\Services\Rewards\TeamBusinessCalculationService;
+use App\Services\MemberFundSummary;
+use App\Models\WalletLedgerEntry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -234,6 +237,7 @@ class MemberController extends Controller
         $rankData = $rankService->calculateForMember($member);
         $packageBusiness = app(TeamBusinessCalculationService::class)
             ->businessForMembers([$member->member_id])[$member->member_id];
+        $fundSummary = app(MemberFundSummary::class)->forMember($member);
 
         $request->session()->put('member_context_id', $member->member_id);
 
@@ -282,6 +286,7 @@ class MemberController extends Controller
                 'rank' => $rankData['current_rank']?->name ?? 'Unranked',
                 'rankSummary' => $rankData,
                 'packageBusiness' => $packageBusiness,
+                'fundSummary' => $fundSummary,
                 'teamActiveInvestment' => $teamActiveInvestment,
                 'teamInactiveInvestment' => $teamInactiveInvestment,
                 'teamActiveInvestmentRatio' => $teamActiveInvestment . ':'. $teamInactiveInvestment,
@@ -495,17 +500,34 @@ class MemberController extends Controller
             'wallet_address' => ['nullable', 'string', 'max:255'],
             'mobile_no' => ['required', 'string', 'regex:/^[0-9+\-\s]+$/', 'min:10', 'max:15'],
             'email' => $member
-                ? ['required', 'email', Rule::unique('members', 'email')->ignore($member->id)]
-                : ['required', 'email', 'unique:members,email'],
+                ? ['required', 'email', app(MemberEmailAccountPolicy::class)->validationRule($member->member_id)]
+                : ['required', 'email', app(MemberEmailAccountPolicy::class)->validationRule()],
             'password' => $member
                 ? ['nullable', 'string', 'min:6']
                 : ['nullable', 'string', 'min:6', 'confirmed'],
         ];
     }
 
-    public function update()
+    public function update(Request $request)
     {
-        return view('admin.members.member_update', ['member' => []]);
+        $member = null;
+        $fundSummary = null;
+        $memberId = trim((string) $request->query('member_id', ''));
+        if ($memberId !== '') {
+            $member = Member::query()->where('member_id', $memberId)->first();
+            if ($member) {
+                $fundSummary = app(MemberFundSummary::class)->forMember($member);
+            }
+        }
+        $walletTransactions = $member
+            ? WalletLedgerEntry::query()->where('member_id', $member->member_id)->latest('id')->limit(10)->get()
+            : collect();
+
+        return view('admin.members.member_update', [
+            'member' => $member,
+            'fundSummary' => $fundSummary,
+            'walletTransactions' => $walletTransactions,
+        ]);
     }
 
     public function fetchMemberDetails(Request $request)
@@ -521,6 +543,12 @@ class MemberController extends Controller
 
         $member->load('directoryPackagePurchases');
         $packageDisplay = $member->packageDirectoryDisplay();
+        $fundSummary = app(MemberFundSummary::class)->forMember($member);
+        $walletTransactions = WalletLedgerEntry::query()
+            ->where('member_id', $member->member_id)
+            ->latest('id')
+            ->limit(10)
+            ->get(['reference', 'wallet', 'direction', 'amount', 'opening_balance', 'closing_balance', 'created_at']);
 
         return response()->json([
             'member_id' => $member->member_id,
@@ -535,6 +563,17 @@ class MemberController extends Controller
             'direct_referrals' => $member->sponsoredMembers()->count(),
             'package_status' => $packageDisplay['badge'],
             'package_lines' => $packageDisplay['lines'],
+            'email_account_count' => app(MemberEmailAccountPolicy::class)->count((string) $member->email),
+            'fund_summary' => $fundSummary,
+            'wallet_transactions' => $walletTransactions->map(fn (WalletLedgerEntry $entry): array => [
+                'reference' => $entry->reference,
+                'wallet' => $entry->wallet,
+                'direction' => $entry->direction,
+                'amount' => (string) $entry->amount,
+                'opening_balance' => $entry->opening_balance === null ? null : (string) $entry->opening_balance,
+                'closing_balance' => $entry->closing_balance === null ? null : (string) $entry->closing_balance,
+                'created_at' => $entry->created_at?->timezone('Asia/Kolkata')->format('d M Y, H:i'),
+            ])->all(),
         ]);
     }
 
@@ -613,7 +652,7 @@ class MemberController extends Controller
         $request->merge([
             'member_name' => trim((string) $request->input('member_name')),
             'sponsor_id' => strtoupper(trim((string) $request->input('sponsor_id'))),
-            'email' => trim((string) $request->input('email')),
+            'email' => mb_strtolower(trim((string) $request->input('email')), 'UTF-8'),
             'mobile_no' => trim((string) $request->input('mobile_no')),
             'wallet_address' => $wallet === '' ? null : $wallet,
         ]);
@@ -677,6 +716,10 @@ class MemberController extends Controller
         }
 
         $validated = $request->validate($this->memberValidationRules($member));
+        app(MemberEmailAccountPolicy::class)->lockAndAssertAvailable(
+            (string) $validated['email'],
+            $member->member_id,
+        );
 
         $mobileNoValue = trim((string) $validated['mobile_no']);
         $mobileCount = Member::where('mobile_no', $mobileNoValue)
@@ -691,7 +734,8 @@ class MemberController extends Controller
             'member_name' => $validated['member_name'],
             'wallet_address' => $validated['wallet_address'] ?? null,
             'mobile_no' => $validated['mobile_no'],
-            'email' => $validated['email'],
+            'email' => mb_strtolower(trim((string) $validated['email']), 'UTF-8'),
+            'normalized_email' => mb_strtolower(trim((string) $validated['email']), 'UTF-8'),
         ];
 
         if ($request->filled('password')) {

@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Services\MemberEmailAccountPolicy;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -55,7 +56,7 @@ class NewMemberRegistrationController extends Controller
         $request->merge([
             'sponsor_id' => strtoupper(trim((string) $request->input('sponsor_id'))),
             'member_name' => trim((string) $request->input('member_name')),
-            'email' => trim((string) $request->input('email')),
+            'email' => mb_strtolower(trim((string) $request->input('email')), 'UTF-8'),
             'mobile_no' => trim((string) $request->input('mobile_no')),
             'wallet_address' => $wallet === '' ? null : $wallet,
         ]);
@@ -65,7 +66,7 @@ class NewMemberRegistrationController extends Controller
         $validator = Validator::make($request->all(), [
             'member_name' => Member::nameRules(),
             'sponsor_id' => ['required', 'string', Rule::in([$currentMember->member_id])],
-            'email' => ['required', 'email', 'unique:members,email'],
+            'email' => ['required', 'email', app(MemberEmailAccountPolicy::class)->validationRule()],
             'mobile_no' => ['required', 'string', 'regex:/^[0-9+\-\s]+$/', 'min:10', 'max:15'],
             'wallet_address' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:6', 'confirmed'],

@@ -109,6 +109,53 @@ class MemberTransferTest extends TestCase
         $this->assertFalse((bool) config('deltasupport.package_income.enabled'));
     }
 
+    public function test_one_percent_transfer_fee_is_decimal_safe_and_includes_the_fee_in_validation_and_ledger(): void
+    {
+        $sender = $this->member('ST100101', '100.0000', self::PIN);
+        $receiver = $this->member('ST100201', '0.0000');
+        MemberTransferSetting::current()->forceFill([
+            'member_transfers_enabled' => true,
+            'fee_type' => 'percent',
+            'fee_value' => '1.0000',
+            'fee_amount' => '0.0000',
+        ])->save();
+
+        $this->review($sender, $receiver->member_id, '100')
+            ->assertSessionHasErrors('amount');
+
+        $this->submit($sender, $receiver->member_id, '50')->assertRedirect();
+        $transfer = MemberTransfer::query()->firstOrFail();
+        $this->assertSame('50.0000', (string) $transfer->amount);
+        $this->assertSame('0.5000', (string) $transfer->fee_amount);
+        $this->assertSame('49.5000', (string) $sender->fresh()->working_wallet_amount);
+        $this->assertSame('50.0000', (string) $receiver->fresh()->working_wallet_amount);
+
+        $debit = WalletLedgerEntry::query()->where('direction', WalletLedgerDirection::DEBIT)->firstOrFail();
+        $credit = WalletLedgerEntry::query()->where('direction', WalletLedgerDirection::CREDIT)->firstOrFail();
+        $this->assertSame('50.5000', (string) $debit->amount);
+        $this->assertSame('50.0000', (string) $credit->amount);
+        $this->assertStringContainsString('admin fee 0.5000 USDT', $debit->reason);
+        $this->assertStringContainsString('admin fee 0.5000 USDT', $credit->reason);
+    }
+
+    public function test_existing_flat_fee_configuration_remains_compatible(): void
+    {
+        $sender = $this->member('ST100102', '100.0000', self::PIN);
+        $receiver = $this->member('ST100202', '0.0000');
+        MemberTransferSetting::current()->forceFill([
+            'member_transfers_enabled' => true,
+            'fee_type' => 'flat',
+            'fee_value' => '1.2500',
+            'fee_amount' => '1.2500',
+        ])->save();
+
+        $this->submit($sender, $receiver->member_id, '40')->assertRedirect();
+        $transfer = MemberTransfer::query()->firstOrFail();
+        $this->assertSame('1.2500', (string) $transfer->fee_amount);
+        $this->assertSame('58.7500', (string) $sender->fresh()->working_wallet_amount);
+        $this->assertSame('40.0000', (string) $receiver->fresh()->working_wallet_amount);
+    }
+
     public function test_limits_balance_pin_and_party_rules_reject_the_transfer(): void
     {
         $sender = $this->member('ST100100', '10.0000', self::PIN);

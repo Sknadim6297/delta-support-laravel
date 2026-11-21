@@ -31,6 +31,14 @@
                     <dd>{{ $purchase->paymentMethodLabel() }}</dd>
                 </div>
             @endif
+            @if($purchase->funding_source === \App\Models\PackagePurchase::FUNDING_WORKING_WALLET)
+                <div><dt>Funding source</dt><dd>Working Wallet</dd></div>
+                @if($purchase->walletReservation)
+                    <div><dt>Reserved amount</dt><dd>{{ \App\Support\MoneyDisplay::usdt($purchase->walletReservation->reserved_amount) }}</dd></div>
+                    <div><dt>Reservation status</dt><dd>{{ ucfirst($purchase->walletReservation->status) }}</dd></div>
+                    <div><dt>Reservation reference</dt><dd>{{ $purchase->walletReservation->reservation_reference }}</dd></div>
+                @endif
+            @endif
             <div>
                 <dt>Token</dt>
                 <dd>{{ $purchase->currency_label ?: 'Not recorded' }}</dd>

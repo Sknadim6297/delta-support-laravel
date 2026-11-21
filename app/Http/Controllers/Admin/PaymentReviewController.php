@@ -18,7 +18,7 @@ class PaymentReviewController extends Controller
     public function purchases(Request $request): View
     {
         $purchases = PackagePurchase::query()
-            ->with(['invoice', 'member'])
+            ->with(['invoice', 'member', 'walletReservation'])
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $term = '%' . trim((string) $request->query('q')) . '%';
                 $query->where(function ($inner) use ($term): void {
@@ -42,7 +42,7 @@ class PaymentReviewController extends Controller
         abort_unless(in_array($status, [PackagePurchase::PENDING, PackagePurchase::APPROVED, PackagePurchase::REJECTED], true), 404);
 
         $purchases = PackagePurchase::query()
-            ->with(['invoice', 'member'])
+            ->with(['invoice', 'member', 'walletReservation'])
             ->where('status', $status)
             ->where(function ($query): void {
                 app(\App\Services\LocalTestMarker::class)->excludePurchases($query);
@@ -124,7 +124,7 @@ class PaymentReviewController extends Controller
 
     public function show(PackagePurchase $purchase): View
     {
-        $purchase->load(['member', 'invoice']);
+        $purchase->load(['member', 'invoice', 'walletReservation']);
 
         return view('admin.payments.show', [
             'purchase' => $purchase,

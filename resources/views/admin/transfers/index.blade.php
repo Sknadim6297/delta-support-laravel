@@ -38,8 +38,16 @@
                     <input name="daily_limit" value="{{ old('daily_limit', $settings->daily_limit) }}" inputmode="decimal" required>
                 </label>
                 <label>
-                    <span>Fee (USDT)</span>
-                    <input name="fee_amount" value="{{ old('fee_amount', $settings->fee_amount) }}" inputmode="decimal" required>
+                    <span>Fee type</span>
+                    <select name="fee_type" data-transfer-fee-type>
+                        <option value="flat" @selected(old('fee_type', $settings->fee_type ?: 'flat') === 'flat')>Flat USDT fee</option>
+                        <option value="percent" @selected(old('fee_type', $settings->fee_type) === 'percent')>Percentage fee</option>
+                    </select>
+                </label>
+                <label>
+                    <span data-transfer-fee-label>{{ old('fee_type', $settings->fee_type ?: 'flat') === 'percent' ? 'Fee percentage' : 'Flat fee (USDT)' }}</span>
+                    <input name="fee_value" value="{{ old('fee_value', $settings->fee_type === 'percent' ? $settings->fee_value : $settings->fee_amount) }}" inputmode="decimal" required>
+                    <small>Effective fee: {{ $settings->effectiveFeeLabel() }}</small>
                 </label>
             </div>
             @if ($errors->any())
@@ -105,4 +113,16 @@
     </x-ui.table>
     <div class="ds-pagination">{{ $transfers->links('pagination::bootstrap-5') }}</div>
 </div>
+<script>
+    (function () {
+        var feeType = document.querySelector('[data-transfer-fee-type]');
+        var feeLabel = document.querySelector('[data-transfer-fee-label]');
+        if (!feeType || !feeLabel) return;
+        var update = function () {
+            feeLabel.textContent = feeType.value === 'percent' ? 'Fee percentage' : 'Flat fee (USDT)';
+        };
+        feeType.addEventListener('change', update);
+        update();
+    }());
+</script>
 @endsection

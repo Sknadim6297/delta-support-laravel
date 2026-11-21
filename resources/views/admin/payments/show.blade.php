@@ -49,6 +49,17 @@
                     <dd>{{ $purchase->paymentMethodLabel() }}</dd>
                 </div>
             @endif
+            @if($purchase->funding_source === \App\Models\PackagePurchase::FUNDING_WORKING_WALLET)
+                <div><dt>Funding source</dt><dd>Working Wallet</dd></div>
+                @if($purchase->walletReservation)
+                    <div><dt>Reserved amount</dt><dd>{{ \App\Support\MoneyDisplay::usdt($purchase->walletReservation->reserved_amount) }}</dd></div>
+                    <div><dt>Reservation status</dt><dd>{{ ucfirst($purchase->walletReservation->status) }}</dd></div>
+                    <div><dt>Reservation reference</dt><dd>{{ $purchase->walletReservation->reservation_reference }}</dd></div>
+                    @if($purchase->walletReservation->settled_at)
+                        <div><dt>Settlement ledger reference</dt><dd>{{ 'PKG-DEBIT-'.$purchase->reference }}</dd></div>
+                    @endif
+                @endif
+            @endif
             <div>
                 <dt>Asset / token</dt>
                 <dd>{{ $purchase->currency_label ?: 'Not recorded' }}</dd>

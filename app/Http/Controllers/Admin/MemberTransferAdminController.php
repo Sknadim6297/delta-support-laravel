@@ -45,12 +45,21 @@ class MemberTransferAdminController extends Controller
             'minimum_amount' => ['required', 'regex:/^\d+(\.\d{1,4})?$/'],
             'maximum_amount' => ['required', 'regex:/^\d+(\.\d{1,4})?$/'],
             'daily_limit' => ['required', 'regex:/^\d+(\.\d{1,4})?$/'],
-            'fee_amount' => ['required', 'regex:/^\d+(\.\d{1,4})?$/'],
+            'fee_type' => ['nullable', 'in:flat,percent'],
+            'fee_value' => ['nullable', 'regex:/^\d+(\.\d{1,4})?$/'],
+            'fee_amount' => ['nullable', 'regex:/^\d+(\.\d{1,4})?$/'],
         ]);
         $minimum = bcadd($validated['minimum_amount'], '0', 4);
         $maximum = bcadd($validated['maximum_amount'], '0', 4);
         $daily = bcadd($validated['daily_limit'], '0', 4);
-        $fee = bcadd($validated['fee_amount'], '0', 4);
+        $settings = MemberTransferSetting::current();
+        $feeType = $validated['fee_type'] ?? ($request->filled('fee_amount') ? 'flat' : null);
+        if ($feeType === null) {
+            $feeType = $settings->fee_type === 'percent' ? 'percent' : 'flat';
+        }
+        $feeValue = $feeType === 'percent'
+            ? bcadd((string) ($validated['fee_value'] ?? ($settings->fee_type === 'percent' ? $settings->fee_value : '1.0000')), '0', 4)
+            : bcadd((string) ($validated['fee_value'] ?? $validated['fee_amount'] ?? $settings->fee_amount), '0', 4);
         $errors = [];
         if (bccomp($minimum, '0', 4) !== 1) {
             $errors['minimum_amount'] = 'The minimum transfer must be greater than 0.';
@@ -61,16 +70,24 @@ class MemberTransferAdminController extends Controller
         if (bccomp($daily, $maximum, 4) === -1) {
             $errors['daily_limit'] = 'The daily limit must be at least the maximum transfer.';
         }
+        if (bccomp($feeValue, '0', 4) === -1) {
+            $errors['fee_value'] = 'The transfer fee cannot be negative.';
+        }
+        if ($feeType === 'percent' && bccomp($feeValue, '100', 4) === 1) {
+            $errors['fee_value'] = 'A percentage transfer fee cannot exceed 100.';
+        }
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
 
-        MemberTransferSetting::current()->forceFill([
+        $settings->forceFill([
             'member_transfers_enabled' => $request->boolean('member_transfers_enabled'),
             'minimum_amount' => $minimum,
             'maximum_amount' => $maximum,
             'daily_limit' => $daily,
-            'fee_amount' => $fee,
+            'fee_type' => $feeType,
+            'fee_value' => $feeValue,
+            'fee_amount' => $feeType === 'flat' ? $feeValue : '0.0000',
             'denomination' => MoneyDisplay::USDT,
         ])->save();
 
@@ -85,7 +102,9 @@ class MemberTransferAdminController extends Controller
                 'minimum_amount' => $minimum,
                 'maximum_amount' => $maximum,
                 'daily_limit' => $daily,
-                'fee_amount' => $fee,
+                'fee_type' => $feeType,
+                'fee_value' => $feeValue,
+                'fee_amount' => $feeType === 'flat' ? $feeValue : '0.0000',
             ],
             'row_count' => 1,
         ]);

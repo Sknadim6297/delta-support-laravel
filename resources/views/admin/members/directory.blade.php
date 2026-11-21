@@ -52,6 +52,7 @@
                         <th>Member ID</th>
                         <th>Member Name</th>
                         <th>Email</th>
+                        <th>Email accounts</th>
                         <th>Mobile</th>
                         <th>Sponsor ID</th>
                         <th>Sponsor Name</th>
@@ -69,6 +70,7 @@
                         <td><span class="ds-mm-id">{{ $member->member_id }}</span></td>
                         <td>{{ $member->member_name }} @if (str_ends_with(strtolower((string) $member->email), '@local-test.invalid'))<x-ui.badge tone="warning">Local test</x-ui.badge>@endif</td>
                         <td>{{ $member->email }}</td>
+                        <td>{{ $emailAccountCounts[mb_strtolower(trim((string) $member->email), 'UTF-8')] ?? 1 }}</td>
                         <td>{{ $member->mobile_no }}</td>
                         <td>{{ $member->sponsor_id }}</td>
                         <td>{{ $member->sponsor_name }}</td>
@@ -94,7 +96,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr class="ds-mm-empty"><td colspan="12">No members yet.</td></tr>
+                    <tr class="ds-mm-empty"><td colspan="13">No members yet.</td></tr>
                 @endforelse
                 </tbody>
             </table>

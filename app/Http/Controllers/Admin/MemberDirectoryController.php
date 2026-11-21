@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\PackagePurchase;
+use App\Services\MemberEmailAccountPolicy;
 use App\Services\Rewards\TeamBusinessCalculationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,6 +63,12 @@ class MemberDirectoryController extends Controller
             ->distinct()
             ->orderBy('package_code')
             ->get();
+        $policy = app(MemberEmailAccountPolicy::class);
+        $emailAccountCounts = [];
+        foreach ($members->getCollection() as $member) {
+            $normalized = $policy->normalize((string) $member->email);
+            $emailAccountCounts[$normalized] = $policy->count($normalized);
+        }
 
         return view('admin.members.directory', compact(
             'members',
@@ -72,6 +79,7 @@ class MemberDirectoryController extends Controller
             'packageOptions',
             'packageFilter',
             'businessSummaries',
+            'emailAccountCounts',
         ));
     }
 

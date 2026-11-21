@@ -78,6 +78,33 @@
                     <dd>{{ \App\Support\MoneyDisplay::format($package->price_usd, $package->denomination) }}</dd>
                 </div>
             </dl>
+            @if(strcasecmp((string) $package->denomination, 'USDT') === 0)
+                <dl class="ds-package-meta">
+                    <div><dt>Working Wallet stored</dt><dd>{{ \App\Support\MoneyDisplay::usdt($workingStored) }}</dd></div>
+                    <div><dt>Reserved funds</dt><dd>{{ \App\Support\MoneyDisplay::usdt($workingReserved) }}</dd></div>
+                    <div><dt>Available to spend</dt><dd>{{ \App\Support\MoneyDisplay::usdt($workingAvailable) }}</dd></div>
+                </dl>
+                <form class="ds-pay-form" method="POST" action="{{ route('member.packages.purchase', $package) }}">
+                    @csrf
+                    <input type="hidden" name="funding_source" value="working_wallet">
+                    <input type="hidden" name="funding_wallet" value="working">
+                    <input type="hidden" name="wallet_idempotency_key" value="{{ $walletIdempotencyKey }}">
+                    <label>
+                        <span>Funding wallet</span>
+                        <input value="Working Wallet" readonly>
+                    </label>
+                    <p>Amount to reserve: {{ \App\Support\MoneyDisplay::usdt($package->price_usd) }}</p>
+                    @if(bccomp($workingAvailable, (string) $package->price_usd, 4) === -1)
+                        <x-ui.alert type="warning">Insufficient available Working Wallet balance. No reservation will be created.</x-ui.alert>
+                        <button type="submit" disabled>Reserve and Submit for Approval</button>
+                    @else
+                        <button type="submit">Reserve and Submit for Approval</button>
+                    @endif
+                    <p class="ds-package-note">The funds remain in the wallet as an active reservation until an administrator approves or rejects this purchase.</p>
+                </form>
+            @else
+                <x-ui.alert type="warning">This package is not USDT-denominated. It cannot be purchased with the Working Wallet.</x-ui.alert>
+            @endif
             @if($settings->isReady())
                 <dl class="ds-package-meta">
                     <div>
@@ -99,7 +126,8 @@
                 @endif
                 <form class="ds-pay-form" method="POST" action="{{ route('member.packages.purchase', $package) }}">
                     @csrf
-                    <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', $idempotencyKey) }}">
+                    <input type="hidden" name="funding_source" value="external">
+                    <input type="hidden" name="external_idempotency_key" value="{{ old('external_idempotency_key', $externalIdempotencyKey) }}">
                     <label>Transaction Reference
                         <input name="payment_reference" value="{{ old('payment_reference') }}" required maxlength="255" autocomplete="off" placeholder="Enter the transaction reference">
                     </label>

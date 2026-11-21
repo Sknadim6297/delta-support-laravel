@@ -154,6 +154,10 @@ class WithdrawalWorkflow
         }
 
         return DB::transaction(function () use ($request, $admin): WithdrawalRequest {
+            $memberId = WithdrawalRequest::query()->whereKey($request->id)->value('member_id');
+            if ($memberId !== null) {
+                Member::query()->where('member_id', $memberId)->lockForUpdate()->firstOrFail();
+            }
             $locked = WithdrawalRequest::query()->whereKey($request->id)->lockForUpdate()->firstOrFail();
             if ($locked->status === WithdrawalStatus::APPROVED) {
                 return $locked;
@@ -171,6 +175,10 @@ class WithdrawalWorkflow
         }
 
         return DB::transaction(function () use ($request, $admin, $reason): WithdrawalRequest {
+            $memberId = WithdrawalRequest::query()->whereKey($request->id)->value('member_id');
+            if ($memberId !== null) {
+                Member::query()->where('member_id', $memberId)->lockForUpdate()->firstOrFail();
+            }
             $locked = WithdrawalRequest::query()->whereKey($request->id)->lockForUpdate()->firstOrFail();
             if ($locked->status === WithdrawalStatus::REJECTED) {
                 return $locked;
@@ -219,6 +227,10 @@ class WithdrawalWorkflow
         $paidAt = $this->paidAt((string) ($payout['paid_at'] ?? ''));
 
         return DB::transaction(function () use ($request, $admin, $network, $txid, $amount, $paidAt): WithdrawalRequest {
+            $memberId = WithdrawalRequest::query()->whereKey($request->id)->value('member_id');
+            if ($memberId !== null) {
+                Member::query()->where('member_id', $memberId)->lockForUpdate()->firstOrFail();
+            }
             $locked = WithdrawalRequest::query()->whereKey($request->id)->lockForUpdate()->firstOrFail();
             if ($locked->status === WithdrawalStatus::COMPLETED) {
                 return $this->replaySettlement($locked, $network, $txid, $amount);

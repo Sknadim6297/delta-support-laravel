@@ -22,10 +22,17 @@ class PackagePurchase extends Model
 
     public const METHOD_USDT = 'usdt';
 
+    public const METHOD_WORKING_WALLET = 'working_wallet';
+
+    public const FUNDING_EXTERNAL = 'external';
+
+    public const FUNDING_WORKING_WALLET = 'working_wallet';
+
     public const PAYMENT_METHODS = [
         self::METHOD_CASH => 'Cash',
         self::METHOD_BANK => 'Bank Transfer',
         self::METHOD_USDT => 'USDT',
+        self::METHOD_WORKING_WALLET => 'Working Wallet',
     ];
 
     public function paymentMethodLabel(): ?string
@@ -121,6 +128,8 @@ class PackagePurchase extends Model
         'network',
         'payment_reference',
         'payment_method',
+        'funding_source',
+        'funding_wallet',
         'status',
         'rejection_reason',
         'submitted_at',
@@ -162,5 +171,10 @@ class PackagePurchase extends Model
     public function decisions(): HasMany
     {
         return $this->hasMany(PaymentDecision::class);
+    }
+
+    public function walletReservation(): HasOne
+    {
+        return $this->hasOne(PackagePurchaseReservation::class);
     }
 }

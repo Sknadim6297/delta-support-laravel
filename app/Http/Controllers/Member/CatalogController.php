@@ -11,10 +11,12 @@ use App\Models\PackagePurchase;
 use App\Models\PaymentSetting;
 use App\Services\PackageIncomePolicy;
 use App\Services\PackagePurchaseService;
+use App\Services\WorkingWalletFunds;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class CatalogController extends Controller
@@ -29,35 +31,65 @@ class CatalogController extends Controller
         ]);
     }
 
-    public function show(Package $package, PackageIncomePolicy $policy): View
+    public function show(Package $package, PackageIncomePolicy $policy, WorkingWalletFunds $funds): View
     {
         abort_unless($package->is_active, 404);
+
+        $member = Member::query()->where('member_id', session('member_context_id'))->first();
 
         return view('member.packages.show', [
             'package' => $package,
             'settings' => PaymentSetting::current(),
-            'idempotencyKey' => (string) \Illuminate\Support\Str::uuid(),
+            'externalIdempotencyKey' => (string) \Illuminate\Support\Str::uuid(),
+            'walletIdempotencyKey' => (string) \Illuminate\Support\Str::uuid(),
             'incomeRule' => $policy->definition($package->code),
+            'workingAvailable' => $member ? $funds->available($member) : '0.0000',
+            'workingStored' => $member ? $funds->balance($member) : '0.0000',
+            'workingReserved' => $member ? $funds->reserved($member) : '0.0000',
         ]);
     }
 
     public function purchase(Request $request, Package $package, PackagePurchaseService $purchases): RedirectResponse
     {
+        $request->merge([
+            'funding_source' => in_array((string) $request->input('funding_source'), ['external', 'working_wallet'], true)
+                ? (string) $request->input('funding_source')
+                : 'external',
+        ]);
         $data = $request->validate([
-            'payment_reference' => ['required', 'string', 'max:255'],
-            'idempotency_key' => ['required', 'uuid'],
+            'funding_source' => ['sometimes', 'in:external,working_wallet'],
+            'funding_wallet' => ['exclude_if:funding_source,external', 'required_if:funding_source,working_wallet', 'in:working'],
+            'payment_reference' => ['exclude_if:funding_source,working_wallet', 'required', 'string', 'max:255'],
+            'external_idempotency_key' => ['exclude_if:funding_source,working_wallet', 'nullable', 'uuid'],
+            'idempotency_key' => ['exclude_if:funding_source,working_wallet', 'nullable', 'uuid'],
+            'wallet_idempotency_key' => ['exclude_if:funding_source,external', 'required', 'uuid'],
         ]);
 
-        $purchase = $purchases->submit($this->member($request), $package, $data['payment_reference'], $data['idempotency_key']);
+        $fundingSource = $data['funding_source'] ?? 'external';
+        if ($fundingSource === 'external') {
+            $externalKey = $data['external_idempotency_key'] ?? $data['idempotency_key'] ?? null;
+            if (! is_string($externalKey) || $externalKey === '') {
+                throw ValidationException::withMessages([
+                    'idempotency_key' => 'Submit the purchase once with a valid idempotency key.',
+                ]);
+            }
+        }
+        $purchase = $fundingSource === 'working_wallet'
+            ? $purchases->submitWallet($this->member($request), $package, $data['wallet_idempotency_key'])
+            : $purchases->submit($this->member($request), $package, $data['payment_reference'], $externalKey);
 
-        return redirect()->route('member.payments.show', $purchase)->with('success', 'Payment submitted and waiting for verification.');
+        $message = $fundingSource === 'working_wallet'
+            ? 'Working Wallet funds reserved. Purchase is pending administrator approval.'
+            : 'Payment submitted and waiting for verification.';
+
+        return redirect()->route('member.payments.show', $purchase)->with('success', $message);
     }
 
     public function mine(): View
     {
         $memberId = session('member_context_id');
         $purchases = PackagePurchase::query()
-            ->with(['package', 'invoice'])
+            ->with(['package', 'invoice', 'walletReservation'])
             ->where('member_id', $memberId)
             ->latest('submitted_at')
             ->paginate(15);
@@ -79,6 +111,7 @@ class CatalogController extends Controller
     public function payment(Request $request, PackagePurchase $purchase): View
     {
         $this->owns($request, $purchase);
+        $purchase->load('walletReservation');
 
         return view('member.payments.show', [
             'purchase' => $purchase,

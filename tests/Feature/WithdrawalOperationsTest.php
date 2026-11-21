@@ -10,6 +10,7 @@ use App\Models\WithdrawalRequest;
 use App\Models\WithdrawalSetting;
 use App\Models\WithdrawalStatusEvent;
 use App\Services\WithdrawalWorkflow;
+use App\Services\WithdrawalBalances;
 use App\Support\WalletLedgerDirection;
 use App\Support\WithdrawalStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -169,6 +170,36 @@ class WithdrawalOperationsTest extends TestCase
             ->assertOk()
             ->assertSeeText($request->reference)
             ->assertSeeText('Pending Review');
+    }
+
+    public function test_one_percent_withdrawal_charge_stores_exact_fee_and_net_payout(): void
+    {
+        $this->enableWithdrawals(['charge_type' => 'percent', 'charge_value' => '1.0000']);
+        $member = $this->member('STWD4007', '100.0000');
+        $this->givePin($member, '482913');
+        $workflow = app(WithdrawalWorkflow::class);
+
+        $request = $workflow->submit($member, $this->workflowInput('100.0000'));
+        $this->assertSame('1.0000', (string) $request->charge_amount);
+        $this->assertSame('99.0000', (string) $request->net_amount);
+        $this->assertSame('100.0000', (string) $member->fresh()->roi_wallet_amount);
+        $this->assertSame('0.0000', (string) app(WithdrawalBalances::class)->available($member->fresh(), 'roi'));
+
+        $replay = $workflow->submit($member, $this->workflowInput('100.0000', $request->idempotency_key));
+        $this->assertSame($request->id, $replay->id);
+        $this->assertSame(1, WithdrawalRequest::query()->count());
+    }
+
+    public function test_one_percent_withdrawal_charge_handles_small_four_decimal_amounts(): void
+    {
+        $this->enableWithdrawals(['charge_type' => 'percent', 'charge_value' => '1.0000']);
+        $member = $this->member('STWD4008', '100.0000');
+        $this->givePin($member, '482913');
+        $workflow = app(WithdrawalWorkflow::class);
+
+        $request = $workflow->submit($member, $this->workflowInput('20.0001'));
+        $this->assertSame('0.2000', (string) $request->charge_amount);
+        $this->assertSame('19.8001', (string) $request->net_amount);
     }
 
     public function test_percent_charge_insufficient_balance_and_a_second_reservation_cannot_overdraw(): void

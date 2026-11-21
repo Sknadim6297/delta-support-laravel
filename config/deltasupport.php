@@ -115,6 +115,14 @@ return [
     ],
 
     /*
+    | Explicit opt-in for wallet-funded package purchase debits.
+    | Default false and independent of transfer/withdrawal settings.
+    */
+    'wallet_package_purchase' => [
+        'enabled' => filter_var(env('DELTASUPPORT_WALLET_PACKAGE_PURCHASE_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+    ],
+
+    /*
     | Windows Plesk in-process scheduler (deltasupport:scheduler-tick).
     | Default mode is dry-run/verify. Financial Artisan jobs stay blocked until
     | allow_financial is explicitly enabled after written authorization.

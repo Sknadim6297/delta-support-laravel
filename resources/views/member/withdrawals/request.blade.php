@@ -10,6 +10,10 @@
         'percent' => $settings->charge_value !== null ? \App\Support\MoneyDisplay::amount($settings->charge_value).'%' : null,
         default => null,
     };
+    $chargeRate = $settings->charge_type === 'percent' && $settings->charge_value !== null
+        ? bcadd((string) $settings->charge_value, '0', 4)
+        : '0.0000';
+    $chargeType = $settings->charge_type ?: 'none';
 @endphp
 <div class="ds-finance">
     @if($errors->any())
@@ -40,7 +44,7 @@
                 </label>
                 <label>
                     <span>Withdrawal amount (USDT)</span>
-                    <input name="amount" value="{{ old('amount') }}" inputmode="decimal" required>
+                    <input name="amount" value="{{ old('amount') }}" inputmode="decimal" required data-withdrawal-amount>
                     @error('amount')<span class="validation-message">{{ $message }}</span>@enderror
                 </label>
                 <label>
@@ -57,6 +61,10 @@
                     <input name="address" value="{{ old('address') }}" maxlength="128" autocomplete="off" required>
                     @error('address')<span class="validation-message">{{ $message }}</span>@enderror
                 </label>
+            </div>
+            <div class="ds-customer-grid" data-withdrawal-preview>
+                <div><strong>Admin charge</strong><p data-withdrawal-charge>{{ $charge }}</p></div>
+                <div><strong>Net payout</strong><p data-withdrawal-net>Enter an amount</p></div>
             </div>
             @if ($member->hasSecurityPin())
                 <x-security.pin-input name="security_pin" label="Security PIN" />
@@ -121,4 +129,59 @@
         </form>
     @endif
 </div>
+@if ($requestsEnabled)
+<script>
+    (function () {
+        var amountInput = document.querySelector('[data-withdrawal-amount]');
+        var chargeOutput = document.querySelector('[data-withdrawal-charge]');
+        var netOutput = document.querySelector('[data-withdrawal-net]');
+        if (!amountInput || !chargeOutput || !netOutput) return;
+        var chargeType = @json($chargeType);
+        var chargeValue = @json($chargeType === 'percent' ? $chargeRate : ($settings->charge_value !== null ? (string) $settings->charge_value : '0'));
+            var parseDecimal = function (text) {
+                var match = /^(\d+)(?:\.(\d{1,4}))?$/.exec((text || '').trim());
+                if (!match) return null;
+                var fraction = (match[2] || '').padEnd(4, '0');
+                return BigInt(match[1]) * 10000n + BigInt(fraction);
+            };
+            var formatDecimal = function (micro) {
+                var whole = micro / 10000n;
+                var fraction = (micro % 10000n).toString().padStart(4, '0');
+                return 'USDT ' + whole.toString() + '.' + fraction;
+            };
+            var roundQuotient = function (numerator, denominator) {
+                var quotient = numerator / denominator;
+                var remainder = numerator % denominator;
+                return remainder * 2n >= denominator ? quotient + 1n : quotient;
+        };
+        var update = function () {
+                var amount = parseDecimal(amountInput.value);
+                if (amount === null || amount <= 0n) {
+                    var initialCharge = parseDecimal(chargeValue);
+                    chargeOutput.textContent = chargeType === 'percent'
+                        ? chargeValue + '%'
+                        : formatDecimal(initialCharge === null ? 0n : initialCharge);
+                netOutput.textContent = 'Enter an amount';
+                return;
+            }
+                var charge;
+                if (chargeType === 'percent') {
+                    var percent = parseDecimal(chargeValue);
+                    charge = percent === null ? 0n : roundQuotient(amount * percent, 1000000n);
+                } else if (chargeType === 'flat') {
+                    charge = parseDecimal(chargeValue);
+                    if (charge === null) charge = 0n;
+                } else {
+                    charge = 0n;
+                }
+                var net = amount - charge;
+                if (net < 0n) net = 0n;
+                netOutput.textContent = formatDecimal(net);
+                chargeOutput.textContent = formatDecimal(charge);
+        };
+        amountInput.addEventListener('input', update);
+        update();
+    }());
+</script>
+@endif
 @endsection

@@ -123,10 +123,36 @@
         <div class="ds-dash-wallets">
             <x-ui.stat id="roi-wallet" label="ROI Wallet" :value="\App\Support\MoneyDisplay::usdt($metrics['roiWallet'])" />
             <x-ui.stat id="working-wallet" label="Working Wallet" :value="\App\Support\MoneyDisplay::usdt($metrics['workingWallet'])" />
-            <x-ui.stat id="salary-wallet" label="Salary Wallet" :value="\App\Support\MoneyDisplay::usdt($metrics['salaryWallet'])" />
             <x-ui.stat label="Activation Wallet" :value="\App\Support\MoneyDisplay::usdt($metrics['activationWallet'])" />
         </div>
     </section>
+
+    @if (request()->routeIs('admin.member-panel') && isset($metrics['fundSummary']))
+        <section id="wallet-funds">
+            <x-ui.section title="Wallet and fund summary" lead="Read-only USDT fund details for the selected member." />
+            <div class="ds-dash-kpis">
+                <x-ui.stat label="Total stored" :value="\App\Support\MoneyDisplay::usdt($metrics['fundSummary']['total']['stored'])" />
+                <x-ui.stat label="Reserved" :value="\App\Support\MoneyDisplay::usdt($metrics['fundSummary']['total']['reserved'])" />
+                <x-ui.stat label="Available" :value="\App\Support\MoneyDisplay::usdt($metrics['fundSummary']['total']['available'])" />
+                <x-ui.stat label="Total withdrawn" :value="\App\Support\MoneyDisplay::usdt($metrics['fundSummary']['total']['paid'])" />
+            </div>
+            <div class="ds-dash-columns">
+                @foreach (['roi' => 'ROI Wallet', 'working' => 'Working Wallet', 'activation' => 'Activation Wallet'] as $wallet => $label)
+                    @php($row = $metrics['fundSummary']['wallets'][$wallet])
+                    <x-ui.card :title="$label">
+                        <dl class="ds-detail">
+                            <div><dt>Current balance</dt><dd>{{ \App\Support\MoneyDisplay::usdt($row['stored']) }}</dd></div>
+                            <div><dt>Reserved</dt><dd>{{ \App\Support\MoneyDisplay::usdt($row['reserved']) }}</dd></div>
+                            <div><dt>Available</dt><dd>{{ \App\Support\MoneyDisplay::usdt($row['available']) }}</dd></div>
+                            <div><dt>Total credited</dt><dd>{{ \App\Support\MoneyDisplay::usdt($row['credited']) }}</dd></div>
+                            <div><dt>Total debited</dt><dd>{{ \App\Support\MoneyDisplay::usdt($row['debits']) }}</dd></div>
+                            <div><dt>Withdrawn</dt><dd>{{ \App\Support\MoneyDisplay::usdt($row['paid']) }}</dd></div>
+                        </dl>
+                    </x-ui.card>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     <section id="investment">
         <x-ui.section title="Recorded totals" lead="Historical investment figures stay in their saved denomination display." />

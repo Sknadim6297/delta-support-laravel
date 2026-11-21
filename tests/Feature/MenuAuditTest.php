@@ -31,7 +31,7 @@ class MenuAuditTest extends TestCase
 
         $this->actingAs($admin)->get(route('admin.finance.roi-schedule'))
             ->assertOk()
-            ->assertSeeText('Automatic ROI generation is disabled')
+            ->assertSeeText('Package income status')
             ->assertSeeText('Disabled');
 
         $this->actingAs($admin)->get(route('admin.finance.commission-settings'))
