@@ -112,13 +112,22 @@ class OperationsController extends Controller
         return redirect()->route('admin.packages.index');
     }
 
-    public function roiPlans(PackageIncomePolicy $policy): View
+    public function roiPlans(PackageIncomePolicy $policy, AssociateCommissionStructure $associate): View
     {
         $packages = Package::query()->orderBy('sort_order')->orderBy('name')->get();
+        $associatePreview = $associate->preview();
+        $associateByCode = [];
+        foreach ($associatePreview['tiers'] as $tier) {
+            if (! empty($tier['mapped_package_code'])) {
+                $associateByCode[$tier['mapped_package_code']] = $tier;
+            }
+        }
 
         return view('admin.finance.roi-plans', [
             'packages' => $packages,
             'rules' => $packages->mapWithKeys(fn (Package $package): array => [$package->code => $policy->definition($package->code)])->all(),
+            'associateByCode' => $associateByCode,
+            'associatePreview' => $associatePreview,
             'incomeTermCount' => PackageIncomeTerm::query()->count(),
         ]);
     }

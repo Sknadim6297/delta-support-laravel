@@ -280,7 +280,9 @@ class AssociateCommissionStructureTest extends TestCase
             ->assertSeeText('DST-TOUR-001')
             ->assertSeeText('DST-TOUR-003')
             ->assertSeeText('DST-TOUR-004')
-            ->assertSeeText('0.2400 USDT/day')
+            ->assertSeeText('Associate pool 0.2400 USDT / 400 days')
+            ->assertSeeText('Legacy commission')
+            ->assertSeeText('Associate commission')
             ->assertSeeText('ROI Not Configured');
 
         $this->actingAs($admin)
@@ -296,8 +298,85 @@ class AssociateCommissionStructureTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.packages.edit', Package::query()->where('code', 'DST-ROI-002')->firstOrFail()))
             ->assertOk()
+            ->assertSeeText('Legacy package income')
+            ->assertSeeText('Associate Commission')
             ->assertSeeText('GOLD PACKAGE')
             ->assertSeeText('0.0600');
+    }
+
+    public function test_admin_listings_separate_legacy_and_associate_pools_for_all_four_codes(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        foreach ([
+            ['DST-TOUR-001', 'SILVER', '50.0000', Package::TYPE_TOUR, false],
+            ['DST-ROI-002', 'GOLD', '100.0000', Package::TYPE_TOUR_ROI, true],
+            ['DST-TOUR-003', 'PREMIUM', '500.0000', Package::TYPE_PREMIUM, true],
+            ['DST-TOUR-004', 'VIP', '1000.0000', Package::TYPE_PREMIUM, false],
+        ] as [$code, $name, $price, $type, $roi]) {
+            Package::query()->create([
+                'code' => $code,
+                'name' => $name,
+                'price_usd' => $price,
+                'denomination' => 'USDT',
+                'package_type' => $type,
+                'roi_eligible' => $roi,
+                'level_commission_eligible' => $roi,
+                'is_active' => true,
+                'sort_order' => 10,
+            ]);
+        }
+
+        $packages = $this->actingAs($admin)->get(route('admin.packages.index'));
+        $packages->assertOk()
+            ->assertSeeText('Legacy commission')
+            ->assertSeeText('Associate commission')
+            ->assertSeeText('Associate pool 0.1200 USDT / 400 days')
+            ->assertSeeText('Associate pool 0.2400 USDT / 400 days')
+            ->assertSeeText('Associate pool 1.2000 USDT / 400 days')
+            ->assertSeeText('Associate pool 2.4000 USDT / 400 days')
+            ->assertSeeText('Max 48.0000 USDT (theoretical)')
+            ->assertSeeText('Max 96.0000 USDT (theoretical)')
+            ->assertSeeText('Max 480.0000 USDT (theoretical)')
+            ->assertSeeText('Max 960.0000 USDT (theoretical)')
+            ->assertSeeText('Legacy pool 0.2400 USDT / 400 days')
+            ->assertSeeText('Legacy pool 2.4000 USDT / 400 days')
+            ->assertSeeText('Legacy commission Not configured')
+            ->assertDontSeeText('Associate commission Not configured');
+
+        $roiPlans = $this->actingAs($admin)->get(route('admin.finance.roi-plans'));
+        $roiPlans->assertOk()
+            ->assertSeeText('Legacy commission pool')
+            ->assertSeeText('Associate commission pool')
+            ->assertSeeText('0.1200 USDT')
+            ->assertSeeText('0.2400 USDT')
+            ->assertSeeText('1.2000 USDT')
+            ->assertSeeText('2.4000 USDT')
+            ->assertSeeText('400 days · max 48.0000 USDT')
+            ->assertSeeText('400 days · max 480.0000 USDT')
+            ->assertSeeText('400 days · max 960.0000 USDT')
+            ->assertSeeText('Legacy commission Not configured')
+            ->assertSeeText('SILVER PACKAGE')
+            ->assertSeeText('PREMIUM PACKAGE')
+            ->assertSeeText('VIP PACKAGE')
+            ->assertDontSeeText('Associate commission Not configured');
+
+        // Legacy ROI for PREMIUM code remains visible and is not overwritten by associate 1.2000.
+        $roiPlans->assertSeeText('2.5000 USDT');
+        $this->assertSame('2.4000', app(PackageIncomePolicy::class)->definition('DST-TOUR-003')['commission_pool']);
+        $this->assertNull(app(PackageIncomePolicy::class)->definition('DST-TOUR-001'));
+        $this->assertNull(app(PackageIncomePolicy::class)->definition('DST-TOUR-004'));
+        $this->assertFalse((bool) config('deltasupport.associate_commission.posting_enabled'));
+        $this->assertFalse((bool) config('deltasupport.associate_commission.snapshot_on_approval'));
+
+        $editPremium = $this->actingAs($admin)
+            ->get(route('admin.packages.edit', Package::query()->where('code', 'DST-TOUR-003')->firstOrFail()));
+        $editPremium->assertOk()
+            ->assertSeeText('Legacy package income')
+            ->assertSeeText('Associate Commission')
+            ->assertSeeText('Legacy commission:')
+            ->assertSeeText('pool 2.4000 USDT / 400 days')
+            ->assertSeeText('Associate pool 1.2000 USDT / 400 days')
+            ->assertSeeText('max 480.0000 USDT (theoretical)');
     }
 
     public function test_four_package_codes_resolve_without_price_ambiguity_or_duplicate_creation(): void

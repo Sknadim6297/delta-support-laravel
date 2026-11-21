@@ -3,7 +3,7 @@
 @section('page-title', 'All Packages')
 @section('content')
 <div class="ds-catalog">
-    <x-ui.page-header title="All Packages" lead="Tour details are stored on each package. Purchases keep their own price snapshot. Associate Commission ranks are preview-only until separately activated.">
+    <x-ui.page-header title="All Packages" lead="Tour details are stored on each package. Purchases keep their own price snapshot. Legacy commission_pool and Associate Commission are shown separately. Associate ranks are preview-only until separately activated.">
         <x-slot:actions>
             <x-ui.button :href="route('admin.packages.create')">Add Package</x-ui.button>
             <x-ui.button variant="secondary" :href="route('admin.finance.commission-settings')">Associate commission chart</x-ui.button>
@@ -45,6 +45,7 @@
                     <th>Type</th>
                     <th>Package price</th>
                     <th>Daily ROI</th>
+                    <th>Legacy commission</th>
                     <th>Associate commission</th>
                     <th>Purchases</th>
                     <th>Status</th>
@@ -77,15 +78,23 @@
                         @endif
                     </td>
                     <td>
+                        @if ($rule && isset($rule['commission_pool'], $rule['commission_days']))
+                            <div>Legacy pool {{ $rule['commission_pool'] }} USDT / {{ $rule['commission_days'] }} days</div>
+                            <div>Max {{ bcmul((string) $rule['commission_pool'], (string) $rule['commission_days'], 4) }} USDT (theoretical)</div>
+                        @else
+                            Legacy commission Not configured
+                        @endif
+                    </td>
+                    <td>
                         @if ($tier)
                             <div>{{ $tier['label'] }}</div>
                             <div>Version {{ $associatePreview['version_code'] }}</div>
-                            <div>{{ $tier['daily_total'] }} USDT/day · 400 days</div>
+                            <div>Associate pool {{ $tier['daily_total'] }} USDT / {{ $tier['commission_days'] }} days</div>
                             <div>Max {{ $tier['duration_total'] }} USDT (theoretical)</div>
                             <div>Snapshot: {{ $associatePreview['snapshot_on_approval'] ? 'flag on' : 'disabled' }}</div>
                             <div>Posting: {{ $associatePreview['posting_enabled'] ? 'ENABLED' : 'disabled' }}</div>
                         @else
-                            Not mapped to associate_v1 by code
+                            Associate commission Not configured
                         @endif
                     </td>
                     <td>{{ $package->purchases_count }}</td>
@@ -103,7 +112,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="10">No packages yet. Add a package and set its USDT price.</td></tr>
+                <tr><td colspan="11">No packages yet. Add a package and set its USDT price.</td></tr>
             @endforelse
             </tbody>
         </table>
@@ -120,7 +129,8 @@
                         <th>Catalog</th>
                         <th>Price</th>
                         <th>ROI</th>
-                        <th>Daily pool</th>
+                        <th>Legacy pool</th>
+                        <th>Associate daily pool</th>
                         <th>400-day max</th>
                         <th>Snapshot</th>
                         <th>Posting</th>
@@ -141,6 +151,7 @@
                         </td>
                         <td>{{ $tier['package_price'] }} USDT</td>
                         <td>{{ $tier['roi_display'] }}</td>
+                        <td>{{ $tier['legacy_commission_pool'] ? $tier['legacy_commission_pool'].' USDT' : 'Legacy commission Not configured' }}</td>
                         <td>{{ $tier['daily_total'] }}</td>
                         <td>{{ $tier['duration_total'] }}</td>
                         <td>{{ $associatePreview['snapshot_on_approval'] ? 'Pending approval flag on' : 'Disabled' }}</td>

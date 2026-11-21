@@ -50,7 +50,7 @@
         </div>
 
         @if ($package->exists)
-            <x-ui.card title="Income & Associate Commission (read-only)" subtitle="Saving this form does not change wallets, ROI posting, or associate payouts.">
+            <x-ui.card title="Legacy package income (read-only)" subtitle="From package_income config only. Saving this form does not change wallets or ROI posting.">
                 <p>
                     ROI:
                     @if ($incomeRule)
@@ -59,11 +59,23 @@
                         ROI Not Configured
                     @endif
                 </p>
+                <p>
+                    Legacy commission:
+                    @if ($incomeRule && isset($incomeRule['commission_pool'], $incomeRule['commission_days']))
+                        pool {{ $incomeRule['commission_pool'] }} USDT / {{ $incomeRule['commission_days'] }} days
+                        · max {{ bcmul((string) $incomeRule['commission_pool'], (string) $incomeRule['commission_days'], 4) }} USDT (theoretical)
+                    @else
+                        Legacy commission Not configured
+                    @endif
+                </p>
+            </x-ui.card>
+
+            <x-ui.card title="Associate Commission (read-only)" subtitle="From associate_v1 by package code. Separate from legacy commission_pool. Does not credit wallets.">
                 @if ($associateTier)
                     <p>
                         Associate tier: {{ $associateTier['label'] }} · code {{ $associateTier['mapped_package_code'] }} ·
                         version {{ $associatePreview['version_code'] ?? 'associate_v1' }} ·
-                        daily {{ $associateTier['daily_total'] }} USDT ·
+                        Associate pool {{ $associateTier['daily_total'] }} USDT / {{ $associateTier['commission_days'] }} days ·
                         max {{ $associateTier['duration_total'] }} USDT (theoretical) ·
                         snapshot {{ ($associatePreview['snapshot_on_approval'] ?? false) ? 'flag on' : 'disabled' }} ·
                         posting {{ ($associatePreview['posting_enabled'] ?? false) ? 'ENABLED' : 'disabled' }}
@@ -89,7 +101,7 @@
                         </table>
                     </div>
                 @else
-                    <p>This package code is not mapped to associate_v1. Mapping uses package code only (not price).</p>
+                    <p>Associate commission Not configured for this package code. Mapping uses package code only (not price).</p>
                 @endif
             </x-ui.card>
         @endif
