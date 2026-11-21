@@ -48,6 +48,52 @@
             <p>Daily ROI and level-commission amounts come from the package income configuration. Saving this form does not credit income.</p>
             @if($errors->any())<div>{{ $errors->first() }}</div>@endif
         </div>
+
+        @if ($package->exists)
+            <x-ui.card title="Income & Associate Commission (read-only)" subtitle="Saving this form does not change wallets, ROI posting, or associate payouts.">
+                <p>
+                    ROI:
+                    @if ($incomeRule)
+                        {{ $incomeRule['roi_daily'] }} USDT / {{ $incomeRule['roi_days'] }} days
+                    @else
+                        ROI Not Configured
+                    @endif
+                </p>
+                @if ($associateTier)
+                    <p>
+                        Associate tier: {{ $associateTier['label'] }} · code {{ $associateTier['mapped_package_code'] }} ·
+                        version {{ $associatePreview['version_code'] ?? 'associate_v1' }} ·
+                        daily {{ $associateTier['daily_total'] }} USDT ·
+                        max {{ $associateTier['duration_total'] }} USDT (theoretical) ·
+                        snapshot {{ ($associatePreview['snapshot_on_approval'] ?? false) ? 'flag on' : 'disabled' }} ·
+                        posting {{ ($associatePreview['posting_enabled'] ?? false) ? 'ENABLED' : 'disabled' }}
+                    </p>
+                    <div class="ds-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Daily USDT</th>
+                                    <th>400-day USDT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach ($associateTier['ranks'] as $rank)
+                                <tr>
+                                    <td>{{ $rank['rank'] }}</td>
+                                    <td>{{ $rank['daily_amount'] }}</td>
+                                    <td>{{ $rank['duration_amount'] }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <p>This package code is not mapped to associate_v1. Mapping uses package code only (not price).</p>
+                @endif
+            </x-ui.card>
+        @endif
+
         <div>
             <button type="submit">Save package</button>
             <a href="{{ route('admin.packages.index') }}">Cancel</a>

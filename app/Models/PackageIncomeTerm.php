@@ -18,6 +18,11 @@ class PackageIncomeTerm extends Model
         'commission_base',
         'first_accrual_rule',
         'business_timezone',
+        'associate_commission_version',
+        'associate_tier_code',
+        'associate_commission_days',
+        'associate_daily_total',
+        'associate_rank_amounts',
         'snapshotted_at',
     ];
 
@@ -25,6 +30,9 @@ class PackageIncomeTerm extends Model
         'monthly_rate_percentage' => 'decimal:4',
         'monthly_amount' => 'decimal:4',
         'duration_months' => 'integer',
+        'associate_commission_days' => 'integer',
+        'associate_daily_total' => 'decimal:4',
+        'associate_rank_amounts' => 'array',
         'snapshotted_at' => 'datetime',
     ];
 

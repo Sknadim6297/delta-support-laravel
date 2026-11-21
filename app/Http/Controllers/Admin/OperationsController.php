@@ -12,6 +12,7 @@ use App\Models\PackagePurchase;
 use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
 use App\Models\WalletLedgerEntry;
+use App\Services\AssociateCommissionStructure;
 use App\Services\CommissionPlan;
 use App\Services\PackageIncomeAccrual;
 use App\Services\PackageIncomeAdministration;
@@ -164,7 +165,7 @@ class OperationsController extends Controller
         ]);
     }
 
-    public function commissionSettings(CommissionPlan $plan, PackageIncomePolicy $policy): View
+    public function commissionSettings(CommissionPlan $plan, PackageIncomePolicy $policy, AssociateCommissionStructure $associate): View
     {
         $levels = $plan->levels();
         $total = '0.0000';
@@ -178,6 +179,7 @@ class OperationsController extends Controller
             'active' => $plan->isActive(),
             'errors' => $plan->integrityErrors(),
             'pools' => $this->packagePools($policy),
+            'associate' => $associate->preview(),
         ]);
     }
 

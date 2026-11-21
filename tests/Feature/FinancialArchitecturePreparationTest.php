@@ -125,7 +125,7 @@ class FinancialArchitecturePreparationTest extends TestCase
         $purchase->refresh();
         $this->assertSame('33.2500', $purchase->price_usd);
         $this->assertSame('33.2500', $invoice->price_usd);
-        $this->assertSame(0, PackageIncomeTerm::query()->count());
+        $this->assertSame(1, PackageIncomeTerm::query()->count());
         $this->assertSame(1, Invoice::query()->count());
 
         $term = app(PackageIncomeTermRecorder::class)->record($purchase);
@@ -137,6 +137,8 @@ class FinancialArchitecturePreparationTest extends TestCase
         $this->assertNull($term->commission_base);
         $this->assertNull($term->first_accrual_rule);
         $this->assertNull($term->business_timezone);
+        $this->assertNull($term->associate_commission_version);
+        $this->assertNull($term->associate_rank_amounts);
         $this->assertNotNull($term->snapshotted_at);
 
         $again = app(PackageIncomeTermRecorder::class)->record($purchase, [

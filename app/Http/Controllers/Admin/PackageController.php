@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Package;
+use App\Services\AssociateCommissionStructure;
+use App\Services\PackageIncomePolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +16,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PackageController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, PackageIncomePolicy $policy, AssociateCommissionStructure $associate): View
     {
         $packages = Package::query()
             ->withCount('purchases')
@@ -32,12 +34,34 @@ class PackageController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('admin.packages.index', compact('packages'));
+        $associatePreview = $associate->preview();
+        $incomeRules = [];
+        $associateByCode = [];
+        foreach ($associatePreview['tiers'] as $tier) {
+            if (! empty($tier['mapped_package_code'])) {
+                $associateByCode[$tier['mapped_package_code']] = $tier;
+            }
+        }
+        foreach ($packages as $package) {
+            $incomeRules[$package->code] = $policy->definition($package->code);
+        }
+
+        return view('admin.packages.index', [
+            'packages' => $packages,
+            'incomeRules' => $incomeRules,
+            'associateByCode' => $associateByCode,
+            'associatePreview' => $associatePreview,
+        ]);
     }
 
     public function create(): View
     {
-        return view('admin.packages.form', ['package' => new Package(['is_active' => true, 'sort_order' => 0, 'roi_eligible' => false])]);
+        return view('admin.packages.form', [
+            'package' => new Package(['is_active' => true, 'sort_order' => 0, 'roi_eligible' => false]),
+            'incomeRule' => null,
+            'associateTier' => null,
+            'associatePreview' => app(AssociateCommissionStructure::class)->preview(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -53,9 +77,20 @@ class PackageController extends Controller
         return redirect()->route('admin.packages.index')->with('success', 'Package saved.');
     }
 
-    public function edit(Package $package): View
+    public function edit(Package $package, PackageIncomePolicy $policy, AssociateCommissionStructure $associate): View
     {
-        return view('admin.packages.form', compact('package'));
+        $tierCode = $associate->resolveTierForPackageCode((string) $package->code);
+        $preview = $associate->preview();
+        $tier = $tierCode === null
+            ? null
+            : collect($preview['tiers'])->firstWhere('tier_code', $tierCode);
+
+        return view('admin.packages.form', [
+            'package' => $package,
+            'incomeRule' => $policy->definition((string) $package->code),
+            'associateTier' => $tier,
+            'associatePreview' => $preview,
+        ]);
     }
 
     public function update(Request $request, Package $package): RedirectResponse

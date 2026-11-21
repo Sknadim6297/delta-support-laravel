@@ -247,6 +247,9 @@ class PackagePurchaseService
                         ]);
                     }
                 }
+                // Idempotent: never duplicates income-term rows or credits wallets.
+                app(PackageIncomeTermRecorder::class)->record($locked->fresh());
+
                 return $existing;
             }
 
@@ -305,6 +308,10 @@ class PackagePurchaseService
                 'action' => 'approved',
                 'reason' => null,
             ]);
+
+            // Optional immutable income-term snapshot. Associate ranks fill only when
+            // DELTASUPPORT_ASSOCIATE_COMMISSION_SNAPSHOT=true. Never credits wallets.
+            app(PackageIncomeTermRecorder::class)->record($locked->fresh());
 
             return $invoice;
         });

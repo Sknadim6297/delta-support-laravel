@@ -37,10 +37,10 @@
                     <td><x-ui.badge :tone="$package->roi_eligible ? 'success' : 'muted'">{{ $package->roi_eligible ? 'Eligible' : 'Not eligible' }}</x-ui.badge></td>
                     <td><x-ui.badge :tone="$package->level_commission_eligible ? 'success' : 'muted'">{{ $package->level_commission_eligible ? 'Eligible' : 'Not eligible' }}</x-ui.badge></td>
                     @php($rule = $rules[$package->code] ?? null)
-                    <td class="ds-money">{{ $rule ? $rule['roi_daily'].' USDT' : 'Not stored' }}</td>
-                    <td>{{ $rule ? $rule['roi_days'] : 'Not stored' }}</td>
-                    <td class="ds-money">{{ $rule ? $rule['commission_pool'].' USDT' : 'Not stored' }}</td>
-                    <td>{{ $rule && $rule['commission_days'] ? $rule['commission_days'] : 'Not stored' }}</td>
+                    <td class="ds-money">{{ $rule ? $rule['roi_daily'].' USDT' : 'Not configured' }}</td>
+                    <td>{{ $rule ? $rule['roi_days'] : 'Not configured' }}</td>
+                    <td class="ds-money">{{ $rule ? $rule['commission_pool'].' USDT' : 'Not configured' }}</td>
+                    <td>{{ $rule && $rule['commission_days'] ? $rule['commission_days'] : 'Not configured' }}</td>
                     <td><x-ui.badge :tone="$package->is_active ? 'success' : 'muted'">{{ $package->is_active ? 'Active' : 'Inactive' }}</x-ui.badge></td>
                 </tr>
             @empty

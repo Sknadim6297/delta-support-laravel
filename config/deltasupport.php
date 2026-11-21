@@ -107,6 +107,31 @@ return [
     ],
 
     /*
+    | Associate Commission Structure (Silver/Gold/Premium/VIP, 20 ranks, 400 days).
+    | Separate from Daily ROI. posting_enabled and snapshot_on_approval stay false
+    | until written owner approval. Existing accrual continues to use commission_pool
+    | × percentage for DST-ROI-002 / DST-TOUR-003.
+    */
+    'associate_commission' => [
+        'active_version' => env('DELTASUPPORT_ASSOCIATE_COMMISSION_VERSION', 'associate_v1'),
+        'posting_enabled' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_POSTING', false), FILTER_VALIDATE_BOOLEAN),
+        'snapshot_on_approval' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_SNAPSHOT', false), FILTER_VALIDATE_BOOLEAN),
+        /*
+        | Stable package-code mapping for associate_v1.
+        | GOLD/VIP use existing production income codes.
+        | SILVER/PREMIUM proposed codes (DST-SILVER-050 / DST-PREMIUM-500) require
+        | owner approval before creating catalog rows or changing production codes.
+        | Override via env only when production already uses different codes.
+        */
+        'tier_package_codes' => [
+            'silver' => env('DELTASUPPORT_ASSOC_CODE_SILVER', 'DST-SILVER-050'),
+            'gold' => env('DELTASUPPORT_ASSOC_CODE_GOLD', 'DST-ROI-002'),
+            'premium' => env('DELTASUPPORT_ASSOC_CODE_PREMIUM', 'DST-PREMIUM-500'),
+            'vip' => env('DELTASUPPORT_ASSOC_CODE_VIP', 'DST-TOUR-003'),
+        ],
+    ],
+
+    /*
     | ROI and Working debits can be posted only after a later approval.
     | WalletLedgerPoster refuses while this stays false, including from .env.
     */
