@@ -12,6 +12,7 @@ use App\Models\PackagePurchase;
 use App\Models\PackageRoiAccrual;
 use App\Models\RoiTransaction;
 use App\Models\WalletLedgerEntry;
+use App\Services\AssociateCommissionCalculator;
 use App\Services\AssociateCommissionStructure;
 use App\Services\CommissionPlan;
 use App\Services\PackageIncomeAccrual;
@@ -174,12 +175,24 @@ class OperationsController extends Controller
         ]);
     }
 
-    public function commissionSettings(CommissionPlan $plan, PackageIncomePolicy $policy, AssociateCommissionStructure $associate): View
-    {
+    public function commissionSettings(
+        CommissionPlan $plan,
+        PackageIncomePolicy $policy,
+        AssociateCommissionStructure $associate,
+        ReferralLevelEligibility $eligibility,
+    ): View {
         $levels = $plan->levels();
         $total = '0.0000';
         foreach ($levels as $level) {
             $total = bcadd($total, (string) $level->percentage, 4);
+        }
+
+        $unlockRules = [];
+        foreach ([0, 1, 2, 3, 4, 5] as $count) {
+            $unlockRules[] = [
+                'directs' => $count === 5 ? '5 or more' : (string) $count,
+                'levels' => $eligibility->levelsForCount($count),
+            ];
         }
 
         return view('admin.finance.commission-settings', [
@@ -189,6 +202,14 @@ class OperationsController extends Controller
             'errors' => $plan->integrityErrors(),
             'pools' => $this->packagePools($policy),
             'associate' => $associate->preview(),
+            'unlockRules' => $unlockRules,
+            'associateEngine' => [
+                'name' => AssociateCommissionCalculator::ENGINE,
+                'mode' => 'dry_run_only',
+                'posting_enabled' => $associate->postingEnabled(),
+                'snapshot_on_approval' => $associate->snapshotOnApprovalEnabled(),
+                'mutates' => false,
+            ],
         ]);
     }
 

@@ -289,6 +289,8 @@ class AssociateCommissionStructureTest extends TestCase
             ->get(route('admin.finance.commission-settings'))
             ->assertOk()
             ->assertSeeText('Associate Commission Structure')
+            ->assertSeeText('dry_run_only')
+            ->assertSeeText('Associate unlock thresholds')
             ->assertSeeText('0.0300')
             ->assertSeeText('0.6000')
             ->assertSeeText('48.0000')

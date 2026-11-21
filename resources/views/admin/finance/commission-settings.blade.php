@@ -13,6 +13,7 @@
         <x-ui.stat label="Combined rate" :value="$total.'%'" hint="Sum of stored percentages" />
         <x-ui.stat label="Percentage plan" :value="$active ? 'Active' : 'Inactive'" hint="Inactive plans do not pay commission" />
         <x-ui.stat label="Associate version" :value="$associate['version_code']" hint="{{ $associate['is_active'] ? 'Marked active' : 'Stored inactive' }}" />
+        <x-ui.stat label="Associate engine" :value="($associateEngine['mode'] ?? 'dry_run_only')" hint="Posting {{ ($associateEngine['posting_enabled'] ?? false) ? 'ENABLED' : 'disabled' }} · Snapshot {{ ($associateEngine['snapshot_on_approval'] ?? false) ? 'on' : 'disabled' }}" />
     </div>
     @if ($errors !== [])
         <x-ui.alert type="warning">
@@ -33,8 +34,31 @@
             Posting enabled: {{ $associate['posting_enabled'] ? 'yes' : 'no' }}.
             Snapshot on approval: {{ $associate['snapshot_on_approval'] ? 'yes' : 'no' }}.
             Theoretical totals are not earned/posted amounts.
+            Calculation engine: {{ $associateEngine['name'] ?? 'associate_commission_calculator_v1' }} ({{ $associateEngine['mode'] ?? 'dry_run_only' }}; never mutates wallets/ledgers).
         </x-ui.alert>
     @endif
+
+    <x-ui.card title="Associate unlock thresholds (read-only)" subtitle="Existing ReferralLevelEligibility rules. Qualifying directs unlock ranks; directs ≠ unlocked levels.">
+        <x-ui.table>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Qualifying direct referrals</th>
+                        <th>Unlocked ranks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach ($unlockRules as $rule)
+                    <tr>
+                        <td>{{ $rule['directs'] }}</td>
+                        <td>{{ $rule['levels'] }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </x-ui.table>
+        <p>Eligibility is evaluated at calculation time (same as legacy level accrual). Associate posting remains disabled.</p>
+    </x-ui.card>
 
     <x-ui.card title="Associate Commission Structure" :subtitle="'Version '.$associate['version_code'].' · '.$associate['commission_days'].' days · read-only preview'">
         @foreach ($associate['tiers'] as $tier)
