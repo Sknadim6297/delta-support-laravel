@@ -27,7 +27,7 @@ class AssociateCommissionStructure
         'silver' => [
             'label' => 'SILVER PACKAGE',
             'price' => '50.0000',
-            'mapped_package_code' => 'DST-SILVER-050',
+            'mapped_package_code' => 'DST-TOUR-001',
             'daily_total' => '0.1200',
             'duration_total' => '48.0000',
             'ranks' => [
@@ -55,7 +55,7 @@ class AssociateCommissionStructure
         'premium' => [
             'label' => 'PREMIUM PACKAGE',
             'price' => '500.0000',
-            'mapped_package_code' => 'DST-PREMIUM-500',
+            'mapped_package_code' => 'DST-TOUR-003',
             'daily_total' => '1.2000',
             'duration_total' => '480.0000',
             'ranks' => [
@@ -69,7 +69,7 @@ class AssociateCommissionStructure
         'vip' => [
             'label' => 'VIP PACKAGE',
             'price' => '1000.0000',
-            'mapped_package_code' => 'DST-TOUR-003',
+            'mapped_package_code' => 'DST-TOUR-004',
             'daily_total' => '2.4000',
             'duration_total' => '960.0000',
             'ranks' => [
@@ -292,14 +292,14 @@ class AssociateCommissionStructure
     public function catalogFinding(): array
     {
         $details = [
-            'ProductionCatalogSeeder only seeds DST-ROI-002, DST-TOUR-003, and VERIFY-1.',
-            'Admin Package Management can create additional packages (including SILVER/PREMIUM) without seeder changes.',
-            'Local development DB may lack production-created SILVER/PREMIUM rows even when production UI shows them.',
-            'Proposed codes DST-SILVER-050 and DST-PREMIUM-500 are mapping targets only; this service does not create package rows.',
+            'Verified production associate codes: DST-TOUR-001 (SILVER 50), DST-ROI-002 (GOLD 100), DST-TOUR-003 (PREMIUM 500), DST-TOUR-004 (VIP 1000).',
+            'ProductionCatalogSeeder still seeds a legacy DST-TOUR-003 row at 1000 USDT for demo/activation tests; production DB uses DST-TOUR-003 as PREMIUM 500.',
+            'package_income ROI for DST-TOUR-003 remains 2.5000×1000 in config and is NOT automatically moved to DST-TOUR-004.',
+            'Associate commission posting/snapshot flags stay disabled; this service does not create or rename package rows.',
         ];
 
         return [
-            'summary' => 'SILVER/PREMIUM can appear in production Admin UI via manual Package Management creates even when absent from ProductionCatalogSeeder.',
+            'summary' => 'Associate tiers map to verified production codes DST-TOUR-001 / DST-ROI-002 / DST-TOUR-003 / DST-TOUR-004. ROI for DST-TOUR-003 vs VIP remains a separate business decision.',
             'details' => $details,
         ];
     }
@@ -385,13 +385,17 @@ class AssociateCommissionStructure
             $warnings[] = 'ROI Not Configured for this tier. Associate Commission does not define ROI.';
         }
         if ($income !== null && bccomp((string) $income['commission_pool'], $canonical['daily_total'], 4) !== 0) {
-            $warnings[] = 'Legacy commission_pool '.$income['commission_pool'].' differs from associate daily total '.$canonical['daily_total'].'.';
+            $warnings[] = 'Legacy commission_pool '.$income['commission_pool'].' differs from associate daily total '.$canonical['daily_total'].'. Associate mapping does not rewrite ROI/pool config.';
+        }
+        if ($tierCode === 'premium' && $mappedCode === 'DST-TOUR-003' && $income !== null
+            && bccomp((string) ($income['roi_daily'] ?? '0'), '2.5000', 4) === 0) {
+            $warnings[] = 'DST-TOUR-003 still has legacy ROI 2.5000×1000 in package_income while associate tier is PREMIUM 500 / pool 1.2000. ROI was not moved to VIP.';
+        }
+        if ($tierCode === 'vip' && $mappedCode === 'DST-TOUR-004' && $income === null) {
+            $warnings[] = 'VIP DST-TOUR-004 has no package_income ROI entry. Do not auto-copy PREMIUM/Tour ROI here.';
         }
         if ($priceMatches->count() > 1) {
             $warnings[] = 'Multiple catalog packages share price '.$canonical['price'].' ('.$priceMatches->pluck('code')->implode(', ').'). Identity must use package code, not price.';
-        }
-        if (in_array($tierCode, ['silver', 'premium'], true) && $catalog === null) {
-            $warnings[] = 'Proposed code only — do not create a duplicate if production already has a SILVER/PREMIUM package under another code.';
         }
 
         return $warnings;

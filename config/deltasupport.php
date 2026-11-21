@@ -117,17 +117,18 @@ return [
         'posting_enabled' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_POSTING', false), FILTER_VALIDATE_BOOLEAN),
         'snapshot_on_approval' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_SNAPSHOT', false), FILTER_VALIDATE_BOOLEAN),
         /*
-        | Stable package-code mapping for associate_v1.
-        | GOLD/VIP use existing production income codes.
-        | SILVER/PREMIUM proposed codes (DST-SILVER-050 / DST-PREMIUM-500) require
-        | owner approval before creating catalog rows or changing production codes.
-        | Override via env only when production already uses different codes.
+        | Verified production package-code mapping for associate_v1:
+        | SILVER DST-TOUR-001 (50), GOLD DST-ROI-002 (100),
+        | PREMIUM DST-TOUR-003 (500), VIP DST-TOUR-004 (1000).
+        | Associate mapping is independent of package_income ROI terms.
+        | DST-TOUR-003 may still carry legacy ROI 2.5000/1000 in package_income;
+        | that ROI is NOT moved to DST-TOUR-004 by this map.
         */
         'tier_package_codes' => [
-            'silver' => env('DELTASUPPORT_ASSOC_CODE_SILVER', 'DST-SILVER-050'),
+            'silver' => env('DELTASUPPORT_ASSOC_CODE_SILVER', 'DST-TOUR-001'),
             'gold' => env('DELTASUPPORT_ASSOC_CODE_GOLD', 'DST-ROI-002'),
-            'premium' => env('DELTASUPPORT_ASSOC_CODE_PREMIUM', 'DST-PREMIUM-500'),
-            'vip' => env('DELTASUPPORT_ASSOC_CODE_VIP', 'DST-TOUR-003'),
+            'premium' => env('DELTASUPPORT_ASSOC_CODE_PREMIUM', 'DST-TOUR-003'),
+            'vip' => env('DELTASUPPORT_ASSOC_CODE_VIP', 'DST-TOUR-004'),
         ],
     ],
 

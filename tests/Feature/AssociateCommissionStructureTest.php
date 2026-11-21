@@ -63,7 +63,7 @@ class AssociateCommissionStructureTest extends TestCase
         }
     }
 
-    public function test_gold_and_vip_match_legacy_pools_without_changing_roi(): void
+    public function test_production_codes_preserve_legacy_roi_without_moving_to_vip(): void
     {
         Package::query()->updateOrCreate(['code' => 'DST-ROI-002'], [
             'name' => 'Gold mapped',
@@ -76,8 +76,8 @@ class AssociateCommissionStructureTest extends TestCase
             'sort_order' => 20,
         ]);
         Package::query()->updateOrCreate(['code' => 'DST-TOUR-003'], [
-            'name' => 'VIP mapped',
-            'price_usd' => '1000.0000',
+            'name' => 'Premium mapped',
+            'price_usd' => '500.0000',
             'denomination' => 'USDT',
             'package_type' => Package::TYPE_PREMIUM,
             'roi_eligible' => true,
@@ -85,25 +85,40 @@ class AssociateCommissionStructureTest extends TestCase
             'is_active' => true,
             'sort_order' => 10,
         ]);
+        Package::query()->updateOrCreate(['code' => 'DST-TOUR-004'], [
+            'name' => 'VIP mapped',
+            'price_usd' => '1000.0000',
+            'denomination' => 'USDT',
+            'package_type' => Package::TYPE_PREMIUM,
+            'roi_eligible' => true,
+            'level_commission_eligible' => true,
+            'is_active' => true,
+            'sort_order' => 5,
+        ]);
 
         $policy = app(PackageIncomePolicy::class);
         $gold = $policy->definition('DST-ROI-002');
-        $vip = $policy->definition('DST-TOUR-003');
+        $premiumIncome = $policy->definition('DST-TOUR-003');
+        $vipIncome = $policy->definition('DST-TOUR-004');
         $this->assertSame('0.2500', $gold['roi_daily']);
         $this->assertSame(800, $gold['roi_days']);
         $this->assertSame('0.2400', $gold['commission_pool']);
-        $this->assertSame('2.5000', $vip['roi_daily']);
-        $this->assertSame(1000, $vip['roi_days']);
-        $this->assertSame('2.4000', $vip['commission_pool']);
+        // Legacy ROI config still keyed to DST-TOUR-003; it must not be moved to VIP.
+        $this->assertSame('2.5000', $premiumIncome['roi_daily']);
+        $this->assertSame(1000, $premiumIncome['roi_days']);
+        $this->assertSame('2.4000', $premiumIncome['commission_pool']);
+        $this->assertNull($vipIncome);
 
         $preview = app(AssociateCommissionStructure::class)->preview();
         $tiers = collect($preview['tiers'])->keyBy('tier_code');
         $this->assertTrue($tiers['gold']['pool_matches_legacy']);
-        $this->assertTrue($tiers['vip']['pool_matches_legacy']);
+        $this->assertFalse($tiers['premium']['pool_matches_legacy']); // associate 1.2000 vs legacy pool 2.4000
+        $this->assertFalse($tiers['vip']['roi_configured']);
         $this->assertFalse($tiers['silver']['roi_configured']);
-        $this->assertFalse($tiers['premium']['roi_configured']);
         $this->assertSame('gold', app(AssociateCommissionStructure::class)->resolveTierForPackageCode('DST-ROI-002'));
-        $this->assertSame('vip', app(AssociateCommissionStructure::class)->resolveTierForPackageCode('DST-TOUR-003'));
+        $this->assertSame('premium', app(AssociateCommissionStructure::class)->resolveTierForPackageCode('DST-TOUR-003'));
+        $this->assertSame('vip', app(AssociateCommissionStructure::class)->resolveTierForPackageCode('DST-TOUR-004'));
+        $this->assertSame('silver', app(AssociateCommissionStructure::class)->resolveTierForPackageCode('DST-TOUR-001'));
     }
 
     public function test_snapshot_stays_off_by_default_and_is_immutable_when_forced(): void
@@ -262,8 +277,9 @@ class AssociateCommissionStructureTest extends TestCase
             ->assertSeeText('SILVER PACKAGE')
             ->assertSeeText('PREMIUM PACKAGE')
             ->assertSeeText('VIP PACKAGE')
-            ->assertSeeText('DST-SILVER-050')
-            ->assertSeeText('DST-PREMIUM-500')
+            ->assertSeeText('DST-TOUR-001')
+            ->assertSeeText('DST-TOUR-003')
+            ->assertSeeText('DST-TOUR-004')
             ->assertSeeText('0.2400 USDT/day')
             ->assertSeeText('ROI Not Configured');
 
@@ -287,10 +303,12 @@ class AssociateCommissionStructureTest extends TestCase
     public function test_four_package_codes_resolve_without_price_ambiguity_or_duplicate_creation(): void
     {
         $structure = app(AssociateCommissionStructure::class);
-        $this->assertSame('silver', $structure->resolveTierForPackageCode('DST-SILVER-050'));
+        $this->assertSame('silver', $structure->resolveTierForPackageCode('DST-TOUR-001'));
         $this->assertSame('gold', $structure->resolveTierForPackageCode('DST-ROI-002'));
-        $this->assertSame('premium', $structure->resolveTierForPackageCode('DST-PREMIUM-500'));
-        $this->assertSame('vip', $structure->resolveTierForPackageCode('DST-TOUR-003'));
+        $this->assertSame('premium', $structure->resolveTierForPackageCode('DST-TOUR-003'));
+        $this->assertSame('vip', $structure->resolveTierForPackageCode('DST-TOUR-004'));
+        $this->assertNull($structure->resolveTierForPackageCode('DST-SILVER-050'));
+        $this->assertNull($structure->resolveTierForPackageCode('DST-PREMIUM-500'));
 
         // Two packages at 100 USDT must not silently bind by price for snapshots.
         Package::query()->create([
@@ -315,13 +333,18 @@ class AssociateCommissionStructureTest extends TestCase
         ]);
         $this->assertNull($structure->resolveTierForPrice('100.0000'));
         $this->assertNull($structure->resolveTierForPackageCode('VERIFY-1'));
-        $this->assertSame(0, Package::query()->where('code', 'DST-SILVER-050')->count());
-        $this->assertSame(0, Package::query()->where('code', 'DST-PREMIUM-500')->count());
 
         $preview = $structure->preview();
         $this->assertFalse($preview['posting_enabled']);
+        $this->assertFalse($preview['snapshot_on_approval']);
         $this->assertFalse($preview['accrual_uses_associate_posting']);
-        $this->assertStringContainsString('manual Package Management', $preview['catalog_finding']['summary']);
+        $this->assertStringContainsString('DST-TOUR-001', $preview['catalog_finding']['summary']);
+        $this->assertSame('DST-TOUR-001', $preview['tiers'][0]['mapped_package_code']);
+        $this->assertSame('0.1200', $preview['tiers'][0]['daily_total']);
+        $this->assertSame('DST-TOUR-003', collect($preview['tiers'])->firstWhere('tier_code', 'premium')['mapped_package_code']);
+        $this->assertSame('1.2000', collect($preview['tiers'])->firstWhere('tier_code', 'premium')['daily_total']);
+        $this->assertSame('DST-TOUR-004', collect($preview['tiers'])->firstWhere('tier_code', 'vip')['mapped_package_code']);
+        $this->assertSame('2.4000', collect($preview['tiers'])->firstWhere('tier_code', 'vip')['daily_total']);
     }
 
     public function test_approval_snapshot_flag_off_keeps_associate_null_and_replay_is_idempotent(): void

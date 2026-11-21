@@ -92,10 +92,13 @@ return new class extends Migration
         ]);
 
         $tiers = [
+            // Seed maps to verified production codes. If 2026_11_21_180000 already
+            // ran with proposed DST-SILVER-050 / DST-PREMIUM-500 / VIP=DST-TOUR-003,
+            // 2026_11_21_190000 corrects live rows; editing this seed alone does not.
             'silver' => [
                 'label' => 'SILVER PACKAGE',
                 'price' => '50.0000',
-                'mapped' => null,
+                'mapped' => 'DST-TOUR-001',
                 'daily_total' => '0.1200',
                 'duration_total' => '48.0000',
                 'ranks' => [
@@ -123,7 +126,7 @@ return new class extends Migration
             'premium' => [
                 'label' => 'PREMIUM PACKAGE',
                 'price' => '500.0000',
-                'mapped' => null,
+                'mapped' => 'DST-TOUR-003',
                 'daily_total' => '1.2000',
                 'duration_total' => '480.0000',
                 'ranks' => [
@@ -137,7 +140,7 @@ return new class extends Migration
             'vip' => [
                 'label' => 'VIP PACKAGE',
                 'price' => '1000.0000',
-                'mapped' => 'DST-TOUR-003',
+                'mapped' => 'DST-TOUR-004',
                 'daily_total' => '2.4000',
                 'duration_total' => '960.0000',
                 'ranks' => [
