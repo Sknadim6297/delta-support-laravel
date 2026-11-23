@@ -13,9 +13,13 @@
 
     <div class="ds-stat-grid">
         <x-ui.stat label="Catalog" :value="$status['catalog_active'] ? 'Active' : 'Inactive'" :hint="$status['purchase_available'] ? 'Purchase available' : 'Purchase unavailable'" />
-        <x-ui.stat label="ROI flag" :value="$status['roi_eligible'] ? 'Eligible' : 'Not eligible'" :hint="$status['income_configured'] ? 'Income configured' : 'Income not configured'" />
-        <x-ui.stat label="Income source" :value="$status['income_source']" :hint="'Accrual authority: '.($status['accrual_authority'] ? 'yes' : 'no')" />
-        <x-ui.stat label="Posting" :value="$status['posting_authorized'] ? 'Authorized flags on' : 'Not authorized'" :hint="$status['posting_note']" />
+        <x-ui.stat label="ROI eligibility" :value="$status['roi_eligible'] ? 'Eligible' : 'Not eligible'" :hint="$status['income_configured'] ? 'Income configured' : 'Income not configured'" />
+        <x-ui.stat
+            label="Income source"
+            :value="$status['stored_income_source'] ?? $status['income_source']"
+            :hint="'Resolved: '.($status['resolved_income_source'] ?? 'not configured').' · Plan: '.($status['published_plan_version'] ?? 'none').' · Accrual: '.($status['accrual_authority'] ? 'yes' : 'no')"
+        />
+        <x-ui.stat label="Financial posting" :value="$status['posting_authorized'] ? 'Authorized flags on' : 'Not authorized'" :hint="$status['posting_note']" />
     </div>
 
     <x-ui.alert type="info">

@@ -87,6 +87,8 @@ class PackageController extends Controller
                 'roi_end_rule' => 'first_accrual_plus_duration_minus_one',
                 'food_coupon_currency' => 'INR',
             ]),
+            'publishedPlan' => null,
+            'editingPlan' => null,
             'incomeRule' => null,
             'status' => null,
             'associateTier' => null,
@@ -144,14 +146,20 @@ class PackageController extends Controller
         $tierCode = $associate->resolveTierForPackageCode((string) $package->code);
         $preview = $associate->preview();
         $tier = $tierCode === null ? null : collect($preview['tiers'])->firstWhere('tier_code', $tierCode);
-        $plan = $package->activePlanVersion ?? new PackagePlanVersion([
+        $publishedPlan = $package->activePlanVersion;
+        $editingPlan = $plans->editingPlanVersion($package);
+        $plan = $editingPlan ?? new PackagePlanVersion([
             'has_daily_roi' => (bool) $package->roi_eligible,
             'wait_days' => (int) config('deltasupport.package_income.wait_days', 10),
+            'roi_start_rule' => 'approval_plus_wait_days',
+            'roi_end_rule' => 'first_accrual_plus_duration_minus_one',
         ]);
 
         return view('admin.packages.form', [
             'package' => $package,
             'plan' => $plan,
+            'publishedPlan' => $publishedPlan,
+            'editingPlan' => $editingPlan,
             'incomeRule' => $policy->definition((string) $package->code),
             'status' => $plans->statusIndicators($package),
             'associateTier' => $tier,
@@ -168,19 +176,39 @@ class PackageController extends Controller
         $admin = $this->admin($request);
         $ledgerBefore = WalletLedgerEntry::query()->count();
         $catalog = $this->validatedCatalog($request, $package);
-        $plans->updateCatalog($package, $catalog, $admin, $request->ip());
-        $this->storeImage($request, $package->fresh());
 
+        // 1) Explicit income-source cutover (never implied by plan publish).
+        if ($request->filled('income_source')) {
+            $request->validate([
+                'income_source' => ['required', Rule::in([Package::INCOME_SOURCE_LEGACY, Package::INCOME_SOURCE_DATABASE])],
+                'confirm_income_source_change' => ['nullable', 'boolean'],
+            ]);
+            $plans->setIncomeSource(
+                $package->fresh(),
+                (string) $request->input('income_source'),
+                $request->boolean('confirm_income_source_change'),
+                $admin,
+                $request->ip()
+            );
+        }
+
+        // 2) Plan versions for future purchases only.
         if ($request->boolean('save_plan')) {
             $plan = $this->validatedPlan($request, (string) ($catalog['package_type'] ?? $package->package_type));
             $plans->savePlanVersion($package->fresh(), $plan, $admin, $request->boolean('publish_plan'), $request->ip());
         }
 
+        // 3) Catalog last so ROI-ready checks see the new source/plan.
+        $plans->updateCatalog($package->fresh(), $catalog, $admin, $request->ip());
+        $this->storeImage($request, $package->fresh());
+
         abort_unless(WalletLedgerEntry::query()->count() === $ledgerBefore, 500);
 
-        return redirect()
-            ->route('admin.packages.index')
-            ->with('success', 'Package updated. Existing approved purchase snapshots were not changed. No wallets were credited.');
+        $redirect = $request->boolean('save_plan')
+            ? redirect()->route('admin.packages.edit', $package->fresh())
+            : redirect()->route('admin.packages.index');
+
+        return $redirect->with('success', 'Package updated. Existing approved purchase snapshots were not changed. No wallets were credited.');
     }
 
     public function updateStatus(Request $request, Package $package, PackagePlanAdministration $plans): RedirectResponse

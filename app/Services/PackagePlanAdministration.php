@@ -159,23 +159,55 @@ class PackagePlanAdministration
                 && (string) $locked->income_source === 'database'
                 && (bool) ($plan['accrual_authority'] ?? true);
 
-            if ($hasApproved && $publish) {
-                // Always create a new version for future purchases; never mutate published used terms.
-                $version = $this->insertVersion($locked, $plan, $admin, $status, $accrualAuthority);
-                if ($publish) {
-                    $this->supersedeOthers($locked, $version);
-                    $locked->forceFill(['active_plan_version_id' => $version->id])->save();
-                }
-                $this->audit($locked, $version, $admin, $publish ? 'plan_published_new_version' : 'plan_draft_created', null, $version->toArray(), $ip);
+            // Prefer the latest draft for Admin edits so saved Daily ROI reloads correctly.
+            $draft = PackagePlanVersion::query()
+                ->where('package_id', $locked->id)
+                ->where('status', PackagePlanVersion::STATUS_DRAFT)
+                ->orderByDesc('version_number')
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
 
-                return $version;
+            if ($draft !== null && ! $publish) {
+                $before = $draft->toArray();
+                $this->fillVersion($draft, $plan, false);
+                $draft->save();
+                $this->audit($locked, $draft, $admin, 'plan_draft_updated', $before, $draft->fresh()->toArray(), $ip);
+
+                return $draft->fresh();
+            }
+
+            if ($draft !== null && $publish) {
+                // Promote the draft. Never mutates other published/historical versions.
+                $before = $draft->toArray();
+                $this->fillVersion($draft, $plan, $accrualAuthority);
+                $draft->status = PackagePlanVersion::STATUS_PUBLISHED;
+                $draft->published_at = now();
+                $draft->published_by = $admin->id;
+                $draft->accrual_authority = $accrualAuthority;
+                $draft->save();
+                $this->supersedeOthers($locked, $draft);
+                $this->discardOtherDrafts($locked, $draft);
+                $locked->forceFill(['active_plan_version_id' => $draft->id])->save();
+                $this->syncCatalogFlagsFromPlan($locked, $draft);
+                $this->audit(
+                    $locked,
+                    $draft,
+                    $admin,
+                    $hasApproved ? 'plan_published_new_version' : 'plan_published',
+                    $before,
+                    $draft->fresh()->toArray(),
+                    $ip
+                );
+
+                return $draft->fresh();
             }
 
             $current = $locked->active_plan_version_id
                 ? PackagePlanVersion::query()->whereKey($locked->active_plan_version_id)->lockForUpdate()->first()
                 : null;
 
-            if ($current && $current->status === PackagePlanVersion::STATUS_DRAFT && ! $hasApproved) {
+            if ($current && $current->status === PackagePlanVersion::STATUS_DRAFT) {
                 $before = $current->toArray();
                 $this->fillVersion($current, $plan, $accrualAuthority);
                 if ($publish) {
@@ -186,6 +218,8 @@ class PackagePlanAdministration
                 }
                 $current->save();
                 if ($publish) {
+                    $this->supersedeOthers($locked, $current);
+                    $this->discardOtherDrafts($locked, $current);
                     $locked->forceFill(['active_plan_version_id' => $current->id])->save();
                     $this->syncCatalogFlagsFromPlan($locked, $current);
                 }
@@ -194,13 +228,18 @@ class PackagePlanAdministration
                 return $current->fresh();
             }
 
+            // No draft: insert. With approved purchases, publishing always creates a new immutable version.
             $version = $this->insertVersion($locked, $plan, $admin, $status, $accrualAuthority);
             if ($publish) {
                 $this->supersedeOthers($locked, $version);
+                $this->discardOtherDrafts($locked, $version);
                 $locked->forceFill(['active_plan_version_id' => $version->id])->save();
                 $this->syncCatalogFlagsFromPlan($locked, $version);
             }
-            $this->audit($locked, $version, $admin, $publish ? 'plan_published' : 'plan_draft_created', null, $version->toArray(), $ip);
+            $action = $publish
+                ? ($hasApproved ? 'plan_published_new_version' : 'plan_published')
+                : 'plan_draft_created';
+            $this->audit($locked, $version, $admin, $action, null, $version->toArray(), $ip);
 
             return $version;
         });
@@ -232,7 +271,84 @@ class PackagePlanAdministration
     }
 
     /**
-     * @return array{catalog_active: bool, purchase_available: bool, roi_eligible: bool, income_configured: bool, income_source: string, accrual_authority: bool, posting_authorized: bool, posting_note: string}
+     * Plan row for Admin edit fields: prefer the latest draft, else the active published plan.
+     * Never invents ROI amounts.
+     */
+    public function editingPlanVersion(Package $package): ?PackagePlanVersion
+    {
+        $draft = PackagePlanVersion::query()
+            ->where('package_id', $package->id)
+            ->where('status', PackagePlanVersion::STATUS_DRAFT)
+            ->orderByDesc('version_number')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($draft !== null) {
+            return $draft;
+        }
+
+        return $this->resolver->activeVersionForPackage($package);
+    }
+
+    /**
+     * Explicit income-source cutover. Never called implicitly from plan publish.
+     * Does not rewrite purchases, snapshots, wallets, or plan version rows.
+     */
+    public function setIncomeSource(Package $package, string $incomeSource, bool $confirmed, User $admin, ?string $ip = null): Package
+    {
+        $allowed = [Package::INCOME_SOURCE_LEGACY, Package::INCOME_SOURCE_DATABASE];
+        if (! in_array($incomeSource, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'income_source' => 'Income source must be Legacy Config or Database Plan Version.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($package, $incomeSource, $confirmed, $admin, $ip): Package {
+            $locked = Package::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
+            $current = (string) ($locked->income_source ?: Package::INCOME_SOURCE_LEGACY);
+            if ($current === $incomeSource) {
+                return $locked;
+            }
+
+            if (! $confirmed) {
+                throw ValidationException::withMessages([
+                    'confirm_income_source_change' => 'Confirm the income source change before switching. Historical purchases stay on their snapshots.',
+                ]);
+            }
+
+            if ($incomeSource === Package::INCOME_SOURCE_DATABASE) {
+                $version = $this->resolver->activeVersionForPackage($locked);
+                if ($version === null || ! $version->has_daily_roi) {
+                    // Allow switch for tour-only / ROI-off packages; catalog ROI may remain unconfigured until a plan is published.
+                }
+            }
+
+            $before = $this->snapshotPackage($locked);
+            $locked->income_source = $incomeSource;
+            $locked->save();
+            $this->audit($locked, $locked->activePlanVersion, $admin, 'income_source_changed', $before, $this->snapshotPackage($locked), $ip);
+            $this->activity($admin, 'package_income_source_changed', $locked->code.' → '.$incomeSource);
+
+            return $locked->fresh();
+        });
+    }
+
+    /**
+     * @return array{
+     *   catalog_active: bool,
+     *   purchase_available: bool,
+     *   roi_eligible: bool,
+     *   income_configured: bool,
+     *   income_source: string,
+     *   stored_income_source: string,
+     *   resolved_income_source: string|null,
+     *   published_plan_version: string|null,
+     *   published_plan_version_id: int|null,
+     *   accrual_authority: bool,
+     *   posting_authorized: bool,
+     *   posting_note: string,
+     *   associate_posting: bool
+     * }
      */
     public function statusIndicators(Package $package): array
     {
@@ -240,13 +356,18 @@ class PackagePlanAdministration
         $version = $this->resolver->activeVersionForPackage($package);
         $postingAuthorized = (bool) config('deltasupport.package_income.tour_posting_authorized', false)
             || (bool) config('deltasupport.package_income.enabled', false);
+        $stored = (string) ($package->income_source ?: Package::INCOME_SOURCE_LEGACY);
 
         return [
             'catalog_active' => (bool) $package->is_active,
             'purchase_available' => (bool) ($package->purchase_available ?? true),
             'roi_eligible' => (bool) $package->roi_eligible,
             'income_configured' => $definition !== null,
-            'income_source' => (string) ($definition['source'] ?? $package->income_source ?? 'legacy_config'),
+            'income_source' => (string) ($definition['source'] ?? $stored),
+            'stored_income_source' => $stored,
+            'resolved_income_source' => $definition['source'] ?? null,
+            'published_plan_version' => $version ? 'v'.$version->version_number : null,
+            'published_plan_version_id' => $version?->id,
             'accrual_authority' => (bool) ($version?->accrual_authority ?? false),
             'posting_authorized' => $postingAuthorized,
             'posting_note' => $package->is_active && ! $postingAuthorized
@@ -422,6 +543,18 @@ class PackagePlanAdministration
             ->where('id', '!=', $keep->id)
             ->where('status', PackagePlanVersion::STATUS_PUBLISHED)
             ->update(['status' => PackagePlanVersion::STATUS_SUPERSEDED]);
+    }
+
+    /**
+     * Drop leftover drafts after a publish so the edit form loads the published ROI, not a stale draft.
+     */
+    private function discardOtherDrafts(Package $package, PackagePlanVersion $keep): void
+    {
+        PackagePlanVersion::query()
+            ->where('package_id', $package->id)
+            ->where('id', '!=', $keep->id)
+            ->where('status', PackagePlanVersion::STATUS_DRAFT)
+            ->delete();
     }
 
     private function syncCatalogFlagsFromPlan(Package $package, PackagePlanVersion $version): void

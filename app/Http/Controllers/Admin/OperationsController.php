@@ -15,7 +15,6 @@ use App\Models\WalletLedgerEntry;
 use App\Services\AssociateCommissionCalculator;
 use App\Services\AssociateCommissionStructure;
 use App\Services\CommissionPlan;
-use App\Services\OriginalTourPlanComparison;
 use App\Services\PackageIncomeAccrual;
 use App\Services\PackageIncomeAdministration;
 use App\Services\PackageIncomeCalculationPreview;
@@ -117,7 +116,6 @@ class OperationsController extends Controller
     public function roiPlans(
         PackageIncomePolicy $policy,
         AssociateCommissionStructure $associate,
-        OriginalTourPlanComparison $originalPlan,
     ): View {
         $packages = Package::query()->orderBy('sort_order')->orderBy('name')->get();
         $associatePreview = $associate->preview();
@@ -133,7 +131,6 @@ class OperationsController extends Controller
             'rules' => $packages->mapWithKeys(fn (Package $package): array => [$package->code => $policy->definition($package->code)])->all(),
             'associateByCode' => $associateByCode,
             'associatePreview' => $associatePreview,
-            'originalPlan' => $originalPlan->preview(),
             'incomeTermCount' => PackageIncomeTerm::query()->count(),
         ]);
     }

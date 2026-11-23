@@ -6,7 +6,7 @@
 @php
     $isCreate = ($mode ?? 'edit') === 'create';
     $codeLocked = $codeLocked ?? false;
-    $hasRoiDefault = old('has_daily_roi', $plan->has_daily_roi ?? ($package->package_type !== \App\Models\Package::TYPE_TOUR));
+    $hasRoiDefault = old('has_daily_roi', $plan?->has_daily_roi ?? ($package->package_type !== \App\Models\Package::TYPE_TOUR));
 @endphp
 <div class="ds-catalog ds-package-admin">
     <x-ui.page-header
@@ -25,9 +25,12 @@
         <x-ui.alert type="{{ ($status['posting_authorized'] ?? false) ? 'warning' : 'info' }}">
             Catalog: {{ $status['catalog_active'] ? 'Active' : 'Inactive' }} ·
             Purchase: {{ $status['purchase_available'] ? 'Available' : 'Unavailable' }} ·
-            ROI flag: {{ $status['roi_eligible'] ? 'Eligible' : 'Not eligible' }} ·
-            Income source: {{ $status['income_source'] }} ·
+            ROI eligibility: {{ $status['roi_eligible'] ? 'Eligible' : 'Not eligible' }} ·
+            Stored income source: {{ $status['stored_income_source'] ?? $package->income_source ?? 'legacy_config' }} ·
+            Resolved: {{ $status['resolved_income_source'] ?? ($status['income_configured'] ? $status['income_source'] : 'not configured') }} ·
+            Published plan: {{ $status['published_plan_version'] ?? 'none' }} ·
             Accrual authority: {{ $status['accrual_authority'] ? 'yes' : 'no' }} ·
+            Financial posting: {{ ($status['posting_authorized'] ?? false) ? 'Authorized flags on' : 'Not authorized' }}.
             {{ $status['posting_note'] }}
             Associate posting: {{ ($status['associate_posting'] ?? false) ? 'ENABLED' : 'disabled' }}.
         </x-ui.alert>
@@ -114,18 +117,77 @@
             </div>
         </x-ui.card>
 
-        <x-ui.card title="Daily ROI" subtitle="Decimal-safe Total ROI. No final-day adjustment. Does not credit wallets.">
+        @if (! $isCreate)
+            @php
+                $storedIncomeSource = old('income_source', $package->income_source ?: \App\Models\Package::INCOME_SOURCE_LEGACY);
+            @endphp
+            <x-ui.card title="Income source" subtitle="Controls which definition the Daily ROI engine uses for future purchases. Never rewrites approved snapshots.">
+                <div class="ds-pkg-grid">
+                    <label class="ds-pkg-field">
+                        <span>Income source</span>
+                        <select
+                            name="income_source"
+                            id="income_source"
+                            data-current="{{ $package->income_source ?: \App\Models\Package::INCOME_SOURCE_LEGACY }}"
+                        >
+                            <option value="{{ \App\Models\Package::INCOME_SOURCE_LEGACY }}" @selected($storedIncomeSource === \App\Models\Package::INCOME_SOURCE_LEGACY)>Legacy Config</option>
+                            <option value="{{ \App\Models\Package::INCOME_SOURCE_DATABASE }}" @selected($storedIncomeSource === \App\Models\Package::INCOME_SOURCE_DATABASE)>Database Plan Version</option>
+                        </select>
+                        <small class="ds-pkg-hint">
+                            Current stored value: <strong>{{ $package->income_source ?: 'legacy_config' }}</strong>.
+                            Publishing a plan does not change this field.
+                        </small>
+                    </label>
+                    <div class="ds-pkg-field ds-pkg-span-2">
+                        <label class="ds-pkg-check">
+                            <input type="checkbox" name="confirm_income_source_change" id="confirm_income_source_change" value="1" @checked(old('confirm_income_source_change'))>
+                            I confirm switching income source (historical purchases and wallets stay unchanged)
+                        </label>
+                        <small class="ds-pkg-hint">
+                            Required only when the selected source differs from the stored source.
+                            GOLD/PREMIUM should stay on Legacy Config until an approved cutover.
+                        </small>
+                    </div>
+                </div>
+            </x-ui.card>
+        @endif
+
+        <x-ui.card title="Daily ROI" subtitle="Editable plan fields. Values load from the latest draft, otherwise the published plan. Does not credit wallets.">
+            @php
+                $publishedPlan = $publishedPlan ?? null;
+                $editingPlan = $editingPlan ?? $plan ?? null;
+                $showRoiSplit = $publishedPlan
+                    && $editingPlan
+                    && (int) ($editingPlan->id ?? 0) !== (int) ($publishedPlan->id ?? 0)
+                    && (
+                        (string) ($editingPlan->roi_daily ?? '') !== (string) ($publishedPlan->roi_daily ?? '')
+                        || (int) ($editingPlan->roi_days ?? 0) !== (int) ($publishedPlan->roi_days ?? 0)
+                    );
+            @endphp
+            @if ($showRoiSplit)
+                <x-ui.alert type="info">
+                    Draft plan ROI: {{ $editingPlan->has_daily_roi ? (($editingPlan->roi_daily ?? '—').' USDT × '.($editingPlan->roi_days ?? '—').' days') : 'disabled' }}
+                    (v{{ $editingPlan->version_number }}, draft).
+                    Effective published ROI: {{ $publishedPlan->has_daily_roi ? (($publishedPlan->roi_daily ?? '—').' USDT × '.($publishedPlan->roi_days ?? '—').' days') : 'disabled' }}
+                    (v{{ $publishedPlan->version_number }}, published).
+                    Future purchase resolution still uses the published plan until you publish and complete any required income-source cutover.
+                </x-ui.alert>
+            @elseif (! $isCreate && $publishedPlan && $editingPlan && (int) ($editingPlan->id ?? 0) === (int) ($publishedPlan->id ?? 0))
+                <p class="ds-pkg-hint">Editing published plan v{{ $publishedPlan->version_number }}. Saving with Publish creates a new immutable version for future purchases.</p>
+            @elseif (! $isCreate && $editingPlan && ($editingPlan->status ?? null) === \App\Models\PackagePlanVersion::STATUS_DRAFT)
+                <p class="ds-pkg-hint">Editing draft plan v{{ $editingPlan->version_number }}. Publish explicitly to apply it to future purchases.</p>
+            @endif
             <div class="ds-pkg-grid">
                 <div class="ds-pkg-checks ds-pkg-span-2">
                     <label class="ds-pkg-check"><input type="checkbox" name="has_daily_roi" id="has_daily_roi" value="1" @checked(old('has_daily_roi', $hasRoiDefault))> Enable Daily ROI</label>
                 </div>
                 <label class="ds-pkg-field">
                     <span>Daily ROI (USDT)</span>
-                    <input name="roi_daily" id="roi_daily" value="{{ old('roi_daily', $plan->roi_daily) }}" inputmode="decimal" autocomplete="off" placeholder="0.1058">
+                    <input name="roi_daily" id="roi_daily" value="{{ old('roi_daily', $plan->roi_daily) }}" inputmode="decimal" autocomplete="off" placeholder="Enter daily ROI">
                 </label>
                 <label class="ds-pkg-field">
                     <span>ROI duration (days)</span>
-                    <input type="number" name="roi_days" id="roi_days" value="{{ old('roi_days', $plan->roi_days) }}" min="1" placeholder="900">
+                    <input type="number" name="roi_days" id="roi_days" value="{{ old('roi_days', $plan->roi_days) }}" min="1" placeholder="Enter duration days">
                 </label>
                 <label class="ds-pkg-field">
                     <span>Total ROI (USDT)</span>
@@ -297,7 +359,7 @@
                 </div>
                 @if (($package->income_source ?? 'legacy_config') === 'legacy_config')
                     <x-ui.alert type="warning">
-                        This package uses income_source=legacy_config. Published DB versions are stored for history/admin but do not replace legacy package_income accrual terms until a separate activation approval.
+                        This package uses income_source=legacy_config. Published DB versions are stored for history/admin but do not replace legacy package_income accrual terms until you explicitly switch Income Source to Database Plan Version (with confirmation).
                     </x-ui.alert>
                 @endif
             </x-ui.card>
@@ -350,6 +412,31 @@
     const total = document.getElementById('total_roi');
     const hasRoi = document.getElementById('has_daily_roi');
     const type = document.getElementById('package_type');
+    const form = document.getElementById('package-admin-form');
+    const incomeSource = document.getElementById('income_source');
+    const confirmIncome = document.getElementById('confirm_income_source_change');
+
+    if (form && incomeSource) {
+        form.addEventListener('submit', function (event) {
+            const current = incomeSource.getAttribute('data-current') || '';
+            if (incomeSource.value === current) {
+                return;
+            }
+            if (!confirmIncome || !confirmIncome.checked) {
+                event.preventDefault();
+                alert('Check “I confirm switching income source” before changing Legacy Config ↔ Database Plan Version.');
+                return;
+            }
+            const ok = window.confirm(
+                'Switch income source from "' + current + '" to "' + incomeSource.value + '"?\n\n'
+                + 'This does not rewrite historical purchases, income snapshots, or wallet balances.\n'
+                + 'Financial posting stays separately controlled.'
+            );
+            if (!ok) {
+                event.preventDefault();
+            }
+        });
+    }
 
     function mul4(a, b) {
         const aParts = String(a || '0').split('.');

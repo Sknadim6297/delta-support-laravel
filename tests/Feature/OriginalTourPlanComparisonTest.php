@@ -166,26 +166,18 @@ class OriginalTourPlanComparisonTest extends TestCase
         $this->assertSame(0, WalletLedgerEntry::query()->count());
     }
 
-    public function test_admin_roi_plans_shows_proposed_original_plan_comparison(): void
+    public function test_admin_roi_plans_does_not_show_proposed_original_plan_comparison(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
 
         $this->actingAs($admin)
             ->get(route('admin.finance.roi-plans'))
             ->assertOk()
-            ->assertSeeText('Original Tour Plan Comparison (PROPOSED)')
-            ->assertSeeText('original_tour_plan_v1')
-            ->assertSeeText('PROPOSED — not active / not payable')
-            ->assertSeeText('SILVER')
-            ->assertSeeText('DIAMOND')
-            ->assertSeeText('DELTA_SHARE')
-            ->assertSeeText('DST-TOUR-005')
-            ->assertSeeText('DST-RY-006')
-            ->assertSeeText('No daily ROI')
-            ->assertSeeText('0.1057')
-            ->assertSeeText('0.1058')
-            ->assertSeeText('Associate commission (unchanged)')
-            ->assertSeeText('Outstanding approvals');
+            ->assertSeeText('ROI Plans')
+            ->assertDontSeeText('Original Tour Plan Comparison (PROPOSED)')
+            ->assertDontSeeText('original_tour_plan_v1')
+            ->assertDontSeeText('Outstanding approvals')
+            ->assertDontSeeText('Do not merge candidate_package_income into package_income.packages');
     }
 
     public function test_tour_benefits_match_original_chart_for_all_tiers(): void

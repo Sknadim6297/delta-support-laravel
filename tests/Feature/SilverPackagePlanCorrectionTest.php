@@ -131,6 +131,136 @@ class SilverPackagePlanCorrectionTest extends TestCase
         $this->assertFalse((bool) config('deltasupport.associate_commission.posting_enabled'));
     }
 
+    public function test_published_version_without_accrual_authority_hides_catalog_roi_until_corrected(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        Member::query()->create([
+            'member_id' => 'ST666666',
+            'sponsor_id' => 'ST666666',
+            'sponsor_name' => 'Admin',
+            'member_name' => 'Admin Root',
+            'mobile_no' => '9000000002',
+            'email' => 'silver.auth@example.test',
+            'status' => 'active',
+            'roi_wallet_amount' => '0.0000',
+            'working_wallet_amount' => '0.0000',
+            'activation_wallet_amount' => '0.0000',
+        ]);
+
+        $package = Package::query()->create([
+            'code' => 'DST-TOUR-001',
+            'name' => 'SILVER PACKAGE',
+            'price_usd' => '50.0000',
+            'denomination' => 'USDT',
+            'package_type' => Package::TYPE_TOUR_ROI,
+            'roi_eligible' => true,
+            'level_commission_eligible' => true,
+            'is_active' => true,
+            'purchase_available' => true,
+            'income_source' => 'database',
+            'sort_order' => 1,
+        ]);
+
+        $good = app(PackagePlanAdministration::class)->savePlanVersion($package, [
+            'has_daily_roi' => true,
+            'roi_daily' => '0.1058',
+            'roi_days' => 900,
+            'wait_days' => 10,
+            'commission_pool' => null,
+            'commission_days' => null,
+            'level_commission_eligible' => true,
+            'change_note' => 'approved silver',
+            'accrual_authority' => true,
+        ], $admin, true);
+
+        $purchase = PackagePurchase::query()->create([
+            'reference' => 'PUR-SILVER-AUTH-1',
+            'idempotency_key' => (string) Str::uuid(),
+            'member_id' => 'ST666666',
+            'package_id' => $package->id,
+            'package_plan_version_id' => $good->id,
+            'package_code' => $package->code,
+            'package_name' => $package->name,
+            'package_type' => $package->package_type,
+            'price_usd' => '50.0000',
+            'denomination' => 'USDT',
+            'network' => 'TRC20',
+            'payment_reference' => 'TX-SILVER-AUTH-1',
+            'status' => PackagePurchase::APPROVED,
+            'submitted_at' => now()->subDay(),
+            'reviewed_at' => now()->subDay(),
+        ]);
+        PackageIncomeTerm::query()->create([
+            'package_purchase_id' => $purchase->id,
+            'package_plan_version_id' => $good->id,
+            'income_definition_source' => 'purchase_plan_version',
+            'reference' => 'PIT-PUR-SILVER-AUTH-1',
+            'income_eligible' => true,
+            'monthly_amount' => '0.1058',
+            'duration_months' => 900,
+            'commission_base' => null,
+            'snapshotted_at' => now()->subDay(),
+        ]);
+
+        // Simulate a later admin publish that keeps ROI fields but drops accrual_authority.
+        $broken = app(PackagePlanAdministration::class)->savePlanVersion($package->fresh(), [
+            'has_daily_roi' => true,
+            'roi_daily' => '0.1110',
+            'roi_days' => 900,
+            'wait_days' => 10,
+            'commission_pool' => null,
+            'commission_days' => null,
+            'level_commission_eligible' => true,
+            'change_note' => 'mistaken republish',
+            'accrual_authority' => false,
+        ], $admin, true);
+
+        $this->assertFalse((bool) $broken->accrual_authority);
+        $this->assertNull(app(PackageIncomePolicy::class)->definition('DST-TOUR-001'));
+
+        $this->actingAs($admin)
+            ->get(route('admin.packages.index'))
+            ->assertOk()
+            ->assertSeeText('ROI Not Configured');
+
+        $fixed = app(PackagePlanAdministration::class)->savePlanVersion($package->fresh(), [
+            'has_daily_roi' => true,
+            'roi_daily' => '0.1058',
+            'roi_days' => 900,
+            'wait_days' => 10,
+            'commission_pool' => null,
+            'commission_days' => null,
+            'level_commission_eligible' => true,
+            'label' => 'original_tour_plan_v1_silver',
+            'change_note' => 'restore approved silver catalog roi',
+            'accrual_authority' => true,
+        ], $admin, true);
+
+        $this->assertSame('0.1058', (string) $fixed->roi_daily);
+        $this->assertTrue((bool) $fixed->accrual_authority);
+        $def = app(PackageIncomePolicy::class)->definition('DST-TOUR-001');
+        $this->assertSame('0.1058', $def['roi_daily']);
+        $this->assertSame(900, $def['roi_days']);
+        $this->assertSame('database_plan_version', $def['source']);
+        $this->assertSame('0.1058', app(PackageIncomePolicy::class)->definitionForPurchase($purchase->fresh())['roi_daily']);
+        $this->assertSame('purchase_snapshot', app(PackageIncomePolicy::class)->definitionForPurchase($purchase->fresh())['source']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.packages.index'))
+            ->assertOk()
+            ->assertSeeText('0.1058 USDT / 900 days')
+            ->assertDontSeeText('ROI Not Configured');
+
+        $this->actingAs($admin)
+            ->get(route('admin.packages.show', $package->fresh()))
+            ->assertOk()
+            ->assertSeeText('0.1058')
+            ->assertSeeText('database_plan_version');
+
+        $this->assertSame(0, WalletLedgerEntry::query()->count());
+        $this->assertFalse((bool) config('deltasupport.associate_commission.posting_enabled'));
+    }
+
     public function test_associate_structure_can_be_restored_without_enabling_posting(): void
     {
         // Simulate local wipe of associate rows while keeping tables.
