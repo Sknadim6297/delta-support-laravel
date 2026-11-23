@@ -180,6 +180,9 @@
     Route::post('/admin/impersonation/stop', [MemberImpersonationController::class, 'stop'])
         ->middleware(['auth', 'admin'])
         ->name('admin.impersonation.stop');
+    // Preview cookie alone may end preview (no admin Auth required on this route).
+    Route::post('/member/preview/stop', [MemberImpersonationController::class, 'stopPreviewOnly'])
+        ->name('member.preview.stop');
 
     /*
     |--------------------------------------------------------------------------
@@ -209,6 +212,7 @@
 
         Route::get('/admin/members', [MemberDirectoryController::class, 'index'])->name('admin.members.directory');
         Route::post('/admin/members/{member}/impersonate', [MemberImpersonationController::class, 'start'])->name('admin.members.impersonate');
+        Route::post('/admin/members/preview/open', [MemberImpersonationController::class, 'open'])->name('admin.members.preview.open');
         Route::patch('/admin/members/{memberId}/status', [MemberDirectoryController::class, 'updateStatus'])->name('admin.members.status');
 
         Route::controller(PackageController::class)->prefix('admin/packages')->name('admin.packages.')->group(function () {
@@ -216,7 +220,9 @@
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');
             Route::get('/{package}/image', 'image')->name('image');
+            Route::get('/{package}', 'show')->name('show');
             Route::patch('/{package}/status', 'updateStatus')->name('status');
+            Route::post('/{package}/plan', 'publishPlan')->name('plan.publish');
             Route::get('/{package}/edit', 'edit')->name('edit');
             Route::put('/{package}', 'update')->name('update');
         });
@@ -374,13 +380,16 @@
                     'row_count' => 1,
                 ]);
             }
-            app(MemberImpersonation::class)->finish($request);
+            $impersonation = app(MemberImpersonation::class);
+            $impersonation->finish($request);
             Auth::logout();
 
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('login');
+            return redirect()
+                ->route('login')
+                ->withCookie($impersonation->forgetCookie());
         })->name('admin.logout');
 
 
@@ -843,7 +852,7 @@
             ->name('member.registration.password-setup-email');
 
         Route::get('/member/dashboard', function (Request $request) {
-            $member = Member::where('member_id', $request->session()->get('member_context_id'))->firstOrFail();
+            $member = Member::where('member_id', \App\Support\MemberContext::id($request))->firstOrFail();
 
             return app(MemberController::class)->memberPanel($member->member_id, $request);
         })->name('member.dashboard');
@@ -877,16 +886,32 @@
 
 
         Route::post('/member/logout', function (Request $request) {
-        app(MemberImpersonation::class)->finish($request);
-        if ($request->user()?->is_admin === true) {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-        } else {
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-        }
+            $impersonation = app(MemberImpersonation::class);
 
-        return redirect()->route('login');
-    })->name('member.logout');
+            // Preview tab: end preview only — never log the admin out of the web guard.
+            if (\App\Support\MemberContext::isPreview($request)) {
+                $stopped = $impersonation->stop($request);
+
+                return redirect()
+                    ->route('admin.members.directory')
+                    ->with('success', 'Member preview ended. Admin session is unchanged.')
+                    ->withCookie($stopped['cookie']);
+            }
+
+            if ($request->user()?->is_admin === true) {
+                $impersonation->finish($request);
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()
+                    ->route('login')
+                    ->withCookie($impersonation->forgetCookie());
+            }
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login');
+        })->name('member.logout');
     });

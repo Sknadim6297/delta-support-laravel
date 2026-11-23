@@ -46,8 +46,9 @@ class HeaderWithdrawableBalanceTest extends TestCase
         $this->actingAs(User::factory()->create(['is_admin' => true]))
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSeeText('Total Balance')
-            ->assertSeeText('USDT 39.0000');
+            ->assertSeeText('$39.0000')
+            ->assertSee('ri-wallet-3-line', false)
+            ->assertDontSeeText('Total Balance');
     }
 
     public function test_member_header_sums_available_withdrawable_wallets_minus_holds(): void
@@ -76,7 +77,8 @@ class HeaderWithdrawableBalanceTest extends TestCase
         $this->withSession(['member_context_id' => $member->member_id])
             ->get(route('member.dashboard'))
             ->assertOk()
-            ->assertSeeText('Total Balance')
-            ->assertSeeText('USDT 23.0000');
+            ->assertSeeText('$23.0000')
+            ->assertSee('ri-wallet-3-line', false)
+            ->assertDontSeeText('Total Balance');
     }
 }

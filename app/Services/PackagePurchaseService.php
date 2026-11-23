@@ -319,7 +319,20 @@ class PackagePurchaseService
                 'reason' => null,
             ]);
 
-            // Optional immutable income-term snapshot. Associate ranks fill only when
+            // Attach active plan version for future purchases when available (does not rewrite history).
+            if (\Illuminate\Support\Facades\Schema::hasColumn('package_purchases', 'package_plan_version_id')
+                && $locked->package_plan_version_id === null
+                && $locked->package_id) {
+                $catalog = Package::query()->whereKey($locked->package_id)->first();
+                if ($catalog) {
+                    $version = app(PackagePlanAdministration::class)->resolveVersionForNewPurchase($catalog);
+                    if ($version) {
+                        $locked->forceFill(['package_plan_version_id' => $version->id])->save();
+                    }
+                }
+            }
+
+            // Immutable income-term snapshot. Associate ranks fill only when
             // DELTASUPPORT_ASSOCIATE_COMMISSION_SNAPSHOT=true. Never credits wallets.
             app(PackageIncomeTermRecorder::class)->record($locked->fresh());
 

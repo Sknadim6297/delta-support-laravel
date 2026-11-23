@@ -110,6 +110,7 @@ class PackagePurchase extends Model
         'idempotency_key',
         'member_id',
         'package_id',
+        'package_plan_version_id',
         'package_code',
         'package_name',
         'package_type',
@@ -146,6 +147,11 @@ class PackagePurchase extends Model
     public function package(): BelongsTo
     {
         return $this->belongsTo(Package::class);
+    }
+
+    public function planVersion(): BelongsTo
+    {
+        return $this->belongsTo(PackagePlanVersion::class, 'package_plan_version_id');
     }
 
     public function member(): BelongsTo

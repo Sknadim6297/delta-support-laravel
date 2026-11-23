@@ -52,7 +52,7 @@ class MemberChangePasswordController extends Controller
     {
         return Member::where(
             'member_id',
-            $request->session()->get('member_context_id')
+            \App\Support\MemberContext::id($request)
         )->firstOrFail();
     }
 }

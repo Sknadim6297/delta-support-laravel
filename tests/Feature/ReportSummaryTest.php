@@ -217,10 +217,16 @@ class ReportSummaryTest extends TestCase
             'to_date' => '2026-09-02',
         ]))->assertOk()->assertSee('<p class="ds-stat-value">USDT 5.0005</p>', false);
 
-        $aggregateQueries = array_values(array_filter($queries, fn (string $sql): bool => str_contains($sql, 'sum(')));
+        // Ignore shared admin-shell aggregates (header Total Balance / wallet book).
+        $aggregateQueries = array_values(array_filter(
+            $queries,
+            fn (string $sql): bool => str_contains($sql, 'sum(') && str_contains($sql, 'roi_report_')
+        ));
         $this->assertCount(4, $aggregateQueries);
         $this->assertTrue(collect($aggregateQueries)->every(fn (string $sql): bool => str_contains($sql, 'roi_report_')));
-        $this->assertFalse(collect($aggregateQueries)->contains(fn (string $sql): bool => str_contains($sql, 'from `roi_transactions`')));
+        $this->assertFalse(collect($queries)->contains(
+            fn (string $sql): bool => str_contains($sql, 'sum(') && str_contains($sql, 'from `roi_transactions`')
+        ));
     }
 
     public function test_level_commission_report_uses_the_three_approved_grains_for_every_filter_combination(): void

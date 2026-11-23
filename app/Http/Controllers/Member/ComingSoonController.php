@@ -17,7 +17,7 @@ class ComingSoonController extends Controller
         }
 
         return view('member.coming-soon', [
-            'member' => Member::where('member_id', $request->session()->get('member_context_id'))->firstOrFail(),
+            'member' => Member::where('member_id', \App\Support\MemberContext::id($request))->firstOrFail(),
             'feature' => Str::headline($feature),
         ]);
     }

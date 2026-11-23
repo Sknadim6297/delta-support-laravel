@@ -2,26 +2,37 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\MemberPreviewGuard;
+use App\Support\MemberContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Preview cookie alone must never authorize Admin routes.
+ * Admin identity remains the primary web guard only.
+ */
 class RedirectImpersonatingAdmins
 {
+    public function __construct(private readonly MemberPreviewGuard $preview)
+    {
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->session()->has('impersonator_id')) {
+        // Preview-only (no admin auth): hard block admin routes.
+        if (MemberContext::isPreview($request) && $request->user()?->is_admin !== true) {
+            abort(403, 'Member preview cannot access the admin panel.');
+        }
+
+        if ($request->routeIs('admin.members.impersonate')
+            && $request->user()?->is_admin === true
+            && $this->preview->activeForAdmin((int) $request->user()->id)
+        ) {
+            // Allow explicit replacement start — handled by issue() revoking prior grant.
             return $next($request);
         }
 
-        if ($request->routeIs('admin.members.impersonate')) {
-            abort(403, 'An admin preview is already active.');
-        }
-
-        if (in_array($request->method(), ['GET', 'HEAD'], true)) {
-            return redirect()->route('member.dashboard');
-        }
-
-        abort(403, 'Admin actions are unavailable while previewing a member account.');
+        return $next($request);
     }
 }

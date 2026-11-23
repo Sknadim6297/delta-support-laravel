@@ -155,7 +155,7 @@ class MemberController extends Controller
 
     public function searchMembers(Request $request)
     {
-        $member = Member::where('member_id', $request->session()->get('member_context_id'))->firstOrFail();
+        $member = Member::where('member_id', \App\Support\MemberContext::id($request))->firstOrFail();
         $term = trim((string) $request->query('member_id', ''));
 
         if ($term === '') {
@@ -187,7 +187,7 @@ class MemberController extends Controller
 
     public function lookupMember(Request $request)
     {
-        $member = Member::where('member_id', $request->session()->get('member_context_id'))->firstOrFail();
+        $member = Member::where('member_id', \App\Support\MemberContext::id($request))->firstOrFail();
         $requestedMemberId = trim((string) $request->query('member_id', ''));
 
         if ($requestedMemberId === '') {

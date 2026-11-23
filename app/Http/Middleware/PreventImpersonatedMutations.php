@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\MemberContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -10,11 +11,11 @@ class PreventImpersonatedMutations
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->session()->has('impersonator_id')) {
+        if (! MemberContext::isPreview($request)) {
             return $next($request);
         }
 
-        if ($request->routeIs('admin.impersonation.stop', 'member.logout', 'admin.logout')) {
+        if ($request->routeIs('admin.impersonation.stop', 'member.logout', 'admin.logout', 'member.preview.stop')) {
             return $next($request);
         }
 

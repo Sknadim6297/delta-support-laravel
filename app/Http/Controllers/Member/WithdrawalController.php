@@ -90,7 +90,7 @@ class WithdrawalController extends Controller
     private function member(Request $request): Member
     {
         return Member::query()
-            ->where('member_id', $request->session()->get('member_context_id'))
+            ->where('member_id', \App\Support\MemberContext::id($request))
             ->firstOrFail();
     }
 }

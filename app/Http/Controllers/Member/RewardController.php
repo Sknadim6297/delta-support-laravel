@@ -18,7 +18,7 @@ class RewardController extends Controller
     public function index(Request $request, TeamBusinessCalculationService $business): View
     {
         $member = Member::query()
-            ->where('member_id', $request->session()->get('member_context_id'))
+            ->where('member_id', \App\Support\MemberContext::id($request))
             ->firstOrFail();
 
         $campaigns = RewardCampaign::query()
@@ -82,7 +82,7 @@ class RewardController extends Controller
             RewardCampaign::COMPLETED,
         ], true), 404);
 
-        $memberId = (string) $request->session()->get('member_context_id');
+        $memberId = (string) \App\Support\MemberContext::id($request);
         $ownsHistory = RewardAssignment::query()
             ->where('member_id', $memberId)
             ->where('campaign_id', $campaign->id)

@@ -119,7 +119,7 @@ class PackageIncomeEligibilityAudit
             return $base;
         }
 
-        $definition = $this->policy->definition($purchase->package_code);
+        $definition = $this->policy->definitionForPurchase($purchase);
         if ($definition === null) {
             $base['reason'] = 'Package code has no income definition in config (production income uses DST-ROI-002 and DST-TOUR-003).';
 

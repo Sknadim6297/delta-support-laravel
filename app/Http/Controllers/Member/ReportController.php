@@ -200,7 +200,7 @@ class ReportController extends Controller
 
     private function currentMember(Request $request): Member
     {
-        return Member::where('member_id', $request->session()->get('member_context_id'))->firstOrFail();
+        return Member::where('member_id', \App\Support\MemberContext::id($request))->firstOrFail();
     }
 
     private function csvResponse(string $filename, array $headers, $query, callable $rowFormatter): Response

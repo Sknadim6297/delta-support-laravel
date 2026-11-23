@@ -7,6 +7,7 @@ use App\Models\SupportNotification;
 use App\Models\WithdrawalSetting;
 use App\Services\ProductionDatabaseCommandGuard;
 use App\Services\WithdrawalBalances;
+use App\Support\MemberContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('member-pin-otp', function (Request $request) {
-            $memberId = (string) $request->session()->get('member_context_id', 'guest');
+            $memberId = (string) (MemberContext::id($request) ?: 'guest');
 
             return [
                 Limit::perMinutes(15, 3)->by('member:'.$memberId),
@@ -45,13 +46,13 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('member-pin-verify', function (Request $request) {
-            $memberId = (string) $request->session()->get('member_context_id', 'guest');
+            $memberId = (string) (MemberContext::id($request) ?: 'guest');
 
             return Limit::perMinute(10)->by('member:'.$memberId);
         });
 
         RateLimiter::for('member-transfer', function (Request $request) {
-            $memberId = (string) $request->session()->get('member_context_id', 'guest');
+            $memberId = (string) (MemberContext::id($request) ?: 'guest');
 
             return [
                 Limit::perMinute(6)->by('member:'.$memberId),
@@ -64,7 +65,7 @@ class AppServiceProvider extends ServiceProvider
             if ($user && $request->routeIs('admin.support.*')) {
                 $actor = 'admin:'.$user->id;
             } else {
-                $memberId = (string) $request->session()->get('member_context_id', '');
+                $memberId = (string) (MemberContext::id($request) ?: '');
                 $actor = $memberId !== '' ? 'member:'.$memberId : 'admin:'.($user->id ?? 'guest');
             }
 
@@ -75,7 +76,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('member-transfer-lookup', function (Request $request) {
-            $memberId = (string) $request->session()->get('member_context_id', 'guest');
+            $memberId = (string) (MemberContext::id($request) ?: 'guest');
 
             return [
                 Limit::perMinute(30)->by('member:'.$memberId),
@@ -97,7 +98,7 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            $memberId = session('member_context_id');
+            $memberId = MemberContext::id();
             $member = $memberId ? Member::query()->where('member_id', $memberId)->first() : null;
             if ($member) {
                 $view->with('member', $member);
@@ -115,7 +116,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $adminScreen = request()->is('admin/*') || request()->routeIs('dashboard');
-        $memberId = session('member_context_id');
+        $memberId = MemberContext::id();
         if (! $adminScreen && is_string($memberId) && $memberId !== '') {
             return SupportNotification::query()
                 ->where('audience', SupportNotification::AUDIENCE_MEMBER)
@@ -160,7 +161,7 @@ class AppServiceProvider extends ServiceProvider
         $adminScreen = request()->is('admin/*') || request()->routeIs('dashboard');
 
         if (! $adminScreen) {
-            $memberId = session('member_context_id');
+            $memberId = MemberContext::id();
             if (! is_string($memberId) || $memberId === '') {
                 return null;
             }

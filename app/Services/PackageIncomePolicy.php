@@ -8,6 +8,10 @@ use Carbon\CarbonImmutable;
 
 class PackageIncomePolicy
 {
+    public function __construct(private readonly PackageIncomeDefinitionResolver $resolver)
+    {
+    }
+
     public function enabled(): bool
     {
         return (bool) config('deltasupport.package_income.enabled', false);
@@ -19,37 +23,39 @@ class PackageIncomePolicy
     }
 
     /**
-     * @return array{roi_daily: string, roi_days: int, commission_pool: string, commission_days: ?int}|null
+     * Current package definition for catalog / eligibility display.
+     * Prefer purchase snapshots via definitionForPurchase() inside accrual.
+     *
+     * @return array{roi_daily: string, roi_days: int, commission_pool: ?string, commission_days: ?int, source?: string, package_plan_version_id?: ?int}|null
      */
     public function definition(string $packageCode): ?array
     {
-        $rules = config('deltasupport.package_income.packages.'.$packageCode);
-        if (! is_array($rules) || ! isset($rules['roi_daily'], $rules['roi_days'], $rules['commission_pool'])) {
-            return null;
-        }
+        return $this->resolver->forPackageCode($packageCode);
+    }
 
-        return [
-            'roi_daily' => bcadd((string) $rules['roi_daily'], '0', 4),
-            'roi_days' => (int) $rules['roi_days'],
-            'commission_pool' => bcadd((string) $rules['commission_pool'], '0', 4),
-            'commission_days' => $rules['commission_days'] === null ? null : (int) $rules['commission_days'],
-        ];
+    /**
+     * @return array{roi_daily: string, roi_days: int, commission_pool: ?string, commission_days: ?int, source?: string, package_plan_version_id?: ?int}|null
+     */
+    public function definitionForPurchase(PackagePurchase $purchase): ?array
+    {
+        return $this->resolver->forPurchase($purchase);
     }
 
     public function roiEligible(PackagePurchase $purchase, ?Package $package): bool
     {
         return $this->approved($purchase)
             && (bool) $package?->roi_eligible
-            && $this->definition($purchase->package_code) !== null;
+            && $this->definitionForPurchase($purchase) !== null;
     }
 
     public function levelSourceEligible(PackagePurchase $purchase, ?Package $package): bool
     {
-        $definition = $this->definition($purchase->package_code);
+        $definition = $this->definitionForPurchase($purchase);
 
         return $this->approved($purchase)
             && (bool) $package?->level_commission_eligible
             && $definition !== null
+            && $definition['commission_pool'] !== null
             && $definition['commission_days'] !== null
             && $definition['commission_days'] > 0;
     }
@@ -61,6 +67,7 @@ class PackageIncomePolicy
         }
 
         return in_array($purchase->package_type, ReferralLevelEligibility::QUALIFYING_PACKAGE_TYPES, true)
+            || $this->definitionForPurchase($purchase) !== null
             || $this->definition($purchase->package_code) !== null;
     }
 
@@ -77,7 +84,15 @@ class PackageIncomePolicy
 
     public function firstAccrualDate(PackagePurchase $purchase): ?CarbonImmutable
     {
-        return $this->approvalDate($purchase)?->addDays((int) config('deltasupport.package_income.wait_days', 10));
+        $wait = (int) config('deltasupport.package_income.wait_days', 10);
+        if ($purchase->package_plan_version_id) {
+            $version = $purchase->planVersion;
+            if ($version && $version->wait_days !== null) {
+                $wait = (int) $version->wait_days;
+            }
+        }
+
+        return $this->approvalDate($purchase)?->addDays($wait);
     }
 
     public function lastAccrualDate(CarbonImmutable $first, int $days): ?CarbonImmutable

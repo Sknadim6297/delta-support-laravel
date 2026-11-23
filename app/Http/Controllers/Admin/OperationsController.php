@@ -15,6 +15,7 @@ use App\Models\WalletLedgerEntry;
 use App\Services\AssociateCommissionCalculator;
 use App\Services\AssociateCommissionStructure;
 use App\Services\CommissionPlan;
+use App\Services\OriginalTourPlanComparison;
 use App\Services\PackageIncomeAccrual;
 use App\Services\PackageIncomeAdministration;
 use App\Services\PackageIncomeCalculationPreview;
@@ -113,8 +114,11 @@ class OperationsController extends Controller
         return redirect()->route('admin.packages.index');
     }
 
-    public function roiPlans(PackageIncomePolicy $policy, AssociateCommissionStructure $associate): View
-    {
+    public function roiPlans(
+        PackageIncomePolicy $policy,
+        AssociateCommissionStructure $associate,
+        OriginalTourPlanComparison $originalPlan,
+    ): View {
         $packages = Package::query()->orderBy('sort_order')->orderBy('name')->get();
         $associatePreview = $associate->preview();
         $associateByCode = [];
@@ -129,6 +133,7 @@ class OperationsController extends Controller
             'rules' => $packages->mapWithKeys(fn (Package $package): array => [$package->code => $policy->definition($package->code)])->all(),
             'associateByCode' => $associateByCode,
             'associatePreview' => $associatePreview,
+            'originalPlan' => $originalPlan->preview(),
             'incomeTermCount' => PackageIncomeTerm::query()->count(),
         ]);
     }
@@ -272,7 +277,9 @@ class OperationsController extends Controller
         $pools = [];
         foreach (array_keys(config('deltasupport.package_income.packages', [])) as $code) {
             $definition = $policy->definition((string) $code);
-            if ($definition === null || $definition['commission_days'] === null) {
+            if ($definition === null
+                || $definition['commission_days'] === null
+                || $definition['commission_pool'] === null) {
                 continue;
             }
             $levels = [];

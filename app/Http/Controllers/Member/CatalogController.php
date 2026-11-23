@@ -35,7 +35,7 @@ class CatalogController extends Controller
     {
         abort_unless($package->is_active, 404);
 
-        $member = Member::query()->where('member_id', session('member_context_id'))->first();
+        $member = Member::query()->where('member_id', \App\Support\MemberContext::id())->first();
 
         return view('member.packages.show', [
             'package' => $package,
@@ -91,7 +91,7 @@ class CatalogController extends Controller
 
     public function mine(): View
     {
-        $memberId = session('member_context_id');
+        $memberId = \App\Support\MemberContext::id();
         $purchases = PackagePurchase::query()
             ->with(['package', 'invoice', 'walletReservation'])
             ->where('member_id', $memberId)
@@ -105,7 +105,7 @@ class CatalogController extends Controller
     {
         $purchases = PackagePurchase::query()
             ->with('invoice')
-            ->where('member_id', session('member_context_id'))
+            ->where('member_id', \App\Support\MemberContext::id())
             ->latest('submitted_at')
             ->paginate(15);
 
@@ -138,7 +138,7 @@ class CatalogController extends Controller
     {
         $owned = PackagePurchase::query()
             ->where('package_id', $package->id)
-            ->where('member_id', $request->session()->get('member_context_id'))
+            ->where('member_id', \App\Support\MemberContext::id($request))
             ->exists();
 
         abort_unless(
@@ -162,7 +162,7 @@ class CatalogController extends Controller
 
     public function invoices(): View
     {
-        $invoices = Invoice::query()->where('member_id', session('member_context_id'))->latest('approved_at')->paginate(15);
+        $invoices = Invoice::query()->where('member_id', \App\Support\MemberContext::id())->latest('approved_at')->paginate(15);
 
         return view('member.invoices.index', compact('invoices'));
     }
@@ -211,16 +211,16 @@ class CatalogController extends Controller
 
     private function member(Request $request): Member
     {
-        return Member::query()->where('member_id', $request->session()->get('member_context_id'))->firstOrFail();
+        return Member::query()->where('member_id', \App\Support\MemberContext::id($request))->firstOrFail();
     }
 
     private function owns(Request $request, PackagePurchase $purchase): void
     {
-        abort_unless($purchase->member_id === $request->session()->get('member_context_id'), 403);
+        abort_unless($purchase->member_id === \App\Support\MemberContext::id($request), 403);
     }
 
     private function ownsInvoice(Request $request, Invoice $invoice): void
     {
-        abort_unless($invoice->member_id === $request->session()->get('member_context_id'), 403);
+        abort_unless($invoice->member_id === \App\Support\MemberContext::id($request), 403);
     }
 }

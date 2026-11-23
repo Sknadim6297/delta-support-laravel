@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Package extends Model
@@ -13,11 +14,18 @@ class Package extends Model
 
     public const TYPE_PREMIUM = 'premium_tour_roi';
 
+    public const TYPE_ROI = 'roi';
+
     public const TYPES = [
-        self::TYPE_TOUR => 'Tour Package',
-        self::TYPE_TOUR_ROI => 'Tour + ROI Package',
-        self::TYPE_PREMIUM => 'Premium Tour + ROI Package',
+        self::TYPE_TOUR => 'Tour Only',
+        self::TYPE_TOUR_ROI => 'ROI + Tour',
+        self::TYPE_PREMIUM => 'Premium Tour + ROI',
+        self::TYPE_ROI => 'ROI Only',
     ];
+
+    public const INCOME_SOURCE_LEGACY = 'legacy_config';
+
+    public const INCOME_SOURCE_DATABASE = 'database';
 
     protected $fillable = [
         'code',
@@ -38,6 +46,9 @@ class Package extends Model
         'roi_eligible',
         'level_commission_eligible',
         'is_active',
+        'purchase_available',
+        'income_source',
+        'active_plan_version_id',
         'sort_order',
     ];
 
@@ -46,7 +57,9 @@ class Package extends Model
         'roi_eligible' => 'boolean',
         'level_commission_eligible' => 'boolean',
         'is_active' => 'boolean',
+        'purchase_available' => 'boolean',
         'sort_order' => 'integer',
+        'active_plan_version_id' => 'integer',
     ];
 
     public function typeLabel(): string
@@ -56,11 +69,26 @@ class Package extends Model
 
     public function reservesFutureIncome(): bool
     {
-        return in_array($this->package_type, [self::TYPE_TOUR_ROI, self::TYPE_PREMIUM], true);
+        return in_array($this->package_type, [self::TYPE_TOUR_ROI, self::TYPE_PREMIUM, self::TYPE_ROI], true);
     }
 
     public function purchases(): HasMany
     {
         return $this->hasMany(PackagePurchase::class);
+    }
+
+    public function planVersions(): HasMany
+    {
+        return $this->hasMany(PackagePlanVersion::class);
+    }
+
+    public function planAudits(): HasMany
+    {
+        return $this->hasMany(PackagePlanAudit::class);
+    }
+
+    public function activePlanVersion(): BelongsTo
+    {
+        return $this->belongsTo(PackagePlanVersion::class, 'active_plan_version_id');
     }
 }

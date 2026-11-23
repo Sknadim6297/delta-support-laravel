@@ -42,6 +42,7 @@
                     </div>
                 </div>
                 <div class="ds-content @yield('content-class')">
+                    @include('admin.partials.impersonation-banner')
                     @if (session('success'))
                         <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
                     @endif

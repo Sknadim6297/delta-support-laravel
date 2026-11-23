@@ -23,6 +23,14 @@ class MoneyDisplay
         return self::USDT.' '.self::amount($amount);
     }
 
+    /**
+     * Compact header-style balance: $56.5510
+     */
+    public static function dollar(mixed $amount): string
+    {
+        return '$'.self::amount($amount);
+    }
+
     public static function amount(mixed $amount): string
     {
         if ($amount === null || $amount === '') {

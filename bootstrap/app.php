@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\BindMemberPreviewSession;
 use App\Http\Middleware\EnsureRootAdminBootstrap;
 use App\Http\Middleware\EnsureLegacyFinancialActionsEnabled;
 use App\Http\Middleware\EnsureMemberContext;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureRootAdminBootstrap::class,
         ]);
         $middleware->web(append: [
+            BindMemberPreviewSession::class,
             PreventImpersonatedMutations::class,
         ]);
         $middleware->append(SecurityHeaders::class);

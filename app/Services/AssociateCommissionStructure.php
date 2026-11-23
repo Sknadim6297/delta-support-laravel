@@ -7,6 +7,7 @@ use App\Models\AssociateCommissionVersion;
 use App\Models\Package;
 use App\Models\PackagePurchase;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -142,6 +143,67 @@ class AssociateCommissionStructure
     }
 
     /**
+     * Idempotently restore associate_v1 rows after a local wipe.
+     * Never enables posting or snapshot. Never credits wallets.
+     */
+    public function ensureCanonicalStructureStored(): bool
+    {
+        if (! Schema::hasTable('associate_commission_versions')
+            || ! Schema::hasTable('associate_commission_packages')
+            || ! Schema::hasTable('associate_commission_ranks')) {
+            return false;
+        }
+
+        if ($this->storedVersion(self::VERSION) !== null) {
+            return false;
+        }
+
+        DB::transaction(function (): void {
+            $now = now();
+            $versionId = DB::table('associate_commission_versions')->insertGetId([
+                'version_code' => self::VERSION,
+                'label' => 'Associate Commission Structure v1',
+                'commission_days' => 400,
+                'is_active' => false,
+                'snapshot_on_approval' => false,
+                'effective_from' => null,
+                'notes' => 'Official 20-rank Associate Commission chart for Silver/Gold/Premium/VIP. Inactive until written activation. Does not define ROI.',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            foreach (self::TIERS as $tierCode => $tier) {
+                $mapped = $this->mappedPackageCode($tierCode) ?: $tier['mapped_package_code'];
+                $packageId = DB::table('associate_commission_packages')->insertGetId([
+                    'associate_commission_version_id' => $versionId,
+                    'tier_code' => $tierCode,
+                    'label' => $tier['label'],
+                    'package_price' => $tier['price'],
+                    'mapped_package_code' => $mapped,
+                    'daily_total' => $tier['daily_total'],
+                    'duration_total' => $tier['duration_total'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+                $rankRows = [];
+                foreach ($tier['ranks'] as $rank => $amount) {
+                    $rankRows[] = [
+                        'associate_commission_package_id' => $packageId,
+                        'rank' => $rank,
+                        'daily_amount' => $amount,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+                DB::table('associate_commission_ranks')->insert($rankRows);
+            }
+        });
+
+        return true;
+    }
+
+    /**
      * @return list<string>
      */
     public function integrityErrors(?string $versionCode = null): array
@@ -149,7 +211,11 @@ class AssociateCommissionStructure
         $errors = [];
         $version = $this->storedVersion($versionCode);
         if ($version === null) {
-            return ['Associate commission version is missing. Run migrations.'];
+            return [
+                'Associate commission version associate_v1 is not stored in the database (often after a local wipe). '
+                .'The Admin UI still shows the code-first chart. Restore rows with: php artisan associate:ensure-structure. '
+                .'Posting and snapshot stay disabled.',
+            ];
         }
 
         if ((int) $version->commission_days !== 400) {
@@ -384,8 +450,16 @@ class AssociateCommissionStructure
         if ($income === null) {
             $warnings[] = 'ROI Not Configured for this tier. Associate Commission does not define ROI.';
         }
-        if ($income !== null && bccomp((string) $income['commission_pool'], $canonical['daily_total'], 4) !== 0) {
-            $warnings[] = 'Legacy commission_pool '.$income['commission_pool'].' differs from associate daily total '.$canonical['daily_total'].'. Associate mapping does not rewrite ROI/pool config.';
+        if ($income !== null
+            && ($income['commission_pool'] ?? null) !== null
+            && bccomp((string) $income['commission_pool'], $canonical['daily_total'], 4) !== 0) {
+            $warnings[] = 'Plan/legacy commission_pool '.$income['commission_pool'].' differs from associate daily total '.$canonical['daily_total'].'. Associate mapping does not rewrite ROI/pool config.';
+        }
+        if ($tierCode === 'silver'
+            && $income !== null
+            && ($income['commission_pool'] ?? null) !== null
+            && bccomp((string) $income['commission_pool'], '0.2400', 4) === 0) {
+            $warnings[] = 'SILVER plan shows legacy commission_pool 0.2400 (GOLD pool). That is plan data, not Associate SILVER 0.1200. Correct via a new plan version; do not rewrite historical snapshots.';
         }
         if ($tierCode === 'premium' && $mappedCode === 'DST-TOUR-003' && $income !== null
             && bccomp((string) ($income['roi_daily'] ?? '0'), '2.5000', 4) === 0) {

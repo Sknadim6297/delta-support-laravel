@@ -48,7 +48,7 @@ class TeamController extends Controller
 
     private function buildTeam(Request $request): array
     {
-        $root = Member::where('member_id', $request->session()->get('member_context_id'))->firstOrFail();
+        $root = Member::where('member_id', \App\Support\MemberContext::id($request))->firstOrFail();
         $pending = [$root->member_id];
         $visited = [$root->member_id => true];
         $team = [];

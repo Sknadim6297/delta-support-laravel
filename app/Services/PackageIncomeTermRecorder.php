@@ -9,14 +9,16 @@ use Illuminate\Support\Facades\Schema;
 
 class PackageIncomeTermRecorder
 {
-    public function __construct(private readonly AssociateCommissionStructure $associate)
-    {
+    public function __construct(
+        private readonly AssociateCommissionStructure $associate,
+        private readonly PackageIncomeDefinitionResolver $resolver,
+    ) {
     }
 
     /**
-     * Inserts one immutable snapshot. Omitted rates and amounts stay null.
-     * A repeated call returns the original row and does not change the purchase price.
-     * Associate commission ranks are snapshotted only when explicitly enabled.
+     * Inserts one immutable snapshot. A repeated call returns the original row.
+     * When $terms omit ROI fields, resolves current definition for NEW snapshots only.
+     * Associate ranks fill only when explicitly enabled. Never credits wallets.
      *
      * @param  array<string, mixed>  $terms
      */
@@ -28,6 +30,8 @@ class PackageIncomeTermRecorder
             if ($existing) {
                 return $existing;
             }
+
+            $resolved = $this->resolver->forPurchase($locked);
 
             $payload = [
                 'package_purchase_id' => $locked->id,
@@ -42,9 +46,39 @@ class PackageIncomeTermRecorder
                 'snapshotted_at' => now(),
             ];
 
+            // Fill ROI snapshot from resolved definition only when caller omitted those keys.
+            if ($resolved !== null) {
+                if (! array_key_exists('income_eligible', $terms)) {
+                    $payload['income_eligible'] = true;
+                }
+                if (! array_key_exists('monthly_amount', $terms)) {
+                    $payload['monthly_amount'] = $resolved['roi_daily'];
+                }
+                if (! array_key_exists('duration_months', $terms)) {
+                    $payload['duration_months'] = $resolved['roi_days'];
+                }
+                if (! array_key_exists('commission_base', $terms) && ($resolved['commission_pool'] ?? null) !== null) {
+                    $payload['commission_base'] = $resolved['commission_pool'];
+                }
+                if (! array_key_exists('first_accrual_rule', $terms)) {
+                    $payload['first_accrual_rule'] = 'approval_plus_wait_days';
+                }
+                if (! array_key_exists('business_timezone', $terms)) {
+                    $payload['business_timezone'] = (string) config('deltasupport.package_income.timezone', 'Asia/Kolkata');
+                }
+            }
+
+            if (Schema::hasColumn('package_income_terms', 'package_plan_version_id')) {
+                $payload['package_plan_version_id'] = $locked->package_plan_version_id
+                    ?? ($resolved['package_plan_version_id'] ?? null);
+            }
+            if (Schema::hasColumn('package_income_terms', 'income_definition_source')) {
+                $payload['income_definition_source'] = $this->nullableString($terms, 'income_definition_source')
+                    ?? ($resolved['source'] ?? null);
+            }
+
             if (Schema::hasColumn('package_income_terms', 'associate_commission_version')) {
-                $associate = $this->associateSnapshot($locked, $terms);
-                $payload = array_merge($payload, $associate);
+                $payload = array_merge($payload, $this->associateSnapshot($locked, $terms));
             }
 
             return PackageIncomeTerm::query()->create($payload);

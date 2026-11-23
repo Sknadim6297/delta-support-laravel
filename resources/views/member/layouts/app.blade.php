@@ -32,7 +32,7 @@
 
         <div class="lh-main-content">
             <div class="container-fluid">
-                @if (session()->has('impersonator_id') && isset($member))
+                @if (\App\Support\MemberContext::isPreview() && isset($member))
                     @include('member.partials.impersonation-banner')
                 @endif
                 <div class="lh-page-title">

@@ -18,6 +18,7 @@ class ReferralLevelEligibility
     public const QUALIFYING_PACKAGE_TYPES = [
         Package::TYPE_TOUR_ROI,
         Package::TYPE_PREMIUM,
+        Package::TYPE_ROI,
     ];
 
     /**

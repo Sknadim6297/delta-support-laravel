@@ -144,12 +144,13 @@
 
 .ds-lux-balance {
     display: inline-flex;
-    flex-direction: column;
+    flex-direction: row;
     justify-content: center;
-    align-items: flex-end;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
     max-width: 180px;
-    padding: 4px 12px;
+    padding: 6px 12px;
     margin-right: 2px;
     border: 1px solid #eee;
     border-radius: 10px;
@@ -157,22 +158,34 @@
     line-height: 1.15;
 }
 
-.ds-lux-balance-label {
-    color: #6b7280;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+.ds-lux-balance-icon {
+    color: #2563eb;
+    font-size: 16px;
+    line-height: 1;
+    flex: none;
+}
+
+.ds-lux-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 .ds-lux-balance-amount {
     color: #1d2531;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
+    font-variant-numeric: tabular-nums;
 }
 
 .ds-lux-bar .lh-toggle-sidebar {
@@ -337,6 +350,19 @@
 
 .wrapper .lh-main-content .ds-content {
     padding: 0 0 24px;
+}
+
+.wrapper .ds-preview-banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.wrapper .ds-preview-banner-actions .ds-btn {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
 }
 
 .wrapper .ds-preview-banner {
@@ -1020,11 +1046,16 @@ body[data-lh-mode] {
     }
 
     .ds-lux-balance {
-        max-width: 132px;
-        padding: 4px 8px;
+        max-width: 140px;
+        padding: 5px 8px;
+        gap: 4px;
+    }
+
+    .ds-lux-balance-icon {
+        font-size: 15px;
     }
 
     .ds-lux-balance-amount {
-        font-size: 12px;
+        font-size: 13px;
     }
 }

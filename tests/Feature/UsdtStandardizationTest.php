@@ -40,7 +40,7 @@ class UsdtStandardizationTest extends TestCase
         $this->actingAs($admin)->get(route('admin.packages.index'))
             ->assertOk()
             ->assertSeeText('USDT 12.5000')
-            ->assertDontSee('$');
+            ->assertDontSeeText('$12.5000');
 
         PaymentSetting::current()->update([
             'currency_label' => 'USDT',

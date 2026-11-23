@@ -104,6 +104,13 @@ return [
                 'commission_days' => $vipCommissionDays,
             ],
         ],
+        /*
+        | Definition source policy for PackageIncomeDefinitionResolver.
+        | legacy_config_preferred: codes present in packages{} above stay authoritative
+        | until packages.income_source is explicitly switched to database after approval.
+        | Database versions never silently replace legacy GOLD/PREMIUM accrual terms.
+        */
+        'definition_source_policy' => 'legacy_config_preferred',
     ],
 
     /*
@@ -112,10 +119,20 @@ return [
     | until written owner approval. Existing accrual continues to use commission_pool
     | × percentage for DST-ROI-002 / DST-TOUR-003.
     */
+    /*
+    | Isolated member preview (Login as Member).
+    | Separate cookie from the primary web session so Admin and Member tabs
+    | can run concurrently without Auth::login(member) on the admin guard.
+    */
+    'member_preview' => [
+        'cookie' => env('MEMBER_PREVIEW_COOKIE', 'delta_support_member_preview'),
+        'lifetime_minutes' => (int) env('MEMBER_PREVIEW_LIFETIME', 120),
+    ],
+
     'associate_commission' => [
         'active_version' => env('DELTASUPPORT_ASSOCIATE_COMMISSION_VERSION', 'associate_v1'),
-        'posting_enabled' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_POSTING', true), FILTER_VALIDATE_BOOLEAN),
-        'snapshot_on_approval' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_SNAPSHOT', true), FILTER_VALIDATE_BOOLEAN),
+        'posting_enabled' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_POSTING', false), FILTER_VALIDATE_BOOLEAN),
+        'snapshot_on_approval' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_SNAPSHOT', false), FILTER_VALIDATE_BOOLEAN),
         /*
         | Verified production package-code mapping for associate_v1:
         | SILVER DST-TOUR-001 (50), GOLD DST-ROI-002 (100),
@@ -146,6 +163,175 @@ return [
     */
     'wallet_package_purchase' => [
         'enabled' => filter_var(env('DELTASUPPORT_WALLET_PACKAGE_PURCHASE_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+    ],
+
+    /*
+    | Original Delta Support Tour & Travels package plan (PROPOSED / inactive).
+    | Does not replace package_income.packages. Does not credit wallets.
+    | Conversion basis INR 104 = 1 USDT is a proposed fixed business ratio,
+    | not a live FX rate. Daily USDT rates stay unapproved until written decision.
+    | New terms apply only to future purchases after explicit activation approval.
+    */
+    'original_tour_plan' => [
+        'version_code' => 'original_tour_plan_v1',
+        'status' => 'proposed',
+        'active' => false,
+        'applies_to_new_purchases' => false,
+        /*
+        | Candidate package_income rows for FUTURE purchases only.
+        | Not merged into package_income.packages until written activation.
+        | Historical approved purchases keep their existing snapshots/terms.
+        */
+        'candidate_package_income' => [
+            'DST-TOUR-001' => [
+                'roi_daily' => '0.1058',
+                'roi_days' => 900,
+                'commission_pool' => null,
+                'commission_days' => null,
+            ],
+            'DST-ROI-002' => [
+                'roi_daily' => '0.2404',
+                'roi_days' => 800,
+                'commission_pool' => '0.2400',
+                'commission_days' => 400,
+            ],
+            'DST-TOUR-003' => [
+                'roi_daily' => '1.3654',
+                'roi_days' => 700,
+                'commission_pool' => null,
+                'commission_days' => null,
+            ],
+            'DST-TOUR-004' => [
+                'roi_daily' => '3.2019',
+                'roi_days' => 600,
+                'commission_pool' => null,
+                'commission_days' => null,
+            ],
+            'DST-TOUR-005' => [
+                'roi_daily' => '16.8654',
+                'roi_days' => 570,
+                'commission_pool' => null,
+                'commission_days' => null,
+            ],
+            // DST-RY-006 deliberately omitted: no daily ROI.
+        ],
+        'conversion' => [
+            'basis_label' => 'Proposed fixed business ratio (not live FX)',
+            'inr_per_usdt' => '104',
+            'rounding_policy' => 'four_decimal_round_half_up_candidate',
+            'notes' => 'Candidate rates below use 4dp round-half-up. Do not merge into package_income.packages until written approval. Final-day adjustments remain unapproved.',
+        ],
+        'packages' => [
+            'SILVER' => [
+                'proposed_package_code' => 'DST-TOUR-001',
+                'existing_usdt_price' => '50.0000',
+                'original_inr_price' => '5200',
+                'original_inr_daily' => '11',
+                'proposed_usdt_daily' => '0.1058',
+                'roi_days' => 900,
+                'has_daily_roi' => true,
+                'tour' => [
+                    'eligible_after_days' => 30,
+                    'nights' => 1,
+                    'days' => 2,
+                    'adults' => 2,
+                    'children' => 1,
+                    'food_coupon_inr' => null,
+                ],
+            ],
+            'GOLD' => [
+                'proposed_package_code' => 'DST-ROI-002',
+                'existing_usdt_price' => '100.0000',
+                'original_inr_price' => '10400',
+                'original_inr_daily' => '25',
+                'proposed_usdt_daily' => '0.2404',
+                'roi_days' => 800,
+                'has_daily_roi' => true,
+                'tour' => [
+                    'eligible_after_days' => 30,
+                    'nights' => 2,
+                    'days' => 3,
+                    'adults' => 2,
+                    'children' => 1,
+                    'food_coupon_inr' => null,
+                ],
+            ],
+            'PREMIUM' => [
+                'proposed_package_code' => 'DST-TOUR-003',
+                'existing_usdt_price' => '500.0000',
+                'original_inr_price' => '52000',
+                'original_inr_daily' => '142',
+                'proposed_usdt_daily' => '1.3654',
+                'roi_days' => 700,
+                'has_daily_roi' => true,
+                'tour' => [
+                    'eligible_after_days' => 30,
+                    'nights' => 2,
+                    'days' => 3,
+                    'adults' => 2,
+                    'children' => 1,
+                    'food_coupon_inr' => null,
+                ],
+            ],
+            'VIP' => [
+                'proposed_package_code' => 'DST-TOUR-004',
+                'existing_usdt_price' => '1000.0000',
+                'original_inr_price' => '104000',
+                'original_inr_daily' => '333',
+                'proposed_usdt_daily' => '3.2019',
+                'roi_days' => 600,
+                'has_daily_roi' => true,
+                'tour' => [
+                    'eligible_after_days' => 30,
+                    'nights' => 2,
+                    'days' => 3,
+                    'adults' => 2,
+                    'children' => 1,
+                    'food_coupon_inr' => '2000',
+                ],
+            ],
+            'DIAMOND' => [
+                'proposed_package_code' => 'DST-TOUR-005',
+                'existing_usdt_price' => '5000.0000',
+                'original_inr_price' => '520000',
+                'original_inr_daily' => '1754',
+                'proposed_usdt_daily' => '16.8654',
+                'roi_days' => 570,
+                'has_daily_roi' => true,
+                'tour' => [
+                    'eligible_after_days' => 30,
+                    'nights' => 2,
+                    'days' => 3,
+                    'adults' => 2,
+                    'children' => 1,
+                    'food_coupon_inr' => '2000',
+                ],
+                'notes' => 'Production code DST-TOUR-005. Associate commission not configured for DIAMOND.',
+            ],
+            'DELTA_SHARE' => [
+                'proposed_package_code' => 'DST-RY-006',
+                'existing_usdt_price' => '50.0000',
+                'original_inr_price' => '5200',
+                'original_inr_daily' => null,
+                'proposed_usdt_daily' => null,
+                'roi_days' => null,
+                'has_daily_roi' => false,
+                'has_monthly_roi' => false,
+                'tour' => [
+                    'eligible_after_days' => 100,
+                    'nights' => 1,
+                    'days' => 2,
+                    'adults' => 2,
+                    'children' => 1,
+                    'food_coupon_inr' => '1000',
+                ],
+                'chart_notes' => [
+                    'Original chart mentions INR 25,000 withdrawal after 3 years.',
+                    'Do not create a withdrawal obligation until USDT conversion, maturity, and funding policy are approved.',
+                    'Keep roi_eligible=false and level_commission_eligible=false.',
+                ],
+            ],
+        ],
     ],
 
     /*

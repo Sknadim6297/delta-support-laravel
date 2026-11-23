@@ -1,10 +1,14 @@
 <div class="ds-preview-banner" role="status">
     <div>
         <strong>Admin Preview Mode</strong>
-        <p>You are viewing the account of {{ $member->member_id }} — {{ $member->member_name }}.</p>
+        <p>
+            You are viewing {{ $member->member_id }} — {{ $member->member_name }}.
+            This tab uses an isolated preview cookie. The Admin tab keeps the admin session.
+            Changes are blocked in preview.
+        </p>
     </div>
-    <form method="POST" action="{{ route('admin.impersonation.stop') }}">
+    <form method="POST" action="{{ route('member.preview.stop') }}">
         @csrf
-        <button type="submit">Back to Admin Panel</button>
+        <button type="submit">End preview</button>
     </form>
 </div>

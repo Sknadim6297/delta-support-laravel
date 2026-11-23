@@ -96,7 +96,7 @@ class ProfileController extends Controller
     private function currentMember(Request $request): Member
     {
         return Member::query()
-            ->where('member_id', $request->session()->get('member_context_id'))
+            ->where('member_id', \App\Support\MemberContext::id($request))
             ->firstOrFail();
     }
 }

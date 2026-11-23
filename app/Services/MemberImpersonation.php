@@ -2,76 +2,103 @@
 
 namespace App\Services;
 
-use App\Models\ImpersonationLog;
 use App\Models\Member;
+use App\Models\User;
+use App\Support\MemberContext;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
+/**
+ * Admin "Login as Member" facade.
+ * Delegates to MemberPreviewGuard — never Auth::login($member), never mutates admin guard identity.
+ */
 class MemberImpersonation
 {
-    public function active(Request $request): bool
+    public function __construct(private readonly MemberPreviewGuard $preview)
     {
-        return $request->session()->has('impersonator_id');
     }
 
-    public function start(Request $request, Member $member): void
+    public function active(Request $request): bool
+    {
+        return $this->preview->active($request)
+            || $this->preview->activeForAdmin((int) ($request->user()?->id ?? 0)) !== null;
+    }
+
+    /**
+     * @return array{cookie: Cookie}
+     */
+    public function start(Request $request, Member $member): array
     {
         $admin = $request->user();
 
-        if (! $admin || $admin->is_admin !== true) {
+        if (! $admin instanceof User || $admin->is_admin !== true) {
             throw new AccessDeniedHttpException('Only an administrator can preview a member account.');
         }
 
-        if ($this->active($request)) {
-            throw new AccessDeniedHttpException('An admin preview is already active.');
+        // Keep the admin web session free of member identity.
+        if ($request->hasSession()) {
+            $request->session()->forget([
+                'member_context_id',
+                'impersonator_id',
+                'impersonation_log_id',
+            ]);
         }
 
-        $log = ImpersonationLog::query()->create([
-            'admin_id' => $admin->id,
-            'member_id' => $member->member_id,
-            'action' => 'started',
-            'started_at' => now(),
-            'ip_address' => $request->ip(),
-            'user_agent' => substr((string) $request->userAgent(), 0, 1000),
-        ]);
+        $issued = $this->preview->issue($admin, $member, $request);
 
-        $request->session()->regenerate();
-        $request->session()->put('impersonator_id', $admin->id);
-        $request->session()->put('impersonation_log_id', $log->id);
-        $request->session()->put('member_context_id', $member->member_id);
+        return ['cookie' => $this->preview->makeCookie($issued['plain_token'])];
     }
 
-    public function stop(Request $request): void
+    /**
+     * @return array{cookie: Cookie}
+     */
+    public function stop(Request $request): array
     {
         $admin = $request->user();
-        $impersonatorId = $request->session()->get('impersonator_id');
+        $previewAdminId = MemberContext::previewAdminId($request);
 
-        if (! $admin || $admin->is_admin !== true || (int) $admin->id !== (int) $impersonatorId) {
-            throw new AccessDeniedHttpException('The original admin session is not available.');
+        if ($admin instanceof User && $admin->is_admin === true) {
+            $this->preview->revokeForAdmin((int) $admin->id);
+        } elseif ($previewAdminId !== null) {
+            // Preview cookie alone may end its own grant without touching Auth.
+            $this->preview->revokeForAdmin($previewAdminId);
+        } else {
+            throw new AccessDeniedHttpException('No active member preview to end.');
         }
 
-        $this->finish($request);
-        $request->session()->regenerate();
+        if ($request->hasSession() && ! ($admin instanceof User && $admin->is_admin === true)) {
+            // Do not clear an unrelated member_context_id belonging to a normal member login.
+        } elseif ($request->hasSession() && $admin instanceof User && $admin->is_admin === true) {
+            $request->session()->forget([
+                'impersonator_id',
+                'impersonation_log_id',
+            ]);
+        }
+
+        return ['cookie' => $this->preview->forgetCookie()];
     }
 
     public function finish(Request $request): void
     {
-        $logId = $request->session()->get('impersonation_log_id');
-
-        if ($logId) {
-            ImpersonationLog::query()
-                ->whereKey($logId)
-                ->whereNull('ended_at')
-                ->update([
-                    'action' => 'ended',
-                    'ended_at' => now(),
-                ]);
+        $admin = $request->user();
+        if ($admin instanceof User && $admin->is_admin === true) {
+            $this->preview->revokeForAdmin((int) $admin->id);
+        } elseif (MemberContext::isPreview($request)) {
+            $this->preview->revokeFromRequest($request);
         }
 
-        $request->session()->forget([
-            'impersonator_id',
-            'impersonation_log_id',
-            'member_context_id',
-        ]);
+        if ($request->hasSession()) {
+            $request->session()->forget([
+                'member_context_id',
+                'impersonator_id',
+                'impersonation_log_id',
+            ]);
+        }
+    }
+
+    public function forgetCookie(): Cookie
+    {
+        return $this->preview->forgetCookie();
     }
 }

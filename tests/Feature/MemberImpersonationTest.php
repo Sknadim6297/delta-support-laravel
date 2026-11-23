@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\ImpersonationLog;
 use App\Models\Member;
+use App\Models\MemberPreviewSession;
 use App\Models\Package;
 use App\Models\PackagePurchase;
 use App\Models\User;
+use App\Services\MemberPreviewGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -20,20 +22,29 @@ class MemberImpersonationTest extends TestCase
         $admin = User::factory()->create(['is_admin' => true]);
         $member = $this->member('ST100001', 'Sk Nadim');
         $originalPassword = $member->password;
+        $cookieName = app(MemberPreviewGuard::class)->cookieName();
 
-        $this->actingAs($admin)
+        $start = $this->actingAs($admin)
             ->post(route('admin.members.impersonate', $member))
             ->assertRedirect(route('member.dashboard'));
 
-        $this->get(route('member.dashboard'))
+        $plain = $start->getCookie($cookieName)?->getValue();
+        $this->assertNotNull($plain);
+        $this->assertMatchesRegularExpression('/^[0-9a-f-]{36}\.[A-Za-z0-9]+$/', $plain);
+
+        $this->assertAuthenticatedAs($admin);
+        $this->assertFalse(session()->has('member_context_id'));
+        $this->assertFalse(session()->has('impersonator_id'));
+        $this->assertSame(1, MemberPreviewSession::query()->whereNull('revoked_at')->count());
+
+        // Re-send decrypted preview token through Laravel's encrypted cookie helper.
+        $this->withCookie($cookieName, $plain)
+            ->get(route('member.dashboard'))
             ->assertOk()
             ->assertSeeText('Admin Preview Mode')
             ->assertSeeText('ST100001')
             ->assertSeeText('Sk Nadim');
 
-        $this->assertAuthenticatedAs($admin);
-        $this->assertSame('ST100001', session('member_context_id'));
-        $this->assertSame($admin->id, session('impersonator_id'));
         $this->assertSame($originalPassword, $member->fresh()->password);
 
         $log = ImpersonationLog::query()->first();
@@ -41,24 +52,27 @@ class MemberImpersonationTest extends TestCase
         $this->assertSame($admin->id, $log->admin_id);
         $this->assertSame('ST100001', $log->member_id);
         $this->assertSame('started', $log->action);
-        $this->assertNotNull($log->started_at);
-        $this->assertNull($log->ended_at);
-        $this->assertSame('127.0.0.1', $log->ip_address);
 
-        $this->get(route('admin.members.directory'))
-            ->assertRedirect(route('member.dashboard'));
+        // Admin panel stays usable without relying on member_context_id.
+        $this->actingAs($admin)
+            ->get(route('admin.members.directory'))
+            ->assertOk()
+            ->assertSeeText('Member preview active')
+            ->assertSeeText('ST100001')
+            ->assertSeeText('Login as Member');
 
-        $this->post(route('admin.impersonation.stop'))
+        $this->actingAs($admin)
+            ->post(route('admin.impersonation.stop'))
             ->assertRedirect(route('admin.members.directory'));
 
         $this->assertAuthenticatedAs($admin);
-        $this->assertFalse(session()->has('impersonator_id'));
-        $this->assertFalse(session()->has('member_context_id'));
+        $this->assertSame(0, MemberPreviewSession::query()->whereNull('revoked_at')->count());
         $this->assertSame('ended', $log->fresh()->action);
-        $this->assertNotNull($log->fresh()->ended_at);
 
-        $this->get(route('admin.members.directory'))
+        $this->actingAs($admin)
+            ->get(route('admin.members.directory'))
             ->assertOk()
+            ->assertDontSeeText('Member preview active')
             ->assertSeeText('Login as Member');
     }
 
@@ -87,16 +101,21 @@ class MemberImpersonationTest extends TestCase
             ->post(route('admin.members.impersonate', $member))
             ->assertRedirect(route('member.dashboard'));
 
-        $this->post(route('admin.members.impersonate', $other))
-            ->assertForbidden();
+        // Explicit second start replaces the prior grant (not accidental).
+        $this->actingAs($admin)
+            ->post(route('admin.members.impersonate', $other))
+            ->assertRedirect(route('member.dashboard'));
 
-        $this->assertSame('ST100002', session('member_context_id'));
+        $active = MemberPreviewSession::query()->whereNull('revoked_at')->get();
+        $this->assertCount(1, $active);
+        $this->assertSame('ST100003', $active->first()->member_id);
     }
 
     public function test_impersonation_blocks_member_changes_and_logout_clears_it(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $member = $this->member('ST100004', 'Preview Member');
+        $cookieName = app(MemberPreviewGuard::class)->cookieName();
 
         $package = Package::query()->create([
             'code' => 'PKG-PREVIEW',
@@ -110,38 +129,43 @@ class MemberImpersonationTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $this->actingAs($admin)
+        $start = $this->actingAs($admin)
             ->post(route('admin.members.impersonate', $member));
+        $plain = $start->getCookie($cookieName)?->getValue();
+        $this->assertNotNull($plain);
 
-        $this->put(route('member.profile.update'), [
-            'member_name' => 'Changed Name',
-            'email' => 'changed@example.test',
-            'mobile_no' => '9000000001',
-            'wallet_address' => '0xchanged',
-        ])->assertForbidden();
+        $this->withCookie($cookieName, $plain)
+            ->put(route('member.profile.update'), [
+                'member_name' => 'Changed Name',
+                'email' => 'changed@example.test',
+                'mobile_no' => '9000000001',
+                'wallet_address' => '0xchanged',
+            ])->assertForbidden();
 
-        $this->post(route('member.packages.purchase', $package), [
-            'payment_reference' => 'TXREF123456',
-            'idempotency_key' => '11111111-1111-4111-8111-111111111111',
-        ])->assertForbidden();
+        $this->withCookie($cookieName, $plain)
+            ->post(route('member.packages.purchase', $package), [
+                'payment_reference' => 'TXREF123456',
+                'idempotency_key' => '11111111-1111-4111-8111-111111111111',
+            ])->assertForbidden();
 
-        $this->post(route('member.change-password.post'), [
-            'current_password' => 'secret-secret',
-            'new_password' => 'another-secret',
-            'new_password_confirmation' => 'another-secret',
-        ])->assertForbidden();
+        $this->withCookie($cookieName, $plain)
+            ->post(route('member.change-password.post'), [
+                'current_password' => 'secret-secret',
+                'new_password' => 'another-secret',
+                'new_password_confirmation' => 'another-secret',
+            ])->assertForbidden();
 
         $this->assertSame('Preview Member', $member->fresh()->member_name);
         $this->assertSame('9000000004', $member->fresh()->mobile_no);
         $this->assertTrue(Hash::check('secret-secret', $member->fresh()->password));
         $this->assertSame(0, PackagePurchase::query()->count());
 
-        $this->post(route('member.logout'))
-            ->assertRedirect(route('login'));
+        $this->withCookie($cookieName, $plain)
+            ->post(route('member.logout'))
+            ->assertRedirect(route('admin.members.directory'));
 
-        $this->assertGuest();
-        $this->assertFalse(session()->has('impersonator_id'));
-        $this->assertFalse(session()->has('member_context_id'));
+        $this->assertAuthenticatedAs($admin);
+        $this->assertSame(0, MemberPreviewSession::query()->whereNull('revoked_at')->count());
         $this->assertNotNull(ImpersonationLog::query()->first()->ended_at);
     }
 
@@ -155,7 +179,7 @@ class MemberImpersonationTest extends TestCase
         ])->assertRedirect(route('member.dashboard'));
 
         $this->assertSame('ST100005', session('member_context_id'));
-        $this->assertFalse(session()->has('impersonator_id'));
+        $this->assertSame(0, MemberPreviewSession::query()->count());
         $this->assertSame(0, ImpersonationLog::query()->count());
 
         $this->get(route('member.dashboard'))

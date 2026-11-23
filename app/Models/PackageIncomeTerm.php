@@ -10,6 +10,8 @@ class PackageIncomeTerm extends Model
 {
     protected $fillable = [
         'package_purchase_id',
+        'package_plan_version_id',
+        'income_definition_source',
         'reference',
         'income_eligible',
         'monthly_rate_percentage',

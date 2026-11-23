@@ -273,17 +273,12 @@ class AssociateCommissionStructureTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.packages.index'))
             ->assertOk()
-            ->assertSeeText('GOLD PACKAGE')
-            ->assertSeeText('SILVER PACKAGE')
-            ->assertSeeText('PREMIUM PACKAGE')
-            ->assertSeeText('VIP PACKAGE')
-            ->assertSeeText('DST-TOUR-001')
-            ->assertSeeText('DST-TOUR-003')
-            ->assertSeeText('DST-TOUR-004')
+            ->assertSeeText('DST-ROI-002')
             ->assertSeeText('Associate pool 0.2400 USDT / 400 days')
             ->assertSeeText('Legacy commission')
             ->assertSeeText('Associate commission')
-            ->assertSeeText('ROI Not Configured');
+            ->assertDontSeeText('Four-tier Associate Commission mapping')
+            ->assertDontSeeText('Open full Rank 1–20 breakdown');
 
         $this->actingAs($admin)
             ->get(route('admin.finance.commission-settings'))
@@ -291,6 +286,13 @@ class AssociateCommissionStructureTest extends TestCase
             ->assertSeeText('Associate Commission Structure')
             ->assertSeeText('dry_run_only')
             ->assertSeeText('Associate unlock thresholds')
+            ->assertSeeText('SILVER PACKAGE')
+            ->assertSeeText('GOLD PACKAGE')
+            ->assertSeeText('PREMIUM PACKAGE')
+            ->assertSeeText('VIP PACKAGE')
+            ->assertSeeText('DST-TOUR-001')
+            ->assertSeeText('DST-TOUR-003')
+            ->assertSeeText('DST-TOUR-004')
             ->assertSeeText('0.0300')
             ->assertSeeText('0.6000')
             ->assertSeeText('48.0000')
@@ -340,9 +342,9 @@ class AssociateCommissionStructureTest extends TestCase
             ->assertSeeText('Max 96.0000 USDT (theoretical)')
             ->assertSeeText('Max 480.0000 USDT (theoretical)')
             ->assertSeeText('Max 960.0000 USDT (theoretical)')
-            ->assertSeeText('Legacy pool 0.2400 USDT / 400 days')
-            ->assertSeeText('Legacy pool 2.4000 USDT / 400 days')
-            ->assertSeeText('Legacy commission Not configured')
+            ->assertSeeText('Plan/legacy pool 0.2400 USDT')
+            ->assertSeeText('Plan/legacy pool 2.4000 USDT')
+            ->assertSeeText('Plan/legacy commission Not configured')
             ->assertDontSeeText('Associate commission Not configured');
 
         $roiPlans = $this->actingAs($admin)->get(route('admin.finance.roi-plans'));

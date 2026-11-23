@@ -3,7 +3,7 @@
 @section('page-title', 'All Packages')
 @section('content')
 <div class="ds-catalog">
-    <x-ui.page-header title="All Packages" lead="Tour details are stored on each package. Purchases keep their own price snapshot. Legacy commission_pool and Associate Commission are shown separately. Associate ranks are preview-only until separately activated.">
+    <x-ui.page-header title="Package Management" lead="Create and edit packages from Admin. Catalog Active is not wallet posting. Purchases keep immutable snapshots. Associate ranks stay preview-only.">
         <x-slot:actions>
             <x-ui.button :href="route('admin.packages.create')">Add Package</x-ui.button>
             <x-ui.button variant="secondary" :href="route('admin.finance.commission-settings')">Associate commission chart</x-ui.button>
@@ -15,6 +15,17 @@
             <option value="">All statuses</option>
             <option value="active" @selected(request('status') === 'active')>Active</option>
             <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
+        </select>
+        <select name="type" aria-label="Package type">
+            <option value="">All types</option>
+            @foreach (\App\Models\Package::TYPES as $value => $label)
+                <option value="{{ $value }}" @selected(request('type') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+        <select name="roi" aria-label="ROI eligibility">
+            <option value="">ROI any</option>
+            <option value="yes" @selected(request('roi') === 'yes')>ROI eligible</option>
+            <option value="no" @selected(request('roi') === 'no')>ROI not eligible</option>
         </select>
         <button>Search</button>
     </form>
@@ -57,6 +68,7 @@
                 @php
                     $rule = $incomeRules[$package->code] ?? null;
                     $tier = $associateByCode[$package->code] ?? null;
+                    $st = $statusById[$package->id] ?? null;
                 @endphp
                 <tr>
                     <td>
@@ -67,22 +79,35 @@
                         @endif
                     </td>
                     <td>{{ $package->code }}</td>
-                    <td>{{ $package->name }}</td>
+                    <td>
+                        <a href="{{ route('admin.packages.show', $package) }}">{{ $package->name }}</a>
+                        @if ($st && ! ($st['posting_authorized'] ?? false) && ($st['catalog_active'] ?? false))
+                            <div><small>Active · posting not authorized</small></div>
+                        @endif
+                    </td>
                     <td>{{ $package->typeLabel() }}</td>
                     <td>{{ \App\Support\MoneyDisplay::format($package->price_usd, $package->denomination) }}</td>
                     <td>
                         @if ($rule)
                             {{ $rule['roi_daily'] }} USDT / {{ $rule['roi_days'] }} days
+                            <div><small>{{ $rule['source'] ?? '' }}</small></div>
                         @else
                             ROI Not Configured
                         @endif
                     </td>
                     <td>
-                        @if ($rule && isset($rule['commission_pool'], $rule['commission_days']))
-                            <div>Legacy pool {{ $rule['commission_pool'] }} USDT / {{ $rule['commission_days'] }} days</div>
-                            <div>Max {{ bcmul((string) $rule['commission_pool'], (string) $rule['commission_days'], 4) }} USDT (theoretical)</div>
+                        @if ($rule && ($rule['commission_pool'] ?? null) !== null)
+                            <div>
+                                Plan/legacy pool {{ $rule['commission_pool'] }} USDT
+                                @if (($rule['commission_days'] ?? null) !== null)
+                                    / {{ $rule['commission_days'] }} days
+                                @endif
+                            </div>
+                            @if (($rule['commission_days'] ?? null) !== null)
+                                <div>Max {{ bcmul((string) $rule['commission_pool'], (string) $rule['commission_days'], 4) }} USDT (theoretical)</div>
+                            @endif
                         @else
-                            Legacy commission Not configured
+                            Plan/legacy commission Not configured
                         @endif
                     </td>
                     <td>
@@ -98,11 +123,18 @@
                         @endif
                     </td>
                     <td>{{ $package->purchases_count }}</td>
-                    <td>{{ $package->is_active ? 'Active' : 'Inactive' }}</td>
+                    <td>
+                        {{ $package->is_active ? 'Active' : 'Inactive' }}
+                        @if (! ($package->purchase_available ?? true))
+                            <div><small>Purchase off</small></div>
+                        @endif
+                    </td>
                     <td>
                         <div>
+                            <a href="{{ route('admin.packages.show', $package) }}">Details</a>
+                            ·
                             <a href="{{ route('admin.packages.edit', $package) }}">Edit</a>
-                            <form method="POST" action="{{ route('admin.packages.status', $package) }}">
+                            <form method="POST" action="{{ route('admin.packages.status', $package) }}" onsubmit="return confirm('Confirm catalog status change? Income posting is not authorized by this action.');">
                                 @csrf
                                 @method('PATCH')
                                 <input type="hidden" name="is_active" value="{{ $package->is_active ? 0 : 1 }}">
@@ -118,57 +150,5 @@
         </table>
     </div>
     <div>{{ $packages->links('pagination::bootstrap-5') }}</div>
-
-    <x-ui.card title="Four-tier Associate Commission mapping (read-only)" subtitle="Identity is by package code. Price matches are hints only. Theoretical totals are not posted income.">
-        <div class="ds-table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Tier</th>
-                        <th>Mapped code</th>
-                        <th>Catalog</th>
-                        <th>Price</th>
-                        <th>ROI</th>
-                        <th>Legacy pool</th>
-                        <th>Associate daily pool</th>
-                        <th>400-day max</th>
-                        <th>Snapshot</th>
-                        <th>Posting</th>
-                        <th>Warnings</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach ($associatePreview['tiers'] as $tier)
-                    <tr>
-                        <td>{{ $tier['label'] }}</td>
-                        <td>{{ $tier['mapped_package_code'] ?: '—' }}</td>
-                        <td>
-                            @if ($tier['catalog_package_found'])
-                                Configured · {{ $tier['catalog_package_name'] }}
-                            @else
-                                Pending catalog row
-                            @endif
-                        </td>
-                        <td>{{ $tier['package_price'] }} USDT</td>
-                        <td>{{ $tier['roi_display'] }}</td>
-                        <td>{{ $tier['legacy_commission_pool'] ? $tier['legacy_commission_pool'].' USDT' : 'Legacy commission Not configured' }}</td>
-                        <td>{{ $tier['daily_total'] }}</td>
-                        <td>{{ $tier['duration_total'] }}</td>
-                        <td>{{ $associatePreview['snapshot_on_approval'] ? 'Pending approval flag on' : 'Disabled' }}</td>
-                        <td>{{ $associatePreview['posting_enabled'] ? 'Enabled' : 'Disabled' }}</td>
-                        <td>
-                            @forelse ($tier['warnings'] as $warning)
-                                <div>{{ $warning }}</div>
-                            @empty
-                                —
-                            @endforelse
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
-        <p><a href="{{ route('admin.finance.commission-settings') }}">Open full Rank 1–20 breakdown</a></p>
-    </x-ui.card>
 </div>
 @endsection

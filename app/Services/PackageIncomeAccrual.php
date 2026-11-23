@@ -534,7 +534,7 @@ class PackageIncomeAccrual
      */
     private function planPurchase(PackagePurchase $purchase, ?Package $package, CarbonImmutable $date, bool $ratesReady, array &$roi, array &$commissions, array &$skipped, array &$recipients): void
     {
-        $definition = $this->policy->definition($purchase->package_code);
+        $definition = $this->policy->definitionForPurchase($purchase);
         $originalFirst = $this->activation->originalFirstAccrualDate($purchase, $this->policy);
         if ($definition === null || $originalFirst === null) {
             return;
