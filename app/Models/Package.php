@@ -44,6 +44,7 @@ class Package extends Model
         'exclusions',
         'image_path',
         'roi_eligible',
+        'auto_roi_enabled',
         'level_commission_eligible',
         'is_active',
         'purchase_available',
@@ -55,12 +56,27 @@ class Package extends Model
     protected $casts = [
         'price_usd' => 'decimal:4',
         'roi_eligible' => 'boolean',
+        'auto_roi_enabled' => 'boolean',
         'level_commission_eligible' => 'boolean',
         'is_active' => 'boolean',
         'purchase_available' => 'boolean',
         'sort_order' => 'integer',
         'active_plan_version_id' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Package $package): void {
+            // Admin createPackage always sets auto_roi_enabled explicitly (OFF).
+            // Legacy callers that only set roi_eligible keep prior accrual intent.
+            if (! array_key_exists('auto_roi_enabled', $package->getAttributes())) {
+                $package->auto_roi_enabled = (bool) $package->roi_eligible;
+            }
+            if ($package->package_type === self::TYPE_TOUR) {
+                $package->auto_roi_enabled = false;
+            }
+        });
+    }
 
     public function typeLabel(): string
     {

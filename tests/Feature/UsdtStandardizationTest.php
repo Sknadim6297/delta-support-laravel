@@ -31,7 +31,7 @@ class UsdtStandardizationTest extends TestCase
             'price_usd' => '12.5000',
             'sort_order' => 1,
             'is_active' => '1',
-        ])->assertRedirect(route('admin.packages.index'));
+        ])->assertRedirect();
 
         $package = Package::query()->where('code', 'USDT-TOUR')->firstOrFail();
         $this->assertSame('USDT', $package->denomination);

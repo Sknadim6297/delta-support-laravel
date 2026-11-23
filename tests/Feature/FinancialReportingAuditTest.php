@@ -81,7 +81,7 @@ class FinancialReportingAuditTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.packages.index'))
             ->assertOk()
-            ->assertSeeText('USDT price');
+            ->assertSeeText('Package Price (USDT)');
     }
 
     public function test_legacy_financial_actions_stay_forbidden_and_reports_stay_authorized(): void

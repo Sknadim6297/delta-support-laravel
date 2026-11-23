@@ -64,13 +64,8 @@
         @if ($plan)
             <p>Active plan version: v{{ $plan->version_number }} ({{ $plan->status }}) · accrual_authority={{ $plan->accrual_authority ? 'yes' : 'no' }}</p>
         @endif
-        @if ($associateTier)
-            <p>
-                Associate {{ $associateTier['label'] }}:
-                {{ $associateTier['daily_total'] }} USDT / {{ $associateTier['commission_days'] }} days
-                (max {{ $associateTier['duration_total'] }} USDT theoretical) ·
-                posting {{ ($associatePreview['posting_enabled'] ?? false) ? 'ENABLED' : 'disabled' }}
-            </p>
+        @if (! empty($autoRoiStatus))
+            <p>Auto ROI Generation: {{ $autoRoiStatus['label'] }}</p>
         @endif
     </x-ui.card>
 

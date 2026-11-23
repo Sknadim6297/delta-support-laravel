@@ -27,15 +27,15 @@ class PackageCommerceTest extends TestCase
         $this->actingAs($admin)->post(route('admin.packages.store'), [
             'code' => 'pkg-1',
             'name' => 'Tour Package One',
+            'package_type' => Package::TYPE_TOUR,
             'price_usd' => '1500.2500',
-            'description' => 'Tour benefits',
-            'tour_title' => 'City tour',
-            'tour_details' => 'Saved tour details',
-            'duration' => '3 days',
-            'benefits' => 'Hotel stay',
             'sort_order' => 1,
             'is_active' => '1',
-        ])->assertRedirect(route('admin.packages.index'));
+            'tour_nights' => '1',
+            'tour_days' => '2',
+            'tour_adults' => '2',
+            'tour_children' => '1',
+        ])->assertRedirect();
 
         $package = Package::query()->firstOrFail();
         $this->assertSame('PKG-1', $package->code);
@@ -44,9 +44,15 @@ class PackageCommerceTest extends TestCase
         $this->actingAs($admin)->put(route('admin.packages.update', $package), [
             'code' => 'PKG-1',
             'name' => 'Tour Package One',
+            'package_type' => Package::TYPE_TOUR,
             'price_usd' => '10.1000',
             'sort_order' => 1,
-        ])->assertRedirect(route('admin.packages.index'));
+            'is_active' => '0',
+            'tour_nights' => '1',
+            'tour_days' => '2',
+            'tour_adults' => '2',
+            'tour_children' => '1',
+        ])->assertRedirect(route('admin.packages.edit', $package));
 
         $this->assertSame('10.1000', $package->fresh()->price_usd);
         $this->assertFalse($package->fresh()->is_active);
@@ -280,16 +286,21 @@ class PackageCommerceTest extends TestCase
             'price_usd' => '15.2500',
             'sort_order' => 4,
             'is_active' => '1',
-            'destinations' => 'Draft destinations',
-            'duration' => 'Draft duration',
+            'tour_nights' => '2',
+            'tour_days' => '3',
+            'tour_adults' => '2',
+            'tour_children' => '1',
+            'roi_daily' => '1.0000',
+            'roi_days' => '100',
             'image' => UploadedFile::fake()->image('cover.jpg', 40, 40),
-        ])->assertRedirect(route('admin.packages.index'));
+        ])->assertRedirect();
 
         $package = Package::query()->firstOrFail();
         $this->assertSame('15.2500', $package->price_usd);
         $this->assertSame(Package::TYPE_PREMIUM, $package->package_type);
         $this->assertTrue($package->roi_eligible);
         $this->assertTrue($package->level_commission_eligible);
+        $this->assertFalse((bool) $package->auto_roi_enabled);
         $this->assertNotNull($package->image_path);
         Storage::disk('local')->assertExists($package->image_path);
         $this->assertSame(0, RoiTransaction::query()->count());

@@ -3,10 +3,9 @@
 @section('page-title', 'All Packages')
 @section('content')
 <div class="ds-catalog">
-    <x-ui.page-header title="Package Management" lead="Create and edit packages from Admin. Catalog Active is not wallet posting. Purchases keep immutable snapshots. Associate ranks stay preview-only.">
+    <x-ui.page-header title="Package Management" lead="Edit package price, Daily ROI and Auto ROI. Saving or toggling never credits wallets.">
         <x-slot:actions>
             <x-ui.button :href="route('admin.packages.create')">Add Package</x-ui.button>
-            <x-ui.button variant="secondary" :href="route('admin.finance.commission-settings')">Associate commission chart</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
     <form method="GET">
@@ -16,135 +15,66 @@
             <option value="active" @selected(request('status') === 'active')>Active</option>
             <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
         </select>
-        <select name="type" aria-label="Package type">
-            <option value="">All types</option>
-            @foreach (\App\Models\Package::TYPES as $value => $label)
-                <option value="{{ $value }}" @selected(request('type') === $value)>{{ $label }}</option>
-            @endforeach
-        </select>
-        <select name="roi" aria-label="ROI eligibility">
-            <option value="">ROI any</option>
-            <option value="yes" @selected(request('roi') === 'yes')>ROI eligible</option>
-            <option value="no" @selected(request('roi') === 'no')>ROI not eligible</option>
-        </select>
         <button>Search</button>
     </form>
-
-    @if (($associatePreview['integrity_errors'] ?? []) === [])
-        <x-ui.alert type="info">
-            Associate Commission Structure {{ $associatePreview['version_code'] }} is stored and inactive.
-            Posting: {{ $associatePreview['posting_enabled'] ? 'ENABLED (unsafe)' : 'disabled' }}.
-            Snapshot on approval: {{ $associatePreview['snapshot_on_approval'] ? 'on' : 'disabled' }}.
-            Theoretical totals are not earned or posted income.
-            {{ $associatePreview['catalog_finding']['summary'] ?? '' }}
-        </x-ui.alert>
-    @else
-        <x-ui.alert type="warning">
-            @foreach ($associatePreview['integrity_errors'] as $error)
-                <p>{{ $error }}</p>
-            @endforeach
-        </x-ui.alert>
-    @endif
 
     <div class="ds-table-wrap">
         <table>
             <thead>
                 <tr>
-                    <th>Image</th>
-                    <th>Code</th>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Package price</th>
-                    <th>Daily ROI</th>
-                    <th>Legacy commission</th>
-                    <th>Associate commission</th>
-                    <th>Purchases</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>Package Name</th>
+                    <th>Package Price (USDT)</th>
+                    <th>Daily ROI (USDT)</th>
+                    <th>ROI Days</th>
+                    <th>Monthly Return (USDT)</th>
+                    <th>Total Return (USDT)</th>
+                    <th>Auto ROI</th>
+                    <th>Package Active/Inactive</th>
+                    <th>Edit</th>
                 </tr>
             </thead>
             <tbody>
             @forelse($packages as $package)
                 @php
-                    $rule = $incomeRules[$package->code] ?? null;
-                    $tier = $associateByCode[$package->code] ?? null;
-                    $st = $statusById[$package->id] ?? null;
+                    $managed = $adminRoiById[$package->id] ?? ['daily' => null, 'days' => null];
+                    $daily = $managed['daily'] ?? null;
+                    $days = $managed['days'] ?? null;
+                    $monthly = $daily ? \App\Support\PackageReturnDisplay::monthlyReturn((string) $daily) : null;
+                    $total = ($daily && $days) ? \App\Support\PackageReturnDisplay::totalReturn((string) $daily, (int) $days) : null;
+                    $auto = $autoRoiById[$package->id] ?? null;
+                    $tourOnly = $package->package_type === \App\Models\Package::TYPE_TOUR;
                 @endphp
                 <tr>
                     <td>
-                        @if($package->image_path)
-                            <img class="ds-package-thumb" src="{{ route('admin.packages.image', $package) }}" alt="">
+                        <a href="{{ route('admin.packages.edit', $package) }}">{{ $package->name }}</a>
+                        <div><small>{{ $package->code }}</small></div>
+                    </td>
+                    <td>{{ \App\Support\MoneyDisplay::format($package->price_usd, 'USDT') }}</td>
+                    <td>{{ $tourOnly ? '—' : ($daily ? $daily.' USDT' : 'Not set') }}</td>
+                    <td>{{ $tourOnly ? '—' : ($days ?? '—') }}</td>
+                    <td>{{ $tourOnly ? '—' : ($monthly ? $monthly.' USDT' : '—') }}</td>
+                    <td>{{ $tourOnly ? '—' : ($total ? $total.' USDT' : '—') }}</td>
+                    <td>
+                        @if ($auto)
+                            @php
+                                $autoTone = match ($auto['code'] ?? '') {
+                                    'on_scheduled', 'on_blocked_global' => 'success',
+                                    'off', 'disabled' => 'muted',
+                                    default => 'warning',
+                                };
+                            @endphp
+                            <x-ui.badge :tone="$autoTone">{{ $auto['label'] }}</x-ui.badge>
                         @else
-                            <span class="ds-package-media">No image</span>
-                        @endif
-                    </td>
-                    <td>{{ $package->code }}</td>
-                    <td>
-                        <a href="{{ route('admin.packages.show', $package) }}">{{ $package->name }}</a>
-                        @if ($st && ! ($st['posting_authorized'] ?? false) && ($st['catalog_active'] ?? false))
-                            <div><small>Active · posting not authorized</small></div>
-                        @endif
-                    </td>
-                    <td>{{ $package->typeLabel() }}</td>
-                    <td>{{ \App\Support\MoneyDisplay::format($package->price_usd, $package->denomination) }}</td>
-                    <td>
-                        @if ($rule)
-                            {{ $rule['roi_daily'] }} USDT / {{ $rule['roi_days'] }} days
-                            <div><small>{{ $rule['source'] ?? '' }}</small></div>
-                        @else
-                            ROI Not Configured
+                            —
                         @endif
                     </td>
                     <td>
-                        @if ($rule && ($rule['commission_pool'] ?? null) !== null)
-                            <div>
-                                Plan/legacy pool {{ $rule['commission_pool'] }} USDT
-                                @if (($rule['commission_days'] ?? null) !== null)
-                                    / {{ $rule['commission_days'] }} days
-                                @endif
-                            </div>
-                            @if (($rule['commission_days'] ?? null) !== null)
-                                <div>Max {{ bcmul((string) $rule['commission_pool'], (string) $rule['commission_days'], 4) }} USDT (theoretical)</div>
-                            @endif
-                        @else
-                            Plan/legacy commission Not configured
-                        @endif
+                        <x-ui.badge :tone="$package->is_active ? 'success' : 'muted'">{{ $package->is_active ? 'Active' : 'Inactive' }}</x-ui.badge>
                     </td>
-                    <td>
-                        @if ($tier)
-                            <div>{{ $tier['label'] }}</div>
-                            <div>Version {{ $associatePreview['version_code'] }}</div>
-                            <div>Associate pool {{ $tier['daily_total'] }} USDT / {{ $tier['commission_days'] }} days</div>
-                            <div>Max {{ $tier['duration_total'] }} USDT (theoretical)</div>
-                            <div>Snapshot: {{ $associatePreview['snapshot_on_approval'] ? 'flag on' : 'disabled' }}</div>
-                            <div>Posting: {{ $associatePreview['posting_enabled'] ? 'ENABLED' : 'disabled' }}</div>
-                        @else
-                            Associate commission Not configured
-                        @endif
-                    </td>
-                    <td>{{ $package->purchases_count }}</td>
-                    <td>
-                        {{ $package->is_active ? 'Active' : 'Inactive' }}
-                        @if (! ($package->purchase_available ?? true))
-                            <div><small>Purchase off</small></div>
-                        @endif
-                    </td>
-                    <td>
-                        <div>
-                            <a href="{{ route('admin.packages.show', $package) }}">Details</a>
-                            ·
-                            <a href="{{ route('admin.packages.edit', $package) }}">Edit</a>
-                            <form method="POST" action="{{ route('admin.packages.status', $package) }}" onsubmit="return confirm('Confirm catalog status change? Income posting is not authorized by this action.');">
-                                @csrf
-                                @method('PATCH')
-                                <input type="hidden" name="is_active" value="{{ $package->is_active ? 0 : 1 }}">
-                                <button type="submit">{{ $package->is_active ? 'Deactivate' : 'Activate' }}</button>
-                            </form>
-                        </div>
-                    </td>
+                    <td><a href="{{ route('admin.packages.edit', $package) }}">Edit</a></td>
                 </tr>
             @empty
-                <tr><td colspan="11">No packages yet. Add a package and set its USDT price.</td></tr>
+                <tr><td colspan="9">No packages yet.</td></tr>
             @endforelse
             </tbody>
         </table>

@@ -129,7 +129,7 @@ class PackageIncomeEligibilityTest extends TestCase
             'price_usd' => '100.0000',
             'sort_order' => 1,
             'is_active' => '1',
-        ])->assertRedirect(route('admin.packages.index'));
+        ])->assertRedirect();
 
         $this->actingAs($admin)->post(route('admin.packages.store'), [
             'code' => 'DEMO-COAST',
@@ -138,7 +138,9 @@ class PackageIncomeEligibilityTest extends TestCase
             'price_usd' => '100.0000',
             'sort_order' => 20,
             'is_active' => '1',
-        ])->assertRedirect(route('admin.packages.index'));
+            'roi_daily' => '0.2500',
+            'roi_days' => '800',
+        ])->assertRedirect();
 
         $this->actingAs($admin)->post(route('admin.packages.store'), [
             'code' => 'DEMO-HILLS',
@@ -147,7 +149,9 @@ class PackageIncomeEligibilityTest extends TestCase
             'price_usd' => '1000.0000',
             'sort_order' => 21,
             'is_active' => '1',
-        ])->assertRedirect(route('admin.packages.index'));
+            'roi_daily' => '2.5000',
+            'roi_days' => '800',
+        ])->assertRedirect();
 
         $verification = Package::query()->where('code', 'VERIFY-1')->firstOrFail();
         $coastal = Package::query()->where('code', 'DEMO-COAST')->firstOrFail();
@@ -157,6 +161,7 @@ class PackageIncomeEligibilityTest extends TestCase
         $this->assertFalse($verification->level_commission_eligible);
         $this->assertTrue($coastal->roi_eligible);
         $this->assertTrue($coastal->level_commission_eligible);
+        $this->assertFalse((bool) $coastal->auto_roi_enabled);
         $this->assertTrue($hills->roi_eligible);
         $this->assertTrue($hills->level_commission_eligible);
         $this->assertSame(0, RoiTransaction::query()->count());

@@ -93,7 +93,7 @@ class AdminPackagePlanManagementTest extends TestCase
             'has_daily_roi' => '1',
             'roi_daily' => '1.0000',
             'roi_days' => '10',
-        ])->assertSessionHasErrors('has_daily_roi');
+        ])->assertSessionHasErrors('roi_daily');
     }
 
     public function test_legacy_gold_definition_unchanged_and_new_version_does_not_replace_accrual(): void
@@ -218,10 +218,10 @@ class AdminPackagePlanManagementTest extends TestCase
         $this->actingAs($admin)->post(route('admin.packages.store'), [
             'code' => 'DST-BAD-ROI',
             'name' => 'Bad',
-            'package_type' => Package::TYPE_ROI,
+            'package_type' => Package::TYPE_TOUR_ROI,
             'price_usd' => '10.0000',
             'sort_order' => 1,
-            'has_daily_roi' => '1',
+            'is_active' => '1',
             'roi_daily' => '0.10585',
             'roi_days' => '900',
         ])->assertSessionHasErrors('roi_daily');
@@ -424,10 +424,10 @@ class AdminPackagePlanManagementTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.packages.edit', $package))
             ->assertOk()
-            ->assertSeeText('Income source')
-            ->assertSeeText('Legacy Config')
-            ->assertSeeText('Database Plan Version')
-            ->assertSeeText('Financial posting');
+            ->assertSeeText('Tour Only packages have no Daily ROI')
+            ->assertSeeText('Auto ROI is disabled for this package type')
+            ->assertDontSee('income_source')
+            ->assertDontSee('accrual_authority');
 
         $this->actingAs($admin)->put(route('admin.packages.update', $package), [
             'code' => 'DST-RY-006',
@@ -436,18 +436,20 @@ class AdminPackagePlanManagementTest extends TestCase
             'price_usd' => '50.0000',
             'sort_order' => 6,
             'is_active' => '1',
-            'purchase_available' => '1',
-            'income_source' => Package::INCOME_SOURCE_LEGACY,
-            'save_plan' => '0',
-        ])->assertRedirect();
+            'tour_nights' => '1',
+            'tour_days' => '2',
+            'tour_adults' => '2',
+            'tour_children' => '1',
+        ])->assertRedirect(route('admin.packages.edit', $package));
 
         $this->assertFalse((bool) $package->fresh()->roi_eligible);
+        $this->assertFalse((bool) $package->fresh()->auto_roi_enabled);
         $this->assertFalse((bool) $package->fresh()->level_commission_eligible);
         $this->assertNull(app(PackageIncomePolicy::class)->definition('DST-RY-006'));
         $this->assertSame(0, WalletLedgerEntry::query()->count());
     }
 
-    public function test_daily_roi_field_saves_draft_reloads_exact_value_and_publishes_without_wallet_credit(): void
+    public function test_daily_roi_simple_save_publishes_new_version_for_future_purchases_only(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         Member::query()->create([
@@ -470,6 +472,7 @@ class AdminPackagePlanManagementTest extends TestCase
             'denomination' => 'USDT',
             'package_type' => Package::TYPE_TOUR_ROI,
             'roi_eligible' => true,
+            'auto_roi_enabled' => false,
             'level_commission_eligible' => true,
             'is_active' => true,
             'purchase_available' => true,
@@ -506,14 +509,6 @@ class AdminPackagePlanManagementTest extends TestCase
 
         $beforeWallets = WalletLedgerEntry::query()->count();
 
-        $this->actingAs($admin)
-            ->get(route('admin.packages.edit', $package))
-            ->assertOk()
-            ->assertSee('value="0.1058"', false)
-            ->assertDontSee('placeholder="0.1058"', false)
-            ->assertSee('placeholder="Enter daily ROI"', false);
-
-        // Save a draft with a non-0.1058 Daily ROI — must persist exactly and reload.
         $this->actingAs($admin)->put(route('admin.packages.update', $package), [
             'code' => 'DST-ROI-EDIT',
             'name' => 'ROI Edit Pack',
@@ -521,56 +516,12 @@ class AdminPackagePlanManagementTest extends TestCase
             'price_usd' => '50.0000',
             'sort_order' => 9,
             'is_active' => '1',
-            'purchase_available' => '1',
-            'roi_eligible' => '1',
-            'level_commission_eligible' => '1',
-            'income_source' => Package::INCOME_SOURCE_DATABASE,
-            'save_plan' => '1',
-            'has_daily_roi' => '1',
+            'tour_nights' => '1',
+            'tour_days' => '2',
+            'tour_adults' => '2',
+            'tour_children' => '1',
             'roi_daily' => '0.1234',
             'roi_days' => '850',
-            'wait_days' => '10',
-            'change_note' => 'admin draft roi change',
-        ])->assertRedirect(route('admin.packages.edit', $package));
-
-        $draft = PackagePlanVersion::query()
-            ->where('package_id', $package->id)
-            ->where('status', PackagePlanVersion::STATUS_DRAFT)
-            ->latest('id')
-            ->firstOrFail();
-        $this->assertSame('0.1234', (string) $draft->roi_daily);
-        $this->assertSame(850, (int) $draft->roi_days);
-        $this->assertSame('0.1058', (string) $published->fresh()->roi_daily);
-        $this->assertSame('0.1058', app(PackageIncomePolicy::class)->definition('DST-ROI-EDIT')['roi_daily']);
-
-        $this->actingAs($admin)
-            ->get(route('admin.packages.edit', $package))
-            ->assertOk()
-            ->assertSee('value="0.1234"', false)
-            ->assertSeeText('Draft plan ROI: 0.1234 USDT × 850 days')
-            ->assertSeeText('Effective published ROI: 0.1058 USDT × 900 days')
-            ->assertDontSee('value="0.1058"', false);
-
-        // Publish the draft ROI for future purchases only.
-        $this->actingAs($admin)->put(route('admin.packages.update', $package), [
-            'code' => 'DST-ROI-EDIT',
-            'name' => 'ROI Edit Pack',
-            'package_type' => Package::TYPE_TOUR_ROI,
-            'price_usd' => '50.0000',
-            'sort_order' => 9,
-            'is_active' => '1',
-            'purchase_available' => '1',
-            'roi_eligible' => '1',
-            'level_commission_eligible' => '1',
-            'income_source' => Package::INCOME_SOURCE_DATABASE,
-            'save_plan' => '1',
-            'publish_plan' => '1',
-            'has_daily_roi' => '1',
-            'roi_daily' => '0.1234',
-            'roi_days' => '850',
-            'wait_days' => '10',
-            'accrual_authority' => '1',
-            'change_note' => 'publish admin roi',
         ])->assertRedirect(route('admin.packages.edit', $package));
 
         $package->refresh();
@@ -581,19 +532,16 @@ class AdminPackagePlanManagementTest extends TestCase
         $this->assertSame(850, (int) $active->roi_days);
         $this->assertSame('0.1234', app(PackageIncomePolicy::class)->definition('DST-ROI-EDIT')['roi_daily']);
         $this->assertSame(PackagePlanVersion::STATUS_SUPERSEDED, $published->fresh()->status);
-        $this->assertSame(0, PackagePlanVersion::query()
-            ->where('package_id', $package->id)
-            ->where('status', PackagePlanVersion::STATUS_DRAFT)
-            ->count());
+        $this->assertSame('0.1058', (string) $published->fresh()->roi_daily);
 
         $this->actingAs($admin)
             ->get(route('admin.packages.edit', $package))
             ->assertOk()
             ->assertSee('value="0.1234"', false)
-            ->assertDontSeeText('Draft plan ROI:')
-            ->assertDontSee('value="0.1058"', false);
+            ->assertDontSee('placeholder="0.1058"', false);
 
         $this->assertSame($beforeWallets, WalletLedgerEntry::query()->count());
+        $this->assertFalse((bool) $package->fresh()->auto_roi_enabled);
         $this->assertFalse((bool) config('deltasupport.associate_commission.posting_enabled'));
     }
 }

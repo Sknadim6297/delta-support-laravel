@@ -21,6 +21,7 @@ class PackageIncomeAccrual
         private readonly CommissionPlan $plan,
         private readonly WalletLedgerPoster $ledger,
         private readonly PackageIncomeActivationGate $activation,
+        private readonly PackageAutoRoiControl $autoRoi,
     ) {
     }
 
@@ -559,7 +560,12 @@ class PackageIncomeAccrual
             return;
         }
 
-        if ($this->policy->roiEligible($purchase, $package) && $this->policy->withinWindow($date, $originalFirst, $definition['roi_days'])) {
+        // Package-wise Auto ROI gate (does not affect Level Income).
+        $autoRoiAllows = $package !== null && $this->autoRoi->allowsScheduledRoi($package);
+
+        if ($autoRoiAllows
+            && $this->policy->roiEligible($purchase, $package)
+            && $this->policy->withinWindow($date, $originalFirst, $definition['roi_days'])) {
             $existingForDate = PackageRoiAccrual::query()
                 ->where('package_purchase_id', $purchase->id)
                 ->whereDate('business_date', $date->toDateString())
@@ -582,6 +588,11 @@ class PackageIncomeAccrual
                     ];
                 }
             }
+        } elseif ($this->policy->roiEligible($purchase, $package)
+            && $package !== null
+            && ! $autoRoiAllows
+            && $this->policy->withinWindow($date, $originalFirst, $definition['roi_days'])) {
+            $skipped[] = $purchase->package_code.' Auto ROI is OFF for this package.';
         }
 
         if (! $ratesReady || ! $this->policy->levelSourceEligible($purchase, $package)) {

@@ -274,9 +274,8 @@ class AssociateCommissionStructureTest extends TestCase
             ->get(route('admin.packages.index'))
             ->assertOk()
             ->assertSeeText('DST-ROI-002')
-            ->assertSeeText('Associate pool 0.2400 USDT / 400 days')
-            ->assertSeeText('Legacy commission')
-            ->assertSeeText('Associate commission')
+            ->assertSeeText('Daily ROI (USDT)')
+            ->assertSeeText('Auto ROI')
             ->assertDontSeeText('Four-tier Associate Commission mapping')
             ->assertDontSeeText('Open full Rank 1–20 breakdown');
 
@@ -302,10 +301,12 @@ class AssociateCommissionStructureTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.packages.edit', Package::query()->where('code', 'DST-ROI-002')->firstOrFail()))
             ->assertOk()
-            ->assertSeeText('Legacy package income')
-            ->assertSeeText('Associate Commission')
-            ->assertSeeText('GOLD PACKAGE')
-            ->assertSeeText('0.0600');
+            ->assertSee('value="Delta Support Digha Tour + Monthly Income"', false)
+            ->assertSeeText('PER DAY RETURN')
+            ->assertSeeText('Auto ROI Generation')
+            ->assertDontSee('name="income_source"', false)
+            ->assertDontSee('name="commission_pool"', false)
+            ->assertDontSee('name="accrual_authority"', false);
     }
 
     public function test_admin_listings_separate_legacy_and_associate_pools_for_all_four_codes(): void
@@ -332,20 +333,17 @@ class AssociateCommissionStructureTest extends TestCase
 
         $packages = $this->actingAs($admin)->get(route('admin.packages.index'));
         $packages->assertOk()
-            ->assertSeeText('Legacy commission')
-            ->assertSeeText('Associate commission')
-            ->assertSeeText('Associate pool 0.1200 USDT / 400 days')
-            ->assertSeeText('Associate pool 0.2400 USDT / 400 days')
-            ->assertSeeText('Associate pool 1.2000 USDT / 400 days')
-            ->assertSeeText('Associate pool 2.4000 USDT / 400 days')
-            ->assertSeeText('Max 48.0000 USDT (theoretical)')
-            ->assertSeeText('Max 96.0000 USDT (theoretical)')
-            ->assertSeeText('Max 480.0000 USDT (theoretical)')
-            ->assertSeeText('Max 960.0000 USDT (theoretical)')
-            ->assertSeeText('Plan/legacy pool 0.2400 USDT')
-            ->assertSeeText('Plan/legacy pool 2.4000 USDT')
-            ->assertSeeText('Plan/legacy commission Not configured')
-            ->assertDontSeeText('Associate commission Not configured');
+            ->assertSeeText('SILVER')
+            ->assertSeeText('GOLD')
+            ->assertSeeText('PREMIUM')
+            ->assertSeeText('VIP')
+            ->assertSeeText('DST-TOUR-001')
+            ->assertSeeText('DST-ROI-002')
+            ->assertSeeText('DST-TOUR-003')
+            ->assertSeeText('DST-TOUR-004')
+            ->assertSeeText('Daily ROI (USDT)')
+            ->assertSeeText('Auto ROI')
+            ->assertDontSeeText('Associate pool 0.2400 USDT / 400 days');
 
         $roiPlans = $this->actingAs($admin)->get(route('admin.finance.roi-plans'));
         $roiPlans->assertOk()
@@ -375,12 +373,12 @@ class AssociateCommissionStructureTest extends TestCase
         $editPremium = $this->actingAs($admin)
             ->get(route('admin.packages.edit', Package::query()->where('code', 'DST-TOUR-003')->firstOrFail()));
         $editPremium->assertOk()
-            ->assertSeeText('Legacy package income')
-            ->assertSeeText('Associate Commission')
-            ->assertSeeText('Legacy commission:')
-            ->assertSeeText('pool 2.4000 USDT / 400 days')
-            ->assertSeeText('Associate pool 1.2000 USDT / 400 days')
-            ->assertSeeText('max 480.0000 USDT (theoretical)');
+            ->assertSee('value="PREMIUM"', false)
+            ->assertSeeText('PER DAY RETURN')
+            ->assertSeeText('Auto ROI Generation')
+            ->assertDontSee('name="income_source"', false)
+            ->assertDontSee('name="commission_pool"', false)
+            ->assertDontSee('name="accrual_authority"', false);
     }
 
     public function test_four_package_codes_resolve_without_price_ambiguity_or_duplicate_creation(): void

@@ -221,7 +221,7 @@ class SilverPackagePlanCorrectionTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.packages.index'))
             ->assertOk()
-            ->assertSeeText('ROI Not Configured');
+            ->assertSeeText('Not set');
 
         $fixed = app(PackagePlanAdministration::class)->savePlanVersion($package->fresh(), [
             'has_daily_roi' => true,
@@ -248,8 +248,9 @@ class SilverPackagePlanCorrectionTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.packages.index'))
             ->assertOk()
-            ->assertSeeText('0.1058 USDT / 900 days')
-            ->assertDontSeeText('ROI Not Configured');
+            ->assertSeeText('0.1058 USDT')
+            ->assertSeeText('900')
+            ->assertDontSeeText('Not set');
 
         $this->actingAs($admin)
             ->get(route('admin.packages.show', $package->fresh()))

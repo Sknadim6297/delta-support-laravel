@@ -54,6 +54,7 @@ class PackagePlanAdministration
                 'inclusions' => $catalog['inclusions'] ?? null,
                 'exclusions' => $catalog['exclusions'] ?? null,
                 'roi_eligible' => (bool) ($catalog['roi_eligible'] ?? ($wantsRoi && (bool) ($plan['has_daily_roi'] ?? false))),
+                'auto_roi_enabled' => false,
                 'level_commission_eligible' => (bool) ($catalog['level_commission_eligible'] ?? false),
                 'is_active' => (bool) ($catalog['is_active'] ?? true),
                 'purchase_available' => (bool) ($catalog['purchase_available'] ?? true),
@@ -572,7 +573,8 @@ class PackagePlanAdministration
     {
         return $package->only([
             'id', 'code', 'name', 'package_type', 'price_usd', 'is_active', 'purchase_available',
-            'roi_eligible', 'level_commission_eligible', 'income_source', 'active_plan_version_id', 'sort_order',
+            'roi_eligible', 'auto_roi_enabled', 'level_commission_eligible', 'income_source',
+            'active_plan_version_id', 'sort_order',
         ]);
     }
 
