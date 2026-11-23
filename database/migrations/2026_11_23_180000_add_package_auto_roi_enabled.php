@@ -6,9 +6,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Additive only. Does not rewrite purchases, wallets, or plan versions.
- * Existing ROI-eligible catalog rows keep prior operational intent via backfill;
- * new packages start with Auto ROI OFF until Admin explicitly enables.
+ * Additive schema only. Does not rewrite purchases, wallets, or plan versions.
+ * Defaults OFF. Safe production backfill lives in
+ * 2026_11_23_190000_apply_safe_package_auto_roi_defaults.php
+ * so currently earning GOLD/PREMIUM stay ON and SILVER/VIP/DIAMOND stay OFF.
  */
 return new class extends Migration
 {
@@ -22,21 +23,6 @@ return new class extends Migration
             Schema::table('packages', function (Blueprint $table): void {
                 $table->boolean('auto_roi_enabled')->default(false)->after('roi_eligible');
             });
-        }
-
-        // Preserve prior ROI-eligible catalog intent for existing rows only.
-        if (Schema::hasColumn('packages', 'roi_eligible')) {
-            DB::table('packages')
-                ->where('roi_eligible', true)
-                ->update(['auto_roi_enabled' => true]);
-
-            // Tour-only / DELTA SHARE style rows must stay OFF.
-            DB::table('packages')
-                ->where(function ($query): void {
-                    $query->where('package_type', 'tour')
-                        ->orWhere('roi_eligible', false);
-                })
-                ->update(['auto_roi_enabled' => false]);
         }
     }
 

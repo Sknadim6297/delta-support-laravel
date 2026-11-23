@@ -68,7 +68,8 @@ class Package extends Model
     {
         static::creating(function (Package $package): void {
             // Admin createPackage always sets auto_roi_enabled explicitly (OFF).
-            // Legacy callers that only set roi_eligible keep prior accrual intent.
+            // Legacy/test callers that only set roi_eligible keep prior accrual intent.
+            // Production SILVER/VIP/DIAMOND/SHARE are forced OFF by applySafeProductionDefaults().
             if (! array_key_exists('auto_roi_enabled', $package->getAttributes())) {
                 $package->auto_roi_enabled = (bool) $package->roi_eligible;
             }

@@ -43,6 +43,7 @@ class SilverPackagePlanCorrectionTest extends TestCase
             'denomination' => 'USDT',
             'package_type' => Package::TYPE_TOUR_ROI,
             'roi_eligible' => true,
+            'auto_roi_enabled' => false,
             'level_commission_eligible' => true,
             'is_active' => true,
             'purchase_available' => true,
@@ -154,6 +155,7 @@ class SilverPackagePlanCorrectionTest extends TestCase
             'denomination' => 'USDT',
             'package_type' => Package::TYPE_TOUR_ROI,
             'roi_eligible' => true,
+            'auto_roi_enabled' => false,
             'level_commission_eligible' => true,
             'is_active' => true,
             'purchase_available' => true,
@@ -216,12 +218,16 @@ class SilverPackagePlanCorrectionTest extends TestCase
         ], $admin, true);
 
         $this->assertFalse((bool) $broken->accrual_authority);
+        // Financial catalog definition stays closed without accrual_authority.
         $this->assertNull(app(PackageIncomePolicy::class)->definition('DST-TOUR-001'));
 
+        // Admin Package Management still shows the saved plan fields for correction;
+        // display ≠ accrual authority. Auto ROI remains OFF until a valid definition exists.
         $this->actingAs($admin)
             ->get(route('admin.packages.index'))
             ->assertOk()
-            ->assertSeeText('Not set');
+            ->assertSeeText('0.1110 USDT')
+            ->assertSeeText('OFF'); // Auto ROI remains OFF; catalog definition is still null.
 
         $fixed = app(PackagePlanAdministration::class)->savePlanVersion($package->fresh(), [
             'has_daily_roi' => true,
@@ -250,7 +256,7 @@ class SilverPackagePlanCorrectionTest extends TestCase
             ->assertOk()
             ->assertSeeText('0.1058 USDT')
             ->assertSeeText('900')
-            ->assertDontSeeText('Not set');
+            ->assertDontSeeText('0.1110 USDT');
 
         $this->actingAs($admin)
             ->get(route('admin.packages.show', $package->fresh()))
