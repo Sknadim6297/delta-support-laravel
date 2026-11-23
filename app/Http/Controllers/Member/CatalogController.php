@@ -10,8 +10,8 @@ use App\Models\Package;
 use App\Models\PackagePurchase;
 use App\Models\PaymentSetting;
 use App\Services\PackageIncomePolicy;
+use App\Services\PackagePurchaseFunds;
 use App\Services\PackagePurchaseService;
-use App\Services\WorkingWalletFunds;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -31,7 +31,7 @@ class CatalogController extends Controller
         ]);
     }
 
-    public function show(Package $package, PackageIncomePolicy $policy, WorkingWalletFunds $funds): View
+    public function show(Package $package, PackageIncomePolicy $policy, PackagePurchaseFunds $funds): View
     {
         abort_unless($package->is_active, 404);
 
@@ -43,9 +43,13 @@ class CatalogController extends Controller
             'externalIdempotencyKey' => (string) \Illuminate\Support\Str::uuid(),
             'walletIdempotencyKey' => (string) \Illuminate\Support\Str::uuid(),
             'incomeRule' => $policy->definition($package->code),
-            'workingAvailable' => $member ? $funds->available($member) : '0.0000',
-            'workingStored' => $member ? $funds->balance($member) : '0.0000',
-            'workingReserved' => $member ? $funds->reserved($member) : '0.0000',
+            'spendAvailable' => $member ? $funds->totalAvailable($member) : '0.0000',
+            'workingAvailable' => $member ? $funds->available($member, 'working') : '0.0000',
+            'workingStored' => $member ? $funds->stored($member, 'working') : '0.0000',
+            'workingReserved' => $member ? $funds->reserved($member, 'working') : '0.0000',
+            'roiAvailable' => $member ? $funds->available($member, 'roi') : '0.0000',
+            'roiStored' => $member ? $funds->stored($member, 'roi') : '0.0000',
+            'roiReserved' => $member ? $funds->reserved($member, 'roi') : '0.0000',
         ]);
     }
 
@@ -58,7 +62,7 @@ class CatalogController extends Controller
         ]);
         $data = $request->validate([
             'funding_source' => ['sometimes', 'in:external,working_wallet'],
-            'funding_wallet' => ['exclude_if:funding_source,external', 'required_if:funding_source,working_wallet', 'in:working'],
+            'funding_wallet' => ['exclude_if:funding_source,external', 'required_if:funding_source,working_wallet', 'in:working,roi,combined'],
             'payment_reference' => ['exclude_if:funding_source,working_wallet', 'required', 'string', 'max:255'],
             'external_idempotency_key' => ['exclude_if:funding_source,working_wallet', 'nullable', 'uuid'],
             'idempotency_key' => ['exclude_if:funding_source,working_wallet', 'nullable', 'uuid'],
@@ -79,7 +83,7 @@ class CatalogController extends Controller
             : $purchases->submit($this->member($request), $package, $data['payment_reference'], $externalKey);
 
         $message = $fundingSource === 'working_wallet'
-            ? 'Working Wallet funds reserved. Purchase is pending administrator approval.'
+            ? 'Working + ROI wallet funds reserved. Purchase is pending administrator approval.'
             : 'Payment submitted and waiting for verification.';
 
         return redirect()->route('member.payments.show', $purchase)->with('success', $message);

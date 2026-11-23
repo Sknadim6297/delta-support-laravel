@@ -56,16 +56,37 @@ class WithdrawalBalances
                     ->whereNull('withdrawal_request_id')
                     ->sum('amount'), 4);
             }
-            if (Schema::hasTable('package_purchase_reservations')) {
-                $reserved = bcadd($reserved, (string) PackagePurchaseReservation::query()
-                    ->where('member_id', $member->member_id)
-                    ->where('wallet', 'working')
-                    ->where('status', PackagePurchaseReservation::ACTIVE)
-                    ->sum('reserved_amount'), 4);
-            }
+        }
+
+        if (in_array($wallet, ['working', 'roi'], true) && Schema::hasTable('package_purchase_reservations')) {
+            $reserved = bcadd($reserved, $this->packagePurchaseHolds($member, $wallet), 4);
         }
 
         return bcadd($reserved, '0', 4);
+    }
+
+    private function packagePurchaseHolds(Member $member, string $wallet): string
+    {
+        $total = '0.0000';
+        $rows = PackagePurchaseReservation::query()
+            ->where('member_id', $member->member_id)
+            ->where('status', PackagePurchaseReservation::ACTIVE)
+            ->get(['wallet', 'reserved_amount', 'allocations']);
+
+        foreach ($rows as $row) {
+            $allocations = is_array($row->allocations) ? $row->allocations : null;
+            if ($allocations !== null) {
+                if (isset($allocations[$wallet])) {
+                    $total = bcadd($total, bcadd((string) $allocations[$wallet], '0', 4), 4);
+                }
+                continue;
+            }
+            if ($wallet === 'working' && $row->wallet === 'working') {
+                $total = bcadd($total, bcadd((string) $row->reserved_amount, '0', 4), 4);
+            }
+        }
+
+        return $total;
     }
 
     public function available(Member $member, string $wallet): string

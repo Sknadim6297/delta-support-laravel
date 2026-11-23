@@ -13,7 +13,7 @@ use App\Models\PaymentSetting;
 use App\Models\PackagePurchaseReservation;
 use App\Models\WalletLedgerEntry;
 use App\Models\User;
-use App\Services\WorkingWalletFunds;
+use App\Services\PackagePurchaseFunds;
 use App\Services\WalletLedgerPoster;
 use App\Support\WalletLedgerDirection;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -37,7 +37,7 @@ class PackagePurchaseService
             if ($existing->member_id !== $member->member_id
                 || (int) $existing->package_id !== (int) $package->id
                 || $existing->funding_source !== PackagePurchase::FUNDING_WORKING_WALLET
-                || $existing->funding_wallet !== 'working') {
+                || ! in_array((string) $existing->funding_wallet, ['working', 'roi', 'combined'], true)) {
                 throw ValidationException::withMessages([
                     'idempotency_key' => 'This submission was already used for a different purchase.',
                 ]);
@@ -53,7 +53,7 @@ class PackagePurchaseService
         }
         if (strcasecmp((string) ($package->denomination ?: 'USD'), 'USDT') !== 0) {
             throw ValidationException::withMessages([
-                'package' => 'Only USDT-denominated packages can be purchased with the Working Wallet.',
+                'package' => 'Only USDT-denominated packages can be purchased with wallet funds.',
             ]);
         }
 
@@ -67,7 +67,7 @@ class PackagePurchaseService
             }
             if (strcasecmp((string) ($lockedPackage->denomination ?: 'USD'), 'USDT') !== 0) {
                 throw ValidationException::withMessages([
-                    'package' => 'Only USDT-denominated packages can be purchased with the Working Wallet.',
+                    'package' => 'Only USDT-denominated packages can be purchased with wallet funds.',
                 ]);
             }
 
@@ -91,13 +91,22 @@ class PackagePurchaseService
                 ]);
             }
 
-            $funds = app(WorkingWalletFunds::class);
-            $available = $funds->available($lockedMember);
+            $funds = app(PackagePurchaseFunds::class);
+            $available = $funds->totalAvailable($lockedMember);
             if (bccomp($available, $amount, 4) === -1) {
                 throw ValidationException::withMessages([
-                    'wallet' => 'Insufficient available Working Wallet balance. Available '.$available.' USDT.',
+                    'wallet' => 'Insufficient available Working + ROI wallet balance. Available '.$available.' USDT.',
                 ]);
             }
+
+            try {
+                $allocation = $funds->allocate($lockedMember, $amount);
+            } catch (\RuntimeException $exception) {
+                throw ValidationException::withMessages([
+                    'wallet' => 'Insufficient available Working + ROI wallet balance. Available '.$available.' USDT.',
+                ]);
+            }
+            $fundingWallet = $funds->fundingWalletLabel($allocation);
 
             $reservationReference = $this->uniqueReservationCode();
             $purchase = PackagePurchase::query()->create([
@@ -120,11 +129,11 @@ class PackagePurchaseService
                 'inclusions' => $lockedPackage->inclusions,
                 'exclusions' => $lockedPackage->exclusions,
                 'currency_label' => 'USDT',
-                'network' => 'Working Wallet',
+                'network' => 'Member Wallets',
                 'payment_reference' => $reservationReference,
                 'payment_method' => PackagePurchase::METHOD_WORKING_WALLET,
                 'funding_source' => PackagePurchase::FUNDING_WORKING_WALLET,
-                'funding_wallet' => 'working',
+                'funding_wallet' => $fundingWallet,
                 'status' => PackagePurchase::PENDING,
                 'submitted_at' => now(),
             ]);
@@ -132,8 +141,9 @@ class PackagePurchaseService
             PackagePurchaseReservation::query()->create([
                 'package_purchase_id' => $purchase->id,
                 'member_id' => $lockedMember->member_id,
-                'wallet' => 'working',
+                'wallet' => $fundingWallet === 'roi' ? 'roi' : 'working',
                 'reserved_amount' => $amount,
+                'allocations' => $allocation,
                 'status' => PackagePurchaseReservation::ACTIVE,
                 'reservation_reference' => $reservationReference,
                 'idempotency_key' => $key,
@@ -685,29 +695,46 @@ class PackagePurchaseService
             ]);
         }
 
+        $allocations = $this->reservationAllocations($reservation);
         $debits = WalletLedgerEntry::query()
             ->where('package_purchase_id', $purchase->id)
-            ->where('wallet', 'working')
+            ->whereIn('wallet', array_keys($allocations))
             ->where('direction', WalletLedgerDirection::DEBIT)
             ->get();
-        if ($debits->count() !== 1) {
+        if ($debits->count() !== count($allocations)) {
             throw ValidationException::withMessages([
-                'purchase' => 'The settled wallet purchase must have exactly one debit ledger entry.',
+                'purchase' => 'The settled wallet purchase must have one debit ledger entry per funded wallet.',
             ]);
         }
-        $debit = $debits->first();
-        if (bccomp((string) $debit->amount, (string) $reservation->reserved_amount, 4) !== 0
-            || $debit->reference !== 'PKG-DEBIT-'.$purchase->reference
-            || $debit->idempotency_key !== (string) $reservation->idempotency_key) {
+        $debitTotal = '0.0000';
+        foreach ($allocations as $wallet => $part) {
+            $debit = $debits->firstWhere('wallet', $wallet);
+            $modernRef = 'PKG-DEBIT-'.$purchase->reference.'-'.strtoupper($wallet);
+            $legacyRef = 'PKG-DEBIT-'.$purchase->reference;
+            $refOk = $debit !== null && (
+                $debit->reference === $modernRef
+                || (count($allocations) === 1 && $wallet === 'working' && $debit->reference === $legacyRef)
+            );
+            $key = (string) ($debit?->idempotency_key ?? '');
+            $keyOk = $key === (string) $reservation->idempotency_key
+                || $key === (string) $reservation->idempotency_key.'|'.$wallet;
+            if ($debit === null || bccomp((string) $debit->amount, $part, 4) !== 0 || ! $refOk || ! $keyOk) {
+                throw ValidationException::withMessages([
+                    'purchase' => 'The wallet debit ledger entry is inconsistent.',
+                ]);
+            }
+            $debitTotal = bcadd($debitTotal, (string) $debit->amount, 4);
+        }
+        if (bccomp($debitTotal, (string) $reservation->reserved_amount, 4) !== 0) {
             throw ValidationException::withMessages([
-                'purchase' => 'The wallet debit ledger entry is inconsistent.',
+                'purchase' => 'The wallet debit total does not match the reservation.',
             ]);
         }
     }
 
     private function settleWalletReservationLocked(PackagePurchase $purchase, User $admin): void
     {
-        if ($purchase->funding_wallet !== 'working') {
+        if (! in_array((string) $purchase->funding_wallet, ['working', 'roi', 'combined'], true)) {
             throw ValidationException::withMessages([
                 'purchase' => 'The purchase does not use a supported wallet.',
             ]);
@@ -735,7 +762,6 @@ class PackagePurchaseService
 
         if (WalletLedgerEntry::query()
             ->where('package_purchase_id', $purchase->id)
-            ->where('wallet', 'working')
             ->where('direction', WalletLedgerDirection::DEBIT)
             ->exists()) {
             throw ValidationException::withMessages([
@@ -750,35 +776,66 @@ class PackagePurchaseService
             ]);
         }
 
-        $opening = bcadd((string) ($member->working_wallet_amount ?? '0'), '0', 4);
-        if (bccomp($opening, $amount, 4) === -1) {
-            throw ValidationException::withMessages([
-                'purchase' => 'The Working Wallet no longer has enough funds to settle this purchase.',
-            ]);
+        $allocations = $this->reservationAllocations($reservation);
+        $poster = app(WalletLedgerPoster::class);
+        foreach ($allocations as $wallet => $part) {
+            $column = match ($wallet) {
+                'working' => 'working_wallet_amount',
+                'roi' => 'roi_wallet_amount',
+                default => throw ValidationException::withMessages([
+                    'purchase' => 'The purchase does not use a supported wallet.',
+                ]),
+            };
+            $opening = bcadd((string) ($member->{$column} ?? '0'), '0', 4);
+            if (bccomp($opening, $part, 4) === -1) {
+                throw ValidationException::withMessages([
+                    'purchase' => 'The '.ucfirst($wallet).' Wallet no longer has enough funds to settle this purchase.',
+                ]);
+            }
+            $closing = bcsub($opening, $part, 4);
+            $member->{$column} = $closing;
+            $member->save();
+
+            $poster->append(
+                WalletLedgerDirection::DEBIT,
+                $member->member_id,
+                $wallet,
+                $part,
+                'PKG-DEBIT-'.$purchase->reference.'-'.strtoupper($wallet),
+                (string) $reservation->idempotency_key.'|'.$wallet,
+                'Wallet-funded package purchase '.$purchase->reference,
+                $purchase->id,
+                $opening,
+                $closing,
+                null,
+                'admin:'.$admin->id
+            );
         }
-
-        $closing = bcsub($opening, $amount, 4);
-        $member->working_wallet_amount = $closing;
-        $member->save();
-
-        app(WalletLedgerPoster::class)->append(
-            WalletLedgerDirection::DEBIT,
-            $member->member_id,
-            'working',
-            $amount,
-            'PKG-DEBIT-'.$purchase->reference,
-            (string) $reservation->idempotency_key,
-            'Wallet-funded package purchase '.$purchase->reference,
-            $purchase->id,
-            $opening,
-            $closing,
-            null,
-            'admin:'.$admin->id
-        );
 
         $reservation->forceFill([
             'status' => PackagePurchaseReservation::SETTLED,
             'settled_at' => now(),
         ])->save();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function reservationAllocations(PackagePurchaseReservation $reservation): array
+    {
+        if (is_array($reservation->allocations) && $reservation->allocations !== []) {
+            $normalized = [];
+            foreach ($reservation->allocations as $wallet => $part) {
+                $amount = bcadd((string) $part, '0', 4);
+                if (bccomp($amount, '0', 4) === 1) {
+                    $normalized[(string) $wallet] = $amount;
+                }
+            }
+            if ($normalized !== []) {
+                return $normalized;
+            }
+        }
+
+        return ['working' => bcadd((string) $reservation->reserved_amount, '0', 4)];
     }
 }

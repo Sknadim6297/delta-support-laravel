@@ -17,6 +17,7 @@ class PackagePurchaseReservation extends Model
         'member_id',
         'wallet',
         'reserved_amount',
+        'allocations',
         'status',
         'reservation_reference',
         'idempotency_key',
@@ -27,6 +28,7 @@ class PackagePurchaseReservation extends Model
 
     protected $casts = [
         'reserved_amount' => 'decimal:4',
+        'allocations' => 'array',
         'reserved_at' => 'datetime',
         'settled_at' => 'datetime',
         'released_at' => 'datetime',
@@ -44,6 +46,7 @@ class PackagePurchaseReservation extends Model
                 'member_id',
                 'wallet',
                 'reserved_amount',
+                'allocations',
                 'reservation_reference',
                 'idempotency_key',
                 'reserved_at',

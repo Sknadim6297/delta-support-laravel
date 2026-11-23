@@ -80,30 +80,29 @@
             </dl>
             @if(strcasecmp((string) $package->denomination, 'USDT') === 0)
                 <dl class="ds-package-meta">
-                    <div><dt>Working Wallet stored</dt><dd>{{ \App\Support\MoneyDisplay::usdt($workingStored) }}</dd></div>
-                    <div><dt>Reserved funds</dt><dd>{{ \App\Support\MoneyDisplay::usdt($workingReserved) }}</dd></div>
-                    <div><dt>Available to spend</dt><dd>{{ \App\Support\MoneyDisplay::usdt($workingAvailable) }}</dd></div>
+                    <div><dt>Working Wallet available</dt><dd>{{ \App\Support\MoneyDisplay::usdt($workingAvailable) }}</dd></div>
+                    <div><dt>ROI Wallet available</dt><dd>{{ \App\Support\MoneyDisplay::usdt($roiAvailable) }}</dd></div>
+                    <div><dt>Reserved (Working)</dt><dd>{{ \App\Support\MoneyDisplay::usdt($workingReserved) }}</dd></div>
+                    <div><dt>Reserved (ROI)</dt><dd>{{ \App\Support\MoneyDisplay::usdt($roiReserved) }}</dd></div>
+                    <div><dt>Available to spend</dt><dd>{{ \App\Support\MoneyDisplay::usdt($spendAvailable) }}</dd></div>
                 </dl>
                 <form class="ds-pay-form" method="POST" action="{{ route('member.packages.purchase', $package) }}">
                     @csrf
                     <input type="hidden" name="funding_source" value="working_wallet">
-                    <input type="hidden" name="funding_wallet" value="working">
+                    <input type="hidden" name="funding_wallet" value="combined">
                     <input type="hidden" name="wallet_idempotency_key" value="{{ $walletIdempotencyKey }}">
-                    <label>
-                        <span>Funding wallet</span>
-                        <input value="Working Wallet" readonly>
-                    </label>
+                    <p><strong>Funding wallets:</strong> Working + ROI (Working first)</p>
                     <p>Amount to reserve: {{ \App\Support\MoneyDisplay::usdt($package->price_usd) }}</p>
-                    @if(bccomp($workingAvailable, (string) $package->price_usd, 4) === -1)
-                        <x-ui.alert type="warning">Insufficient available Working Wallet balance. No reservation will be created.</x-ui.alert>
+                    @if(bccomp($spendAvailable, (string) $package->price_usd, 4) === -1)
+                        <x-ui.alert type="warning">Insufficient available Working + ROI balance. No reservation will be created.</x-ui.alert>
                         <button type="submit" disabled>Reserve and Submit for Approval</button>
                     @else
                         <button type="submit">Reserve and Submit for Approval</button>
                     @endif
-                    <p class="ds-package-note">The funds remain in the wallet as an active reservation until an administrator approves or rejects this purchase.</p>
+                    <p class="ds-package-note">Funds are reserved from Working first, then ROI, until an administrator approves or rejects this purchase. Activation Wallet is not used.</p>
                 </form>
             @else
-                <x-ui.alert type="warning">This package is not USDT-denominated. It cannot be purchased with the Working Wallet.</x-ui.alert>
+                <x-ui.alert type="warning">This package is not USDT-denominated. It cannot be purchased with wallet funds.</x-ui.alert>
             @endif
             @if($settings->isReady())
                 <dl class="ds-package-meta">

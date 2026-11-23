@@ -51,11 +51,22 @@ class WorkingWalletFunds
 
         $packageReservations = '0.0000';
         if (Schema::hasTable('package_purchase_reservations')) {
-            $packageReservations = bcadd((string) PackagePurchaseReservation::query()
+            $rows = PackagePurchaseReservation::query()
                 ->where('member_id', $member->member_id)
-                ->where('wallet', 'working')
                 ->where('status', PackagePurchaseReservation::ACTIVE)
-                ->sum('reserved_amount'), '0', 4);
+                ->get(['wallet', 'reserved_amount', 'allocations']);
+            foreach ($rows as $row) {
+                $allocations = is_array($row->allocations) ? $row->allocations : null;
+                if ($allocations !== null) {
+                    if (isset($allocations['working'])) {
+                        $packageReservations = bcadd($packageReservations, bcadd((string) $allocations['working'], '0', 4), 4);
+                    }
+                    continue;
+                }
+                if ($row->wallet === 'working') {
+                    $packageReservations = bcadd($packageReservations, bcadd((string) $row->reserved_amount, '0', 4), 4);
+                }
+            }
         }
 
         return bcadd(bcadd($requests, $holds, 4), $packageReservations, 4);

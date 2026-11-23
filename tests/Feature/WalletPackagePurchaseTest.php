@@ -303,7 +303,44 @@ class WalletPackagePurchaseTest extends TestCase
         }
     }
 
-    private function member(string $working): Member
+    public function test_combined_working_and_roi_funds_reserve_and_settle(): void
+    {
+        $member = $this->member('10.0000', '40.0000');
+        $package = $this->package('WALLET-COMBINED', 'USDT', '45.0000');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(PackagePurchaseService::class);
+
+        $purchase = $service->submitWallet($member, $package, (string) Str::uuid());
+        $this->assertSame('combined', $purchase->funding_wallet);
+        $this->assertSame([
+            'working' => '10.0000',
+            'roi' => '35.0000',
+        ], $purchase->walletReservation->allocations);
+        $this->assertSame('0.0000', app(WorkingWalletFunds::class)->available($member->fresh()));
+        $this->assertSame('5.0000', app(WithdrawalBalances::class)->available($member->fresh(), 'roi'));
+
+        $service->approve($purchase, $admin);
+        $this->assertSame('0.0000', (string) $member->fresh()->working_wallet_amount);
+        $this->assertSame('5.0000', (string) $member->fresh()->roi_wallet_amount);
+        $this->assertSame(2, WalletLedgerEntry::query()->where('package_purchase_id', $purchase->id)->where('direction', WalletLedgerDirection::DEBIT)->count());
+        $this->assertSame(PackagePurchaseReservation::SETTLED, $purchase->walletReservation->fresh()->status);
+    }
+
+    public function test_package_show_page_lists_combined_spendable_balance(): void
+    {
+        $member = $this->member('4.6240', '0.7500');
+        $package = $this->package('DST-TOUR-001', 'USDT', '50.0000');
+
+        $this->withSession(['member_context_id' => $member->member_id])
+            ->get(route('member.packages.show', $package))
+            ->assertOk()
+            ->assertSeeText('Available to spend')
+            ->assertSeeText('USDT 5.3740')
+            ->assertSeeText('Working + ROI (Working first)')
+            ->assertSeeText('Insufficient available Working + ROI balance');
+    }
+
+    private function member(string $working, string $roi = '0.0000'): Member
     {
         return Member::query()->create([
             'member_id' => 'STW'.strtoupper(Str::random(6)),
@@ -313,7 +350,7 @@ class WalletPackagePurchaseTest extends TestCase
             'mobile_no' => '9000000000',
             'email' => strtolower('w'.Str::random(8).'@example.test'),
             'status' => 'active',
-            'roi_wallet_amount' => '0.0000',
+            'roi_wallet_amount' => $roi,
             'working_wallet_amount' => $working,
             'activation_wallet_amount' => '0.0000',
         ]);
