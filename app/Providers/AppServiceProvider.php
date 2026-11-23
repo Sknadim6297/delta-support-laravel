@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Models\Member;
 use App\Models\SupportNotification;
+use App\Models\WithdrawalSetting;
 use App\Services\ProductionDatabaseCommandGuard;
+use App\Services\WithdrawalBalances;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Http\Request;
@@ -87,6 +89,7 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('partials.lux-bar', function ($view): void {
             $view->with('supportNotices', self::supportNotices());
+            $view->with('headerBalance', self::headerWithdrawableBalance());
         });
 
         View::composer('member.layouts.app', function ($view): void {
@@ -137,5 +140,64 @@ class AppServiceProvider extends ServiceProvider
         }
 
         return collect();
+    }
+
+    /**
+     * Header total for wallets that can be withdrawn.
+     * Member panel: that member's available total.
+     * Admin panel: platform-wide available book.
+     *
+     * @return array{label: string, amount: string, hint: string}|null
+     */
+    private static function headerWithdrawableBalance(): ?array
+    {
+        if (! Schema::hasTable('members')) {
+            return null;
+        }
+
+        $wallets = self::headerWithdrawableWallets();
+        $balances = app(WithdrawalBalances::class);
+        $adminScreen = request()->is('admin/*') || request()->routeIs('dashboard');
+
+        if (! $adminScreen) {
+            $memberId = session('member_context_id');
+            if (! is_string($memberId) || $memberId === '') {
+                return null;
+            }
+            $member = Member::query()->where('member_id', $memberId)->first();
+            if ($member === null) {
+                return null;
+            }
+
+            return [
+                'label' => 'Total Balance',
+                'amount' => $balances->totalAvailable($member, $wallets),
+                'hint' => 'Sum of available balances in wallets that can be withdrawn',
+            ];
+        }
+
+        if (auth()->user()?->is_admin !== true) {
+            return null;
+        }
+
+        return [
+            'label' => 'Total Balance',
+            'amount' => $balances->book()['available'],
+            'hint' => 'Platform total available across withdrawable wallets',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function headerWithdrawableWallets(): array
+    {
+        if (! Schema::hasTable('withdrawal_settings')) {
+            return WithdrawalBalances::WALLETS;
+        }
+
+        $configured = WithdrawalSetting::current()->configuredWallets();
+
+        return $configured !== [] ? $configured : WithdrawalBalances::WALLETS;
     }
 }

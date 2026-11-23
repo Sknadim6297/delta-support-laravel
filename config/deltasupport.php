@@ -114,8 +114,8 @@ return [
     */
     'associate_commission' => [
         'active_version' => env('DELTASUPPORT_ASSOCIATE_COMMISSION_VERSION', 'associate_v1'),
-        'posting_enabled' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_POSTING', false), FILTER_VALIDATE_BOOLEAN),
-        'snapshot_on_approval' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_SNAPSHOT', false), FILTER_VALIDATE_BOOLEAN),
+        'posting_enabled' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_POSTING', true), FILTER_VALIDATE_BOOLEAN),
+        'snapshot_on_approval' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_SNAPSHOT', true), FILTER_VALIDATE_BOOLEAN),
         /*
         | Verified production package-code mapping for associate_v1:
         | SILVER DST-TOUR-001 (50), GOLD DST-ROI-002 (100),

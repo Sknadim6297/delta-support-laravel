@@ -15,6 +15,12 @@
             </div>
         </div>
         <div class="ds-lux-bar-end">
+            @if (! empty($headerBalance) && isset($headerBalance['amount']))
+                <div class="ds-lux-balance" title="{{ $headerBalance['hint'] ?? 'Withdrawable available balance' }}">
+                    <span class="ds-lux-balance-label">{{ $headerBalance['label'] ?? 'Total Balance' }}</span>
+                    <strong class="ds-lux-balance-amount">{{ \App\Support\MoneyDisplay::usdt($headerBalance['amount']) }}</strong>
+                </div>
+            @endif
             <div class="ds-lux-menu" data-lux-drop>
                 <button type="button" class="ds-lux-icon-btn" data-lux-drop-button aria-label="Notifications" aria-expanded="false">
                     <i class="ri-notification-2-line"></i>

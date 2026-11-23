@@ -73,6 +73,25 @@ class WithdrawalBalances
         return bcsub($this->stored($member, $wallet), $this->reserved($member, $wallet), 4);
     }
 
+    /**
+     * Sum of available balances across withdrawable wallets (floored at 0 per wallet).
+     *
+     * @param  list<string>|null  $wallets
+     */
+    public function totalAvailable(Member $member, ?array $wallets = null): string
+    {
+        $total = '0.0000';
+        foreach ($this->normalizeWallets($wallets) as $wallet) {
+            $available = $this->available($member, $wallet);
+            if (bccomp($available, '0', 4) === -1) {
+                $available = '0.0000';
+            }
+            $total = bcadd($total, $available, 4);
+        }
+
+        return $total;
+    }
+
     public function paid(Member $member, string $wallet): string
     {
         $this->column($wallet);
@@ -141,5 +160,18 @@ class WithdrawalBalances
             'activation' => 'activation_wallet_amount',
             default => throw new \InvalidArgumentException('Unknown wallet.'),
         };
+    }
+
+    /**
+     * @param  list<string>|null  $wallets
+     * @return list<string>
+     */
+    public function normalizeWallets(?array $wallets): array
+    {
+        if ($wallets === null || $wallets === []) {
+            return self::WALLETS;
+        }
+
+        return array_values(array_intersect(self::WALLETS, $wallets));
     }
 };

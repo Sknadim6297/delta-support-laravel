@@ -142,6 +142,39 @@
     flex: none;
 }
 
+.ds-lux-balance {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    min-width: 0;
+    max-width: 180px;
+    padding: 4px 12px;
+    margin-right: 2px;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    background: #fff;
+    line-height: 1.15;
+}
+
+.ds-lux-balance-label {
+    color: #6b7280;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.ds-lux-balance-amount {
+    color: #1d2531;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
 .ds-lux-bar .lh-toggle-sidebar {
     display: inline-flex;
     align-items: center;
@@ -984,5 +1017,14 @@ body[data-lh-mode] {
     .wrapper.sb-collapse .lh-sidebar {
         transform: translateX(0);
         width: 256px;
+    }
+
+    .ds-lux-balance {
+        max-width: 132px;
+        padding: 4px 8px;
+    }
+
+    .ds-lux-balance-amount {
+        font-size: 12px;
     }
 }
