@@ -8,6 +8,7 @@ use App\Models\PackagePlanAudit;
 use App\Models\PackagePlanVersion;
 use App\Models\PackagePurchase;
 use App\Models\User;
+use App\Models\WalletLedgerEntry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -266,9 +267,92 @@ class PackagePlanAdministration
         });
     }
 
+    /**
+     * Plan version stamped onto newly approved purchases.
+     * Authorized DB plans only. Legacy-config packages without a DB cutover return null
+     * (GOLD/PREMIUM continue via immutable legacy config at accrual time).
+     */
     public function resolveVersionForNewPurchase(Package $package): ?PackagePlanVersion
     {
-        return $this->resolver->activeVersionForPackage($package);
+        if ((string) ($package->income_source ?: Package::INCOME_SOURCE_LEGACY) === Package::INCOME_SOURCE_DATABASE) {
+            return $this->resolver->authoritativeVersion($package);
+        }
+
+        return null;
+    }
+
+    /**
+     * Explicit, audited authorization of the active published plan for FUTURE purchases.
+     * Sets accrual_authority and switches income_source to database when needed.
+     * Does not rewrite purchases, snapshots, wallets, or Auto ROI. Does not invent historical terms.
+     */
+    public function authorizeAccrualPlan(Package $package, User $admin, bool $confirmed, ?string $ip = null): PackagePlanVersion
+    {
+        if (! $confirmed) {
+            throw ValidationException::withMessages([
+                'confirm_authorize_accrual' => 'Confirm authorizing this plan for future purchase ROI. Existing approved purchases keep their original entitlement and are not rewritten.',
+            ]);
+        }
+
+        $ledgerBefore = WalletLedgerEntry::query()->count();
+
+        return DB::transaction(function () use ($package, $admin, $ip, $ledgerBefore): PackagePlanVersion {
+            $locked = Package::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
+            if ($locked->package_type === Package::TYPE_TOUR || ! $locked->reservesFutureIncome()) {
+                throw ValidationException::withMessages([
+                    'authorize_accrual' => 'Tour-only packages cannot authorize ROI accrual plans.',
+                ]);
+            }
+
+            $version = $this->resolver->activeVersionForPackage($locked);
+            if ($version === null || $version->status !== PackagePlanVersion::STATUS_PUBLISHED) {
+                throw ValidationException::withMessages([
+                    'authorize_accrual' => 'Publish a plan with Daily ROI and duration before authorizing accrual.',
+                ]);
+            }
+            if (! $version->has_daily_roi || $version->roi_daily === null || $version->roi_days === null || (int) $version->roi_days < 1) {
+                throw ValidationException::withMessages([
+                    'authorize_accrual' => 'The published plan must include Daily ROI and ROI days before authorization.',
+                ]);
+            }
+
+            $beforePackage = $this->snapshotPackage($locked);
+            $beforeVersion = $version->toArray();
+
+            $version->accrual_authority = true;
+            $version->save();
+
+            if ((string) ($locked->income_source ?: Package::INCOME_SOURCE_LEGACY) !== Package::INCOME_SOURCE_DATABASE) {
+                $locked->income_source = Package::INCOME_SOURCE_DATABASE;
+            }
+            if (! $locked->roi_eligible) {
+                $locked->roi_eligible = true;
+            }
+            $locked->active_plan_version_id = $version->id;
+            $locked->save();
+
+            $this->audit(
+                $locked->fresh(),
+                $version->fresh(),
+                $admin,
+                'accrual_plan_authorized',
+                [
+                    'package' => $beforePackage,
+                    'version' => $beforeVersion,
+                ],
+                [
+                    'package' => $this->snapshotPackage($locked->fresh()),
+                    'version' => $version->fresh()->toArray(),
+                    'note' => 'Future purchases only. Historical approved purchases were not rewritten.',
+                ],
+                $ip
+            );
+            $this->activity($admin, 'package_accrual_plan_authorized', $locked->code.' v'.$version->version_number);
+
+            abort_unless(WalletLedgerEntry::query()->count() === $ledgerBefore, 500);
+
+            return $version->fresh();
+        });
     }
 
     /**

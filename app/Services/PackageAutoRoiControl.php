@@ -34,74 +34,84 @@ class PackageAutoRoiControl
     }
 
     /**
+     * Single source of truth for Admin list, edit form, show page, and toggle API.
+     *
      * @return array{
      *   code: string,
      *   label: string,
      *   enabled: bool,
      *   locked: bool,
      *   can_enable: bool,
-     *   message: string|null
+     *   message: string|null,
+     *   toggle: bool
      * }
      */
     public function effectiveStatus(Package $package): array
     {
         if ($package->package_type === Package::TYPE_TOUR || ! $package->reservesFutureIncome()) {
-            return [
-                'code' => self::STATUS_DISABLED,
-                'label' => 'OFF',
-                'enabled' => false,
-                'locked' => true,
-                'can_enable' => false,
-                'message' => 'Tour-only packages cannot enable Auto ROI.',
-            ];
+            return $this->statusPayload(
+                self::STATUS_DISABLED,
+                'OFF',
+                false,
+                true,
+                false,
+                'Tour-only packages cannot enable Auto ROI.',
+                false
+            );
         }
 
-        $enabled = (bool) $package->auto_roi_enabled;
-        if (! $enabled) {
-            $blockers = $this->enableBlockers($package);
-
-            return [
-                'code' => self::STATUS_OFF,
-                'label' => 'OFF',
-                'enabled' => false,
-                'locked' => false,
-                'can_enable' => $blockers === [],
-                'message' => $blockers[0] ?? null,
-            ];
-        }
-
+        // Always trust the persisted toggle — never a stale in-memory attribute.
+        $toggle = $this->persistedToggleEnabled($package);
         $blockers = $this->enableBlockers($package);
+
+        if (! $toggle) {
+            return $this->statusPayload(
+                self::STATUS_OFF,
+                'OFF',
+                false,
+                false,
+                $blockers === [],
+                $blockers === []
+                    ? 'Auto ROI is OFF. Existing member entitlements are unchanged.'
+                    : 'Auto ROI is OFF. '.$blockers[0],
+                false
+            );
+        }
+
+        // Toggle is ON: label must never say OFF.
         if ($blockers !== []) {
-            return [
-                'code' => self::STATUS_ON_INCOMPLETE,
-                'label' => 'ON — Configuration Incomplete',
-                'enabled' => true,
-                'locked' => false,
-                'can_enable' => false,
-                'message' => $blockers[0],
-            ];
+            return $this->statusPayload(
+                self::STATUS_ON_INCOMPLETE,
+                'ON — Configuration Incomplete',
+                true,
+                false,
+                false,
+                $blockers[0],
+                true
+            );
         }
 
         if ($this->globalRoiBlocked()) {
-            // Package toggle is ON. Global posting stays separately off by design (not a package error).
-            return [
-                'code' => self::STATUS_ON_BLOCKED_GLOBAL,
-                'label' => 'ON',
-                'enabled' => true,
-                'locked' => false,
-                'can_enable' => true,
-                'message' => 'Auto ROI is ON for this package. Daily wallet posting is still off under global financial controls — that is normal and separate from this switch. No wallets are credited by turning Auto ROI ON.',
-            ];
+            return $this->statusPayload(
+                self::STATUS_ON_BLOCKED_GLOBAL,
+                'ON — Globally Blocked',
+                true,
+                false,
+                true,
+                'Auto ROI is ON for this package. Daily wallet posting is still off under global financial controls — that is normal and separate from this switch. No wallets are credited by turning Auto ROI ON.',
+                true
+            );
         }
 
-        return [
-            'code' => self::STATUS_ON_SCHEDULED,
-            'label' => 'ON — Scheduled',
-            'enabled' => true,
-            'locked' => false,
-            'can_enable' => true,
-            'message' => 'Eligible accruals run on the next authorized scheduled cycle. No immediate wallet credit.',
-        ];
+        return $this->statusPayload(
+            self::STATUS_ON_SCHEDULED,
+            'ON — Scheduled',
+            true,
+            false,
+            true,
+            'Eligible accruals run on the next authorized scheduled cycle. No immediate wallet credit.',
+            true
+        );
     }
 
     /**
@@ -116,14 +126,62 @@ class PackageAutoRoiControl
             return $blockers;
         }
         if (! $package->roi_eligible) {
-            $blockers[] = 'Set Daily ROI and duration, then save the package before turning Auto ROI ON.';
+            $blockers[] = 'Set Daily ROI and duration, then save the package before Auto ROI can schedule accruals.';
         }
         $definition = $this->policy->definition((string) $package->code);
         if ($definition === null || ! isset($definition['roi_daily'], $definition['roi_days'])) {
-            $blockers[] = 'Save a valid Daily ROI and duration first. Auto ROI stays blocked until income terms are configured.';
+            $blockers[] = 'Authorize a published Daily ROI plan for future purchases (or keep a valid legacy config). Saving ROI alone does not authorize accrual. Existing purchases are not rewritten.';
         }
 
         return $blockers;
+    }
+
+    /**
+     * Persisted packages.auto_roi_enabled. Fresh DB read when the model exists.
+     */
+    public function persistedToggleEnabled(Package $package): bool
+    {
+        if (! $package->exists || $package->getKey() === null) {
+            return (bool) $package->auto_roi_enabled;
+        }
+        if (! Schema::hasColumn('packages', 'auto_roi_enabled')) {
+            return false;
+        }
+
+        $raw = Package::query()->whereKey($package->getKey())->value('auto_roi_enabled');
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * @return array{
+     *   code: string,
+     *   label: string,
+     *   enabled: bool,
+     *   locked: bool,
+     *   can_enable: bool,
+     *   message: string|null,
+     *   toggle: bool
+     * }
+     */
+    private function statusPayload(
+        string $code,
+        string $label,
+        bool $enabled,
+        bool $locked,
+        bool $canEnable,
+        ?string $message,
+        bool $toggle,
+    ): array {
+        return [
+            'code' => $code,
+            'label' => $label,
+            'enabled' => $enabled,
+            'locked' => $locked,
+            'can_enable' => $canEnable,
+            'message' => $message,
+            'toggle' => $toggle,
+        ];
     }
 
     public function globalRoiBlocked(): bool
@@ -219,7 +277,7 @@ class PackageAutoRoiControl
         if ($package->package_type === Package::TYPE_TOUR) {
             return false;
         }
-        if (! (bool) $package->auto_roi_enabled) {
+        if (! $this->persistedToggleEnabled($package)) {
             return false;
         }
         if (! (bool) $package->roi_eligible) {
@@ -247,7 +305,7 @@ class PackageAutoRoiControl
                 ]);
             }
 
-            if ((bool) $locked->auto_roi_enabled === $enabled) {
+            if ($this->persistedToggleEnabled($locked) === $enabled) {
                 return $locked;
             }
 

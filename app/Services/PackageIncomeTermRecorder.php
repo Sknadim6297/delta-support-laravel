@@ -31,7 +31,9 @@ class PackageIncomeTermRecorder
                 return $existing;
             }
 
-            $resolved = $this->resolver->forPurchase($locked);
+            // New approvals only: resolve from linked plan version or authorized catalog.
+            // Never upgrades an existing empty historical term (early return above).
+            $resolved = $this->resolver->forNewApprovalSnapshot($locked);
 
             $payload = [
                 'package_purchase_id' => $locked->id,

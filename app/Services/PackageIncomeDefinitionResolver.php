@@ -6,16 +6,21 @@ use App\Models\Package;
 use App\Models\PackageIncomeTerm;
 use App\Models\PackagePlanVersion;
 use App\Models\PackagePurchase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Explicit source-selection for daily ROI definitions.
  *
- * Order for a purchase:
- * 1) Immutable income-term snapshot (monthly_amount / duration_months)
+ * Catalog (forPackageCode) — future purchases / Auto ROI status:
+ * 1) Legacy config when package.income_source=legacy_config and a config row exists
+ * 2) Published DB version with accrual_authority when income_source=database
+ *
+ * Purchase (forPurchase) — immutable entitlement, never invents history:
+ * 1) Valid income-term ROI snapshot
  * 2) Purchase-linked package_plan_version
- * 3) Legacy config when package.income_source=legacy_config or code exists in config (preferred)
- * 4) Published DB version with accrual_authority when package.income_source=database
+ * 3) Legacy config code only (GOLD/PREMIUM historical path)
+ * 4) Otherwise null — never unrestricted current-catalog fallback
  *
  * Never credits wallets. Never enables associate posting.
  */
@@ -44,17 +49,21 @@ class PackageIncomeDefinitionResolver
             ];
         }
 
-        $mode = (string) ($package->income_source ?? 'legacy_config');
-        if ($mode === 'legacy_config' || $legacy !== null && $mode !== 'database') {
+        $mode = (string) ($package->income_source ?? Package::INCOME_SOURCE_LEGACY);
+
+        if ($mode === Package::INCOME_SOURCE_LEGACY) {
             if ($legacy !== null) {
                 return $legacy + [
                     'source' => self::SOURCE_LEGACY_CONFIG,
                     'package_plan_version_id' => null,
                 ];
             }
+
+            // legacy_config with no config row: catalog stays closed until an authorized DB cutover.
+            return null;
         }
 
-        if ($mode === 'database' || ($legacy === null && $mode !== 'legacy_config')) {
+        if ($mode === Package::INCOME_SOURCE_DATABASE) {
             $version = $this->authoritativeVersion($package);
             $definition = $version?->asIncomeDefinition();
             if ($definition !== null) {
@@ -63,8 +72,67 @@ class PackageIncomeDefinitionResolver
                     'package_plan_version_id' => $version->id,
                 ];
             }
+
+            return null;
         }
 
+        // Unknown mode: prefer legacy when present, else authorized DB.
+        if ($legacy !== null) {
+            return $legacy + [
+                'source' => self::SOURCE_LEGACY_CONFIG,
+                'package_plan_version_id' => null,
+            ];
+        }
+
+        $version = $this->authoritativeVersion($package);
+        $definition = $version?->asIncomeDefinition();
+        if ($definition !== null) {
+            return $definition + [
+                'source' => self::SOURCE_DATABASE,
+                'package_plan_version_id' => $version->id,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Purchase-specific entitlement. Does not use the current package catalog as a
+     * fallback for approved purchases that lack a snapshot or linked plan version,
+     * except for codes that still resolve from immutable legacy config.
+     *
+     * @return array{roi_daily: string, roi_days: int, commission_pool: ?string, commission_days: ?int, source: string, package_plan_version_id: ?int}|null
+     */
+    public function forPurchase(PackagePurchase $purchase): ?array
+    {
+        $term = $this->incomeTermRow($purchase);
+        if ($term !== null) {
+            $fromTerm = $this->definitionFromIncomeTerm($term);
+            if ($fromTerm !== null) {
+                return $fromTerm;
+            }
+        }
+
+        if (Schema::hasColumn('package_purchases', 'package_plan_version_id')
+            && $purchase->package_plan_version_id) {
+            $version = PackagePlanVersion::query()->find($purchase->package_plan_version_id);
+            $definition = $version?->asIncomeDefinition();
+            if ($definition !== null) {
+                return $definition + [
+                    'source' => self::SOURCE_PURCHASE_VERSION,
+                    'package_plan_version_id' => $version->id,
+                ];
+            }
+        }
+
+        // Income-term row exists but ROI fields are empty/invalid: locked without ROI.
+        // Do not inherit a later catalog authorization.
+        if ($term !== null) {
+            return null;
+        }
+
+        // No term and no linked version: only legacy config codes (historical GOLD/PREMIUM).
+        $legacy = $this->legacyConfig((string) $purchase->package_code);
         if ($legacy !== null) {
             return $legacy + [
                 'source' => self::SOURCE_LEGACY_CONFIG,
@@ -76,15 +144,13 @@ class PackageIncomeDefinitionResolver
     }
 
     /**
+     * Catalog definition for NEW snapshot recording after a plan version was attached.
+     * Prefer the purchase-linked version; otherwise the current authorized catalog.
+     *
      * @return array{roi_daily: string, roi_days: int, commission_pool: ?string, commission_days: ?int, source: string, package_plan_version_id: ?int}|null
      */
-    public function forPurchase(PackagePurchase $purchase): ?array
+    public function forNewApprovalSnapshot(PackagePurchase $purchase): ?array
     {
-        $snapshot = $this->fromIncomeTerm($purchase);
-        if ($snapshot !== null) {
-            return $snapshot;
-        }
-
         if (Schema::hasColumn('package_purchases', 'package_plan_version_id')
             && $purchase->package_plan_version_id) {
             $version = PackagePlanVersion::query()->find($purchase->package_plan_version_id);
@@ -120,7 +186,7 @@ class PackageIncomeDefinitionResolver
             ->first();
     }
 
-    private function authoritativeVersion(Package $package): ?PackagePlanVersion
+    public function authoritativeVersion(Package $package): ?PackagePlanVersion
     {
         $version = $this->activeVersionForPackage($package);
         if ($version === null || ! $version->accrual_authority) {
@@ -131,16 +197,59 @@ class PackageIncomeDefinitionResolver
     }
 
     /**
-     * @return array{roi_daily: string, roi_days: int, commission_pool: ?string, commission_days: ?int, source: string, package_plan_version_id: ?int}|null
+     * Approved purchases that lack a clear ROI entitlement (for admin review).
+     * Does not invent terms. Does not credit wallets.
+     *
+     * @return Collection<int, array{purchase_id: int, reference: string, member_id: string, reason: string}>
      */
-    private function fromIncomeTerm(PackagePurchase $purchase): ?array
+    public function ambiguousApprovedPurchases(Package $package): Collection
+    {
+        return PackagePurchase::query()
+            ->where('package_id', $package->id)
+            ->where('status', PackagePurchase::APPROVED)
+            ->orderBy('id')
+            ->get()
+            ->map(function (PackagePurchase $purchase): ?array {
+                if ($this->forPurchase($purchase) !== null) {
+                    return null;
+                }
+
+                $term = $this->incomeTermRow($purchase);
+                $reason = 'no_roi_entitlement';
+                if ($term === null && ! $purchase->package_plan_version_id) {
+                    $reason = 'missing_snapshot_and_plan_version';
+                } elseif ($term !== null && ($term->monthly_amount === null || $term->duration_months === null)) {
+                    $reason = 'income_term_without_roi_fields';
+                } elseif ($purchase->package_plan_version_id) {
+                    $reason = 'linked_plan_version_has_no_roi';
+                }
+
+                return [
+                    'purchase_id' => (int) $purchase->id,
+                    'reference' => (string) $purchase->reference,
+                    'member_id' => (string) $purchase->member_id,
+                    'reason' => $reason,
+                ];
+            })
+            ->filter()
+            ->values();
+    }
+
+    private function incomeTermRow(PackagePurchase $purchase): ?PackageIncomeTerm
     {
         if (! Schema::hasTable('package_income_terms')) {
             return null;
         }
 
-        $term = PackageIncomeTerm::query()->where('package_purchase_id', $purchase->id)->first();
-        if ($term === null || $term->monthly_amount === null || $term->duration_months === null || (int) $term->duration_months < 1) {
+        return PackageIncomeTerm::query()->where('package_purchase_id', $purchase->id)->first();
+    }
+
+    /**
+     * @return array{roi_daily: string, roi_days: int, commission_pool: ?string, commission_days: ?int, source: string, package_plan_version_id: ?int}|null
+     */
+    private function definitionFromIncomeTerm(PackageIncomeTerm $term): ?array
+    {
+        if ($term->monthly_amount === null || $term->duration_months === null || (int) $term->duration_months < 1) {
             return null;
         }
 

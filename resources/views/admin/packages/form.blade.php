@@ -31,9 +31,9 @@
 
     @if (! $isCreate && $autoRoi)
         <x-ui.alert type="{{ in_array($autoRoi['code'], ['on_scheduled', 'on_blocked_global'], true) ? 'success' : (($autoRoi['code'] === 'off' || $autoRoi['code'] === 'disabled') ? 'info' : 'warning') }}">
-            Auto ROI Generation: {{ $autoRoi['label'] }}
+            <div><strong>Auto ROI Generation: {{ $autoRoi['label'] }}</strong></div>
             @if ($autoRoi['message'])
-                — {{ $autoRoi['message'] }}
+                <div>{{ $autoRoi['message'] }}</div>
             @endif
         </x-ui.alert>
     @endif
@@ -164,6 +164,25 @@
     </form>
 
     @if (! $isCreate)
+        @if (! empty($needsAccrualAuthorization))
+            <x-ui.card title="Authorize ROI plan (future purchases)" subtitle="Saving Daily ROI alone does not authorize accrual. Historical purchases keep their original entitlement.">
+                <x-ui.alert type="warning">
+                    Published ROI values exist, but this plan is not yet authorized for financial accrual.
+                    @if (($ambiguousHistoricalCount ?? 0) > 0)
+                        {{ $ambiguousHistoricalCount }} approved purchase(s) have no ROI entitlement and will not inherit this authorization.
+                    @endif
+                </x-ui.alert>
+                <form method="POST" action="{{ route('admin.packages.authorize-accrual', $package) }}" id="authorize-accrual-form" class="ds-settings-form">
+                    @csrf
+                    <input type="hidden" name="confirm_authorize_accrual" id="confirm_authorize_accrual" value="0">
+                    <div class="ds-pkg-actions">
+                        <button type="submit" class="ds-btn">Authorize plan for future purchases</button>
+                    </div>
+                    <p class="ds-pkg-hint">Sets accrual authority and database income source for future approvals only. Does not credit wallets or rewrite history.</p>
+                </form>
+            </x-ui.card>
+        @endif
+
         <x-ui.card title="Auto ROI Generation" subtitle="Package-wise control. Does not credit wallets when toggled.">
             @if ($autoRoi && ($autoRoi['locked'] ?? false))
                 <p class="ds-pkg-hint">Auto ROI is disabled for this package type.</p>
@@ -171,17 +190,18 @@
                 <form method="POST" action="{{ route('admin.packages.auto-roi', $package) }}" id="auto-roi-form" class="ds-settings-form">
                     @csrf
                     @method('PATCH')
-                    <input type="hidden" name="auto_roi_enabled" id="auto_roi_enabled_value" value="{{ ($package->auto_roi_enabled ?? false) ? '0' : '1' }}">
+                    @php $toggleOn = (bool) ($autoRoi['toggle'] ?? $package->auto_roi_enabled); @endphp
+                    <input type="hidden" name="auto_roi_enabled" id="auto_roi_enabled_value" value="{{ $toggleOn ? '0' : '1' }}">
                     <input type="hidden" name="confirm_auto_roi" id="confirm_auto_roi" value="0">
                     <div class="ds-pkg-actions">
                         <button type="submit" class="ds-btn" id="auto-roi-toggle-btn">
-                            Turn Auto ROI {{ ($package->auto_roi_enabled ?? false) ? 'OFF' : 'ON' }}
+                            Turn Auto ROI {{ $toggleOn ? 'OFF' : 'ON' }}
                         </button>
                     </div>
                     <p class="ds-pkg-hint">
-                        Current: {{ $autoRoi['label'] ?? 'OFF' }}.
-                        ON authorizes eligible scheduled accruals on the next authorized run. OFF stops new package ROI accruals without deleting history.
-                        Global safety controls always win.
+                        Current status: <strong>{{ $autoRoi['label'] ?? 'OFF' }}</strong>.
+                        ON schedules eligible accruals on the next authorized run. OFF stops new package ROI accruals without deleting history.
+                        Global safety controls always win. Existing member entitlements are never rewritten by this switch.
                     </p>
                 </form>
             @endif
@@ -269,6 +289,23 @@
                 }
                 document.getElementById('confirm_auto_roi').value = '1';
             }
+        });
+    }
+
+    const authorizeForm = document.getElementById('authorize-accrual-form');
+    if (authorizeForm) {
+        authorizeForm.addEventListener('submit', function (event) {
+            const ok = window.confirm(
+                'Authorize this published ROI plan for FUTURE purchases only?\n\n'
+                + 'Existing approved purchases keep their original entitlement.\n'
+                + 'No wallets are credited.\n'
+                + 'Auto ROI stays separate and must still be turned ON.'
+            );
+            if (!ok) {
+                event.preventDefault();
+                return;
+            }
+            document.getElementById('confirm_authorize_accrual').value = '1';
         });
     }
 })();

@@ -183,7 +183,7 @@ class SimplePackageAutoRoiTest extends TestCase
         config(['deltasupport.controls.financial_emergency_stop' => true]);
         $status = app(PackageAutoRoiControl::class)->effectiveStatus($package->fresh());
         $this->assertSame(PackageAutoRoiControl::STATUS_ON_BLOCKED_GLOBAL, $status['code']);
-        $this->assertSame('ON', $status['label']);
+        $this->assertSame('ON — Globally Blocked', $status['label']);
         $this->assertStringContainsString('global financial controls', (string) $status['message']);
         config(['deltasupport.controls.financial_emergency_stop' => false]);
 

@@ -9,6 +9,7 @@ use App\Models\PackagePlanVersion;
 use App\Models\User;
 use App\Models\WalletLedgerEntry;
 use App\Services\PackageAutoRoiControl;
+use App\Services\PackageIncomeDefinitionResolver;
 use App\Services\PackageIncomePolicy;
 use App\Services\PackagePlanAdministration;
 use Illuminate\Http\RedirectResponse;
@@ -121,7 +122,8 @@ class PackageController extends Controller
 
     public function edit(Package $package, PackageIncomePolicy $policy, PackagePlanAdministration $plans, PackageAutoRoiControl $autoRoi): View
     {
-        $package->load(['activePlanVersion']);
+        // Fresh model so Auto ROI status matches packages.auto_roi_enabled in the database.
+        $package = $package->fresh(['activePlanVersion']) ?? $package->load(['activePlanVersion']);
         $editingPlan = $plans->editingPlanVersion($package);
         $definition = $policy->definition((string) $package->code);
         $plan = $editingPlan ?? new PackagePlanVersion([
@@ -139,6 +141,16 @@ class PackageController extends Controller
             $plan->has_daily_roi = true;
         }
 
+        $activePublished = $package->activePlanVersion;
+        $needsAccrualAuthorization = $package->reservesFutureIncome()
+            && $activePublished
+            && $activePublished->has_daily_roi
+            && $activePublished->roi_daily !== null
+            && $activePublished->roi_days !== null
+            && (! $activePublished->accrual_authority
+                || (string) ($package->income_source ?: Package::INCOME_SOURCE_LEGACY) !== Package::INCOME_SOURCE_DATABASE
+                || $definition === null);
+
         return view('admin.packages.form', [
             'package' => $package,
             'plan' => $plan,
@@ -147,6 +159,10 @@ class PackageController extends Controller
                 'days' => $plan->roi_days,
             ],
             'autoRoiStatus' => $autoRoi->effectiveStatus($package),
+            'needsAccrualAuthorization' => $needsAccrualAuthorization,
+            'ambiguousHistoricalCount' => app(PackageIncomeDefinitionResolver::class)
+                ->ambiguousApprovedPurchases($package)
+                ->count(),
             'mode' => 'edit',
             'codeLocked' => $package->purchases()->exists(),
         ]);
@@ -214,6 +230,27 @@ class PackageController extends Controller
             ->with('success', $request->boolean('auto_roi_enabled')
                 ? 'Auto ROI turned ON. Eligible accruals wait for the next authorized scheduled run. No wallets were credited.'
                 : 'Auto ROI turned OFF. New package ROI accruals are stopped. Historical accruals were not deleted.');
+    }
+
+    public function authorizeAccrual(Request $request, Package $package, PackagePlanAdministration $plans): RedirectResponse
+    {
+        $admin = $this->admin($request);
+        $request->validate([
+            'confirm_authorize_accrual' => ['nullable', 'boolean'],
+        ]);
+
+        $ledgerBefore = WalletLedgerEntry::query()->count();
+        $version = $plans->authorizeAccrualPlan(
+            $package,
+            $admin,
+            $request->boolean('confirm_authorize_accrual'),
+            $request->ip()
+        );
+        abort_unless(WalletLedgerEntry::query()->count() === $ledgerBefore, 500);
+
+        return redirect()
+            ->route('admin.packages.edit', $package->fresh())
+            ->with('success', 'Plan v'.$version->version_number.' authorized for future purchase ROI. Existing approved purchases were not rewritten. No wallets were credited.');
     }
 
     public function updateStatus(Request $request, Package $package, PackagePlanAdministration $plans): RedirectResponse

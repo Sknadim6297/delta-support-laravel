@@ -223,6 +223,7 @@
             Route::get('/{package}', 'show')->name('show');
             Route::patch('/{package}/status', 'updateStatus')->name('status');
             Route::patch('/{package}/auto-roi', 'updateAutoRoi')->name('auto-roi');
+            Route::post('/{package}/authorize-accrual', 'authorizeAccrual')->name('authorize-accrual');
             Route::post('/{package}/plan', 'publishPlan')->name('plan.publish');
             Route::get('/{package}/edit', 'edit')->name('edit');
             Route::put('/{package}', 'update')->name('update');

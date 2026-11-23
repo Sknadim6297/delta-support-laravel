@@ -65,7 +65,10 @@
             <p>Active plan version: v{{ $plan->version_number }} ({{ $plan->status }}) · accrual_authority={{ $plan->accrual_authority ? 'yes' : 'no' }}</p>
         @endif
         @if (! empty($autoRoiStatus))
-            <p>Auto ROI Generation: {{ $autoRoiStatus['label'] }}</p>
+            <p><strong>Auto ROI Generation: {{ $autoRoiStatus['label'] }}</strong></p>
+            @if (! empty($autoRoiStatus['message']))
+                <p>{{ $autoRoiStatus['message'] }}</p>
+            @endif
         @endif
     </x-ui.card>
 
