@@ -24,6 +24,7 @@
                 <tr>
                     <th>Package Name</th>
                     <th>Package Price (USDT)</th>
+                    <th>Purchases</th>
                     <th>Daily ROI (USDT)</th>
                     <th>ROI Days</th>
                     <th>Monthly Return (USDT)</th>
@@ -50,6 +51,12 @@
                         <div><small>{{ $package->code }}</small></div>
                     </td>
                     <td>{{ \App\Support\MoneyDisplay::format($package->price_usd, 'USDT') }}</td>
+                    <td>
+                        {{ (int) ($package->approved_purchases_count ?? 0) }}
+                        @if ((int) ($package->total_purchases_count ?? 0) > (int) ($package->approved_purchases_count ?? 0))
+                            <div><small>{{ (int) $package->total_purchases_count }} total</small></div>
+                        @endif
+                    </td>
                     <td>{{ $tourOnly ? '—' : ($daily ? $daily.' USDT' : 'Not set') }}</td>
                     <td>{{ $tourOnly ? '—' : ($days ?? '—') }}</td>
                     <td>{{ $tourOnly ? '—' : ($monthly ? $monthly.' USDT' : '—') }}</td>
@@ -74,7 +81,7 @@
                     <td><a href="{{ route('admin.packages.edit', $package) }}">Edit</a></td>
                 </tr>
             @empty
-                <tr><td colspan="9">No packages yet.</td></tr>
+                <tr><td colspan="10">No packages yet.</td></tr>
             @endforelse
             </tbody>
         </table>

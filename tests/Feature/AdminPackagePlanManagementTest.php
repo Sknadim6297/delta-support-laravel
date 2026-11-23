@@ -544,4 +544,62 @@ class AdminPackagePlanManagementTest extends TestCase
         $this->assertFalse((bool) $package->fresh()->auto_roi_enabled);
         $this->assertFalse((bool) config('deltasupport.associate_commission.posting_enabled'));
     }
+
+    public function test_package_list_shows_approved_purchase_count_per_package(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $member = Member::query()->create([
+            'member_id' => 'STCNT0001',
+            'sponsor_id' => 'ST666666',
+            'sponsor_name' => 'Admin',
+            'member_name' => 'Count Member',
+            'mobile_no' => '9000000099',
+            'email' => 'count.member@example.test',
+            'status' => 'active',
+            'roi_wallet_amount' => '0.0000',
+            'working_wallet_amount' => '0.0000',
+            'activation_wallet_amount' => '0.0000',
+        ]);
+        $package = Package::query()->create([
+            'code' => 'DST-CNT-001',
+            'name' => 'COUNT PACKAGE',
+            'price_usd' => '50.0000',
+            'denomination' => 'USDT',
+            'package_type' => Package::TYPE_TOUR_ROI,
+            'roi_eligible' => true,
+            'auto_roi_enabled' => false,
+            'level_commission_eligible' => true,
+            'is_active' => true,
+            'purchase_available' => true,
+            'income_source' => Package::INCOME_SOURCE_LEGACY,
+            'sort_order' => 1,
+        ]);
+
+        foreach ([PackagePurchase::APPROVED, PackagePurchase::APPROVED, PackagePurchase::PENDING] as $i => $status) {
+            PackagePurchase::query()->create([
+                'reference' => 'PUR-CNT-'.$i,
+                'idempotency_key' => (string) Str::uuid(),
+                'member_id' => $member->member_id,
+                'package_id' => $package->id,
+                'package_code' => $package->code,
+                'package_name' => $package->name,
+                'package_type' => $package->package_type,
+                'price_usd' => '50.0000',
+                'denomination' => 'USDT',
+                'network' => 'TRC20',
+                'payment_reference' => 'TX-CNT-'.$i,
+                'status' => $status,
+                'submitted_at' => now()->subDays(3 - $i),
+                'reviewed_at' => $status === PackagePurchase::APPROVED ? now()->subDays(2 - $i) : null,
+            ]);
+        }
+
+        $this->actingAs($admin)
+            ->get(route('admin.packages.index'))
+            ->assertOk()
+            ->assertSeeText('Purchases')
+            ->assertSeeText('COUNT PACKAGE')
+            ->assertSeeText('2')
+            ->assertSeeText('3 total');
+    }
 }

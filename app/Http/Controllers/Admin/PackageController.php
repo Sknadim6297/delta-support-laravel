@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Package;
 use App\Models\PackagePlanAudit;
 use App\Models\PackagePlanVersion;
+use App\Models\PackagePurchase;
 use App\Models\User;
 use App\Models\WalletLedgerEntry;
 use App\Services\PackageAutoRoiControl;
@@ -26,6 +27,10 @@ class PackageController extends Controller
     {
         $packages = Package::query()
             ->with(['activePlanVersion'])
+            ->withCount([
+                'purchases as approved_purchases_count' => fn ($query) => $query->where('status', PackagePurchase::APPROVED),
+                'purchases as total_purchases_count',
+            ])
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $term = '%'.trim((string) $request->query('q')).'%';
                 $query->where(function ($inner) use ($term): void {
