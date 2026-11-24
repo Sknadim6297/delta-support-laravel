@@ -50,6 +50,25 @@
         <p class="mb-0">Live unlock uses income-eligible unique directs until Admin authorizes a new version. Tour Only Total Business remains separate from Level Income generation.</p>
     </x-ui.alert>
 
+    @if (!empty($qualificationBreakdown) && is_array($qualificationBreakdown))
+        <x-ui.card title="Qualification breakdown" lead="Joining and purchase contributions under the preview/authorized version settings. Live legacy may still apply until posting is authorized.">
+            <div class="ds-stat-grid">
+                <x-ui.stat label="Mode" :value="(string) ($qualificationBreakdown['mode'] ?? 'single_basis')" />
+                <x-ui.stat label="Joining metric" :value="(string) ($qualificationBreakdown['joining_weighted'] ?? 0)" hint="{{ !empty($qualificationBreakdown['joining_enabled']) ? 'enabled' : 'off' }}" />
+                <x-ui.stat label="Purchase metric" :value="(string) ($qualificationBreakdown['purchase_weighted'] ?? 0)" hint="{{ !empty($qualificationBreakdown['purchase_enabled']) ? 'enabled' : 'off' }}" />
+                <x-ui.stat label="Combined total" :value="(string) ($qualificationBreakdown['total_metric'] ?? 0)" />
+            </div>
+            <p class="ds-muted" style="margin:.75rem 0 0;">{{ $qualificationBreakdown['formula_note'] ?? '' }}</p>
+            @if (!empty($qualificationBreakdown['double_credit_policy']))
+                <p class="ds-muted" style="margin:.35rem 0 0;">Double-credit policy: {{ str_replace('_', ' ', (string) $qualificationBreakdown['double_credit_policy']) }}
+                    @if (!empty($qualificationBreakdown['overlapping_directs']))
+                        · overlapping directs: {{ (int) $qualificationBreakdown['overlapping_directs'] }}
+                    @endif
+                </p>
+            @endif
+        </x-ui.card>
+    @endif
+
     @if (!empty($qualificationPreview) && is_array($qualificationPreview))
         <x-ui.card title="Qualification preview" lead="Read-only comparison from existing registrations and approved purchases. Does not change live posting.">
             <div class="ds-stat-grid">

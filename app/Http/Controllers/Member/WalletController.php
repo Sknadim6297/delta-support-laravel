@@ -176,6 +176,7 @@ class WalletController extends Controller
             'protectedPreviewUnlockedLevels' => $summary['protected_preview_unlocked_levels'] ?? null,
             'grandfatherPreview' => $summary['grandfather_preview'] ?? null,
             'qualificationPreview' => $summary['qualification_preview'] ?? null,
+            'qualificationBreakdown' => $summary['qualification_breakdown'] ?? null,
             'incomeEligibleDirectCount' => $summary['income_eligible_direct_count'] ?? $summary['qualifying_direct_count'],
             'personallyActivated' => (bool) ($summary['personally_activated'] ?? false),
             'ruleMode' => $summary['rule_mode'] ?? 'legacy',

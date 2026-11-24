@@ -22,11 +22,42 @@ class LevelIncomeDirectQualification
 
     public const BASIS_APPROVED_PACKAGE_PURCHASE_COUNT = 'approved_package_purchase_count';
 
+    /** Combined mode: joining and purchases contribute independently per version policy. */
+    public const BASIS_COMBINED_JOINING_AND_PURCHASES = 'combined_joining_and_purchases';
+
+    public const PURCHASE_SCOPES = [
+        self::BASIS_APPROVED_PACKAGE_DIRECTS,
+        self::BASIS_INCOME_ELIGIBLE_DIRECTS,
+        self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT,
+    ];
+
+    public const REPEAT_UNIQUE_DIRECTS = 'unique_directs';
+
+    public const REPEAT_EACH_PURCHASE = 'each_approved_purchase';
+
+    public const REPEAT_MODES = [
+        self::REPEAT_UNIQUE_DIRECTS,
+        self::REPEAT_EACH_PURCHASE,
+    ];
+
+    public const DOUBLE_ALLOW_SUM = 'allow_sum';
+
+    public const DOUBLE_PREVENT_OVERLAP = 'prevent_overlap';
+
+    public const DOUBLE_MAX_ONLY = 'max_only';
+
+    public const DOUBLE_CREDIT_POLICIES = [
+        self::DOUBLE_ALLOW_SUM,
+        self::DOUBLE_PREVENT_OVERLAP,
+        self::DOUBLE_MAX_ONLY,
+    ];
+
     public const BASES = [
         self::BASIS_REGISTERED_DIRECTS,
         self::BASIS_APPROVED_PACKAGE_DIRECTS,
         self::BASIS_INCOME_ELIGIBLE_DIRECTS,
         self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT,
+        self::BASIS_COMBINED_JOINING_AND_PURCHASES,
     ];
 
     public static function labels(): array
@@ -36,6 +67,33 @@ class LevelIncomeDirectQualification
             self::BASIS_APPROVED_PACKAGE_DIRECTS => 'Direct members with approved packages (unique)',
             self::BASIS_INCOME_ELIGIBLE_DIRECTS => 'Direct members with income-eligible approved packages (unique)',
             self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT => 'Approved direct package purchase count (not unique members)',
+            self::BASIS_COMBINED_JOINING_AND_PURCHASES => 'Combined: direct joining + package purchases (configurable)',
+        ];
+    }
+
+    public static function purchaseScopeLabels(): array
+    {
+        return [
+            self::BASIS_APPROVED_PACKAGE_DIRECTS => 'Unique directs with approved packages',
+            self::BASIS_INCOME_ELIGIBLE_DIRECTS => 'Unique directs with income-eligible approved packages',
+            self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT => 'Approved package purchase rows (see repeat mode)',
+        ];
+    }
+
+    public static function repeatModeLabels(): array
+    {
+        return [
+            self::REPEAT_UNIQUE_DIRECTS => 'Count each purchasing direct once',
+            self::REPEAT_EACH_PURCHASE => 'Count every approved purchase row',
+        ];
+    }
+
+    public static function doubleCreditPolicyLabels(): array
+    {
+        return [
+            self::DOUBLE_ALLOW_SUM => 'Allow sum (joining + purchases may credit the same person twice)',
+            self::DOUBLE_PREVENT_OVERLAP => 'Prevent overlap (joining only for non-purchasing directs + purchase metric)',
+            self::DOUBLE_MAX_ONLY => 'Max only (use the larger of joining vs purchase metrics)',
         ];
     }
 
@@ -69,15 +127,49 @@ class LevelIncomeDirectQualification
 
     public function countForVersion(string $memberId, LevelIncomeRuleVersion $version): int
     {
+        return (int) $this->breakdownForVersion($memberId, $version)['total_metric'];
+    }
+
+    /**
+     * Explicit joining / purchase contribution breakdown for a version.
+     *
+     * @return array<string, mixed>
+     */
+    public function breakdownForVersion(string $memberId, LevelIncomeRuleVersion $version): array
+    {
         $basis = $this->normalizeBasis($version->direct_qualification_basis ?? null);
         $tourOnly = (bool) ($version->tour_only_qualifies_for_unlock ?? false);
 
-        return match ($basis) {
+        if ($basis === self::BASIS_COMBINED_JOINING_AND_PURCHASES) {
+            return $this->combinedBreakdown($memberId, $version, $tourOnly);
+        }
+
+        $metric = match ($basis) {
             self::BASIS_REGISTERED_DIRECTS => $this->eligibility()->directCount($memberId),
             self::BASIS_APPROVED_PACKAGE_DIRECTS => $this->uniqueDirectsWithApprovedPackages($memberId, $tourOnly, false),
             self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT => $this->approvedPurchaseCountByDirects($memberId, $tourOnly, false),
             default => $this->uniqueDirectsWithApprovedPackages($memberId, $tourOnly, true),
         };
+
+        return [
+            'mode' => 'single_basis',
+            'basis' => $basis,
+            'tour_only_qualifies_for_unlock' => $tourOnly,
+            'joining_enabled' => $basis === self::BASIS_REGISTERED_DIRECTS,
+            'purchase_enabled' => $basis !== self::BASIS_REGISTERED_DIRECTS,
+            'joining_raw' => $basis === self::BASIS_REGISTERED_DIRECTS ? $metric : 0,
+            'purchase_raw' => $basis === self::BASIS_REGISTERED_DIRECTS ? 0 : $metric,
+            'joining_weighted' => $basis === self::BASIS_REGISTERED_DIRECTS ? $metric : 0,
+            'purchase_weighted' => $basis === self::BASIS_REGISTERED_DIRECTS ? 0 : $metric,
+            'overlapping_directs' => 0,
+            'double_credit_policy' => null,
+            'purchase_scope' => $basis === self::BASIS_REGISTERED_DIRECTS ? null : $basis,
+            'repeat_purchase_mode' => $basis === self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT
+                ? self::REPEAT_EACH_PURCHASE
+                : self::REPEAT_UNIQUE_DIRECTS,
+            'total_metric' => $metric,
+            'formula_note' => 'Single qualification basis (legacy/default style). Combined joining+purchase is not active.',
+        ];
     }
 
     public function isPersonallyActivatedForVersion(string $memberId, ?LevelIncomeRuleVersion $version): bool
@@ -88,8 +180,10 @@ class LevelIncomeDirectQualification
 
         $basis = $this->normalizeBasis($version->direct_qualification_basis ?? null);
         $tourOnly = (bool) ($version->tour_only_qualifies_for_unlock ?? false);
-        // Personal activation follows the version's package filter, not the direct-count basis.
-        $incomeEligibleOnly = $basis === self::BASIS_INCOME_ELIGIBLE_DIRECTS;
+        $scope = $this->normalizePurchaseScope($version->combined_purchase_scope ?? null);
+        // Personal activation follows package filter for the active purchase-related setting.
+        $incomeEligibleOnly = $basis === self::BASIS_INCOME_ELIGIBLE_DIRECTS
+            || ($basis === self::BASIS_COMBINED_JOINING_AND_PURCHASES && $scope === self::BASIS_INCOME_ELIGIBLE_DIRECTS);
 
         return Member::query()
             ->where('member_id', $memberId)
@@ -97,6 +191,150 @@ class LevelIncomeDirectQualification
                 $this->approvedPurchaseExistsConstraint($query, $tourOnly, $incomeEligibleOnly);
             })
             ->exists();
+    }
+
+    public function normalizePurchaseScope(?string $scope): string
+    {
+        $scope = (string) $scope;
+        if (! in_array($scope, self::PURCHASE_SCOPES, true)) {
+            return self::BASIS_APPROVED_PACKAGE_DIRECTS;
+        }
+
+        return $scope;
+    }
+
+    public function normalizeRepeatMode(?string $mode): string
+    {
+        $mode = (string) $mode;
+        if (! in_array($mode, self::REPEAT_MODES, true)) {
+            return self::REPEAT_UNIQUE_DIRECTS;
+        }
+
+        return $mode;
+    }
+
+    public function normalizeDoubleCreditPolicy(?string $policy): string
+    {
+        $policy = (string) $policy;
+        if (! in_array($policy, self::DOUBLE_CREDIT_POLICIES, true)) {
+            return self::DOUBLE_PREVENT_OVERLAP;
+        }
+
+        return $policy;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function combinedBreakdown(string $memberId, LevelIncomeRuleVersion $version, bool $tourOnly): array
+    {
+        $joiningEnabled = (bool) ($version->combined_joining_enabled ?? false);
+        $purchaseEnabled = (bool) ($version->combined_purchase_enabled ?? false);
+        $scope = $this->normalizePurchaseScope($version->combined_purchase_scope ?? null);
+        $repeat = $this->normalizeRepeatMode($version->combined_repeat_purchase_mode ?? null);
+        $policy = $this->normalizeDoubleCreditPolicy($version->combined_double_credit_policy ?? null);
+        $joinUnit = max(0, (int) ($version->combined_joining_unit_value ?? 1));
+        $purchaseUnit = max(0, (int) ($version->combined_purchase_unit_value ?? 1));
+
+        $registered = $this->eligibility()->directCount($memberId);
+        $purchasingUnique = $this->purchaseUniqueDirectCount($memberId, $scope, $tourOnly);
+        $purchaseRows = $this->approvedPurchaseCountByDirects(
+            $memberId,
+            $tourOnly,
+            $scope === self::BASIS_INCOME_ELIGIBLE_DIRECTS
+        );
+
+        // When scope is unique directs, repeat mode unique is natural; each_purchase uses row count.
+        $purchaseRaw = 0;
+        if ($purchaseEnabled) {
+            if ($scope === self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT || $repeat === self::REPEAT_EACH_PURCHASE) {
+                $purchaseRaw = $purchaseRows;
+            } else {
+                $purchaseRaw = $purchasingUnique;
+            }
+        }
+
+        $joiningRaw = $joiningEnabled ? $registered : 0;
+        // Overlap = directs who both registered under sponsor and have a qualifying purchase.
+        $overlapping = ($joiningEnabled && $purchaseEnabled)
+            ? $purchasingUnique
+            : 0;
+
+        $joiningForPolicy = $joiningRaw;
+        if ($policy === self::DOUBLE_PREVENT_OVERLAP && $joiningEnabled && $purchaseEnabled) {
+            // Joining contributes only for directs without a counted purchase.
+            $joiningForPolicy = max(0, $registered - $purchasingUnique);
+        }
+
+        $joiningWeighted = $joiningEnabled ? ($joiningForPolicy * $joinUnit) : 0;
+        $purchaseWeighted = $purchaseEnabled ? ($purchaseRaw * $purchaseUnit) : 0;
+
+        $total = match ($policy) {
+            self::DOUBLE_MAX_ONLY => max($joiningWeighted, $purchaseWeighted),
+            self::DOUBLE_ALLOW_SUM => $joiningWeighted + $purchaseWeighted,
+            default => $joiningWeighted + $purchaseWeighted, // prevent_overlap already adjusted joining
+        };
+
+        if (! $joiningEnabled && ! $purchaseEnabled) {
+            $total = 0;
+        }
+
+        return [
+            'mode' => 'combined',
+            'basis' => self::BASIS_COMBINED_JOINING_AND_PURCHASES,
+            'tour_only_qualifies_for_unlock' => $tourOnly,
+            'joining_enabled' => $joiningEnabled,
+            'purchase_enabled' => $purchaseEnabled,
+            'joining_raw' => $joiningRaw,
+            'purchase_raw' => $purchaseRaw,
+            'joining_weighted' => $joiningWeighted,
+            'purchase_weighted' => $purchaseWeighted,
+            'overlapping_directs' => $overlapping,
+            'joining_unit_value' => $joinUnit,
+            'purchase_unit_value' => $purchaseUnit,
+            'double_credit_policy' => $policy,
+            'purchase_scope' => $scope,
+            'repeat_purchase_mode' => $repeat,
+            'registered_direct_count' => $registered,
+            'purchasing_unique_direct_count' => $purchasingUnique,
+            'approved_purchase_row_count' => $purchaseRows,
+            'total_metric' => $total,
+            'formula_note' => $this->combinedFormulaNote($joiningEnabled, $purchaseEnabled, $policy, $scope, $repeat, $joinUnit, $purchaseUnit),
+            'requires_business_approval' => true,
+        ];
+    }
+
+    private function combinedFormulaNote(
+        bool $joiningEnabled,
+        bool $purchaseEnabled,
+        string $policy,
+        string $scope,
+        string $repeat,
+        int $joinUnit,
+        int $purchaseUnit
+    ): string {
+        if (! $joiningEnabled && ! $purchaseEnabled) {
+            return 'Combined mode selected but both contributions are disabled — metric is 0 until Admin enables joining and/or purchases.';
+        }
+
+        return sprintf(
+            'Combined metric (draft/unauthorized until BD approves): joining=%s×%d, purchases=%s/%s×%d, double_credit=%s.',
+            $joiningEnabled ? 'on' : 'off',
+            $joinUnit,
+            $purchaseEnabled ? $scope : 'off',
+            $repeat,
+            $purchaseUnit,
+            $policy
+        );
+    }
+
+    private function purchaseUniqueDirectCount(string $memberId, string $scope, bool $tourOnly): int
+    {
+        return match ($scope) {
+            self::BASIS_INCOME_ELIGIBLE_DIRECTS => $this->uniqueDirectsWithApprovedPackages($memberId, $tourOnly, true),
+            self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT => $this->uniqueDirectsWithApprovedPackages($memberId, $tourOnly, false),
+            default => $this->uniqueDirectsWithApprovedPackages($memberId, $tourOnly, false),
+        };
     }
 
     /**
@@ -183,6 +421,7 @@ class LevelIncomeDirectQualification
                 $cCount,
                 $cActivated
             );
+            $cBreakdown = $this->breakdownForVersion($memberId, $candidate);
             $candidateExpected = [
                 'version_code' => $candidate->version_code,
                 'status' => $candidate->status,
@@ -192,6 +431,7 @@ class LevelIncomeDirectQualification
                 'direct_metric' => $cCount,
                 'personally_activated' => $cActivated,
                 'expected_unlocked_levels' => $proposedUnlocked,
+                'qualification_breakdown' => $cBreakdown,
             ];
         }
 

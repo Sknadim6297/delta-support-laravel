@@ -46,6 +46,23 @@ class LevelIncomeRuleAdministration
         );
         $tourOnlyUnlock = (bool) ($payload['tour_only_qualifies_for_unlock'] ?? false);
         $grandfather = (bool) ($payload['grandfather_existing_unlock'] ?? false);
+        $qualification = app(LevelIncomeDirectQualification::class);
+        $combined = [
+            'combined_joining_enabled' => (bool) ($payload['combined_joining_enabled'] ?? false),
+            'combined_purchase_enabled' => (bool) ($payload['combined_purchase_enabled'] ?? false),
+            'combined_purchase_scope' => $qualification->normalizePurchaseScope($payload['combined_purchase_scope'] ?? null),
+            'combined_repeat_purchase_mode' => $qualification->normalizeRepeatMode($payload['combined_repeat_purchase_mode'] ?? null),
+            'combined_double_credit_policy' => $qualification->normalizeDoubleCreditPolicy($payload['combined_double_credit_policy'] ?? null),
+            'combined_joining_unit_value' => max(0, min(100, (int) ($payload['combined_joining_unit_value'] ?? 1))),
+            'combined_purchase_unit_value' => max(0, min(100, (int) ($payload['combined_purchase_unit_value'] ?? 1))),
+        ];
+        if ($basis === LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASES
+            && ! $combined['combined_joining_enabled']
+            && ! $combined['combined_purchase_enabled']) {
+            throw ValidationException::withMessages([
+                'combined' => 'Combined qualification requires at least one of joining or purchase contributions enabled.',
+            ]);
+        }
         $errors = array_merge(
             $this->validateBands($bands),
             $this->validateRates($rates)
@@ -54,7 +71,7 @@ class LevelIncomeRuleAdministration
             throw ValidationException::withMessages(['configuration' => $errors]);
         }
 
-        return DB::transaction(function () use ($payload, $admin, $ip, $existing, $bands, $rates, $basis, $tourOnlyUnlock, $grandfather): LevelIncomeRuleVersion {
+        return DB::transaction(function () use ($payload, $admin, $ip, $existing, $bands, $rates, $basis, $tourOnlyUnlock, $grandfather, $combined): LevelIncomeRuleVersion {
             if ($existing !== null) {
                 $version = LevelIncomeRuleVersion::query()->whereKey($existing->id)->lockForUpdate()->firstOrFail();
                 if (! $version->isDraft()) {
@@ -80,6 +97,7 @@ class LevelIncomeRuleAdministration
                     'direct_qualification_basis' => $basis,
                     'tour_only_qualifies_for_unlock' => $tourOnlyUnlock,
                     'grandfather_existing_unlock' => $grandfather,
+                    ...$combined,
                     'effective_from' => null,
                     'notes' => $payload['notes'] ?? null,
                     'change_note' => $payload['change_note'] ?? null,
@@ -95,6 +113,7 @@ class LevelIncomeRuleAdministration
                 'direct_qualification_basis' => $basis,
                 'tour_only_qualifies_for_unlock' => $tourOnlyUnlock,
                 'grandfather_existing_unlock' => $grandfather,
+                ...$combined,
             ])->save();
 
             LevelIncomeUnlockBand::query()->where('level_income_rule_version_id', $version->id)->delete();
@@ -140,6 +159,13 @@ class LevelIncomeRuleAdministration
                 ?? LevelIncomeDirectQualification::BASIS_INCOME_ELIGIBLE_DIRECTS,
             'tour_only_qualifies_for_unlock' => (bool) ($source->tour_only_qualifies_for_unlock ?? false),
             'grandfather_existing_unlock' => (bool) ($source->grandfather_existing_unlock ?? false),
+            'combined_joining_enabled' => (bool) ($source->combined_joining_enabled ?? false),
+            'combined_purchase_enabled' => (bool) ($source->combined_purchase_enabled ?? false),
+            'combined_purchase_scope' => $source->combined_purchase_scope ?? LevelIncomeDirectQualification::BASIS_APPROVED_PACKAGE_DIRECTS,
+            'combined_repeat_purchase_mode' => $source->combined_repeat_purchase_mode ?? LevelIncomeDirectQualification::REPEAT_UNIQUE_DIRECTS,
+            'combined_double_credit_policy' => $source->combined_double_credit_policy ?? LevelIncomeDirectQualification::DOUBLE_PREVENT_OVERLAP,
+            'combined_joining_unit_value' => (int) ($source->combined_joining_unit_value ?? 1),
+            'combined_purchase_unit_value' => (int) ($source->combined_purchase_unit_value ?? 1),
             'bands' => $source->bands->map(fn (LevelIncomeUnlockBand $b): array => [
                 'sort_order' => $b->sort_order,
                 'start_level' => $b->start_level,
@@ -541,7 +567,15 @@ class LevelIncomeRuleAdministration
             'direct_qualification_basis' => $qualBasis,
             'direct_qualification_basis_label' => LevelIncomeDirectQualification::labels()[$qualBasis] ?? $qualBasis,
             'tour_only_qualifies_for_unlock' => $tourUnlock,
-            'qualification_note' => 'Unique-member bases and approved-package purchase-count are separate. Tour Only unlock flag does not enable ROI or Level Income generation from Tour Only packages. Live accrual ignores these settings until posting_authorized.',
+            'qualification_note' => 'Single bases remain available. Combined joining+purchase is a separate basis with its own contribution, scope, repeat, and double-credit settings. Tour Only unlock flag does not enable ROI/Level Income generation. Live accrual ignores draft settings until posting_authorized.',
+            'combined_joining_enabled' => (bool) ($candidate?->combined_joining_enabled ?? false),
+            'combined_purchase_enabled' => (bool) ($candidate?->combined_purchase_enabled ?? false),
+            'combined_purchase_scope' => $candidate?->combined_purchase_scope,
+            'combined_repeat_purchase_mode' => $candidate?->combined_repeat_purchase_mode,
+            'combined_double_credit_policy' => $candidate?->combined_double_credit_policy,
+            'combined_joining_unit_value' => (int) ($candidate?->combined_joining_unit_value ?? 1),
+            'combined_purchase_unit_value' => (int) ($candidate?->combined_purchase_unit_value ?? 1),
+            'combined_requires_business_approval' => true,
             'grandfather_existing_unlock' => (bool) ($candidate?->grandfather_existing_unlock ?? false),
             'grandfather_summary' => $grandfatherSummary,
             'grandfather_formula' => $grandfatherSummary['formula'] ?? null,
@@ -567,6 +601,13 @@ class LevelIncomeRuleAdministration
             'direct_qualification_basis' => $version->direct_qualification_basis
                 ?? LevelIncomeDirectQualification::BASIS_INCOME_ELIGIBLE_DIRECTS,
             'tour_only_qualifies_for_unlock' => (bool) ($version->tour_only_qualifies_for_unlock ?? false),
+            'combined_joining_enabled' => (bool) ($version->combined_joining_enabled ?? false),
+            'combined_purchase_enabled' => (bool) ($version->combined_purchase_enabled ?? false),
+            'combined_purchase_scope' => $version->combined_purchase_scope,
+            'combined_repeat_purchase_mode' => $version->combined_repeat_purchase_mode,
+            'combined_double_credit_policy' => $version->combined_double_credit_policy,
+            'combined_joining_unit_value' => (int) ($version->combined_joining_unit_value ?? 1),
+            'combined_purchase_unit_value' => (int) ($version->combined_purchase_unit_value ?? 1),
             'grandfather_existing_unlock' => (bool) ($version->grandfather_existing_unlock ?? false),
             'grandfather_transition_date' => optional($version->grandfather_transition_date)?->toDateString(),
             'grandfather_captured_at' => optional($version->grandfather_captured_at)?->toIso8601String(),

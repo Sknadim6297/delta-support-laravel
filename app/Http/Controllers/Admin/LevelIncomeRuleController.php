@@ -133,6 +133,9 @@ class LevelIncomeRuleController extends Controller
             'maxLevels' => ReferralLevelEligibility::MAX_LEVELS,
             'legacyRates' => CommissionPlan::RATE_BY_LEVEL,
             'qualificationBases' => LevelIncomeDirectQualification::labels(),
+            'purchaseScopeLabels' => LevelIncomeDirectQualification::purchaseScopeLabels(),
+            'repeatModeLabels' => LevelIncomeDirectQualification::repeatModeLabels(),
+            'doubleCreditPolicyLabels' => LevelIncomeDirectQualification::doubleCreditPolicyLabels(),
         ]);
     }
 
@@ -147,6 +150,13 @@ class LevelIncomeRuleController extends Controller
             'direct_qualification_basis' => ['required', 'string', Rule::in(LevelIncomeDirectQualification::BASES)],
             'tour_only_qualifies_for_unlock' => ['nullable', 'boolean'],
             'grandfather_existing_unlock' => ['nullable', 'boolean'],
+            'combined_joining_enabled' => ['nullable', 'boolean'],
+            'combined_purchase_enabled' => ['nullable', 'boolean'],
+            'combined_purchase_scope' => ['nullable', 'string', Rule::in(LevelIncomeDirectQualification::PURCHASE_SCOPES)],
+            'combined_repeat_purchase_mode' => ['nullable', 'string', Rule::in(LevelIncomeDirectQualification::REPEAT_MODES)],
+            'combined_double_credit_policy' => ['nullable', 'string', Rule::in(LevelIncomeDirectQualification::DOUBLE_CREDIT_POLICIES)],
+            'combined_joining_unit_value' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'combined_purchase_unit_value' => ['nullable', 'integer', 'min:0', 'max:100'],
             'bands' => ['required', 'array', 'min:1'],
             'bands.*.start_level' => ['required', 'integer', 'min:1', 'max:20'],
             'bands.*.end_level' => ['required', 'integer', 'min:1', 'max:20'],
@@ -180,6 +190,13 @@ class LevelIncomeRuleController extends Controller
             'direct_qualification_basis' => $data['direct_qualification_basis'],
             'tour_only_qualifies_for_unlock' => $request->boolean('tour_only_qualifies_for_unlock'),
             'grandfather_existing_unlock' => $request->boolean('grandfather_existing_unlock'),
+            'combined_joining_enabled' => $request->boolean('combined_joining_enabled'),
+            'combined_purchase_enabled' => $request->boolean('combined_purchase_enabled'),
+            'combined_purchase_scope' => $data['combined_purchase_scope'] ?? LevelIncomeDirectQualification::BASIS_APPROVED_PACKAGE_DIRECTS,
+            'combined_repeat_purchase_mode' => $data['combined_repeat_purchase_mode'] ?? LevelIncomeDirectQualification::REPEAT_UNIQUE_DIRECTS,
+            'combined_double_credit_policy' => $data['combined_double_credit_policy'] ?? LevelIncomeDirectQualification::DOUBLE_PREVENT_OVERLAP,
+            'combined_joining_unit_value' => (int) ($data['combined_joining_unit_value'] ?? 1),
+            'combined_purchase_unit_value' => (int) ($data['combined_purchase_unit_value'] ?? 1),
             'bands' => $bands,
             'rates' => $data['rates'],
         ], $request->user(), $request->ip(), $existing);

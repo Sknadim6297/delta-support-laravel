@@ -67,8 +67,10 @@ class ReferralLevelEligibility
         $rawAuthorizedUnlock = null;
         $protectedMeta = null;
 
+        $qualificationBreakdown = null;
         if ($mode === LevelIncomeRuleResolver::MODE_AUTHORIZED && $authorizedVersion !== null) {
-            $count = $qualification->countForVersion($memberId, $authorizedVersion);
+            $qualificationBreakdown = $qualification->breakdownForVersion($memberId, $authorizedVersion);
+            $count = (int) $qualificationBreakdown['total_metric'];
             $activated = $qualification->isPersonallyActivatedForVersion($memberId, $authorizedVersion);
             $rawAuthorizedUnlock = $usePurchaseContext
                 ? $this->resolver->unlockedLevelsForPurchase($sourcePurchase, $businessDate, $count, $activated)
@@ -100,7 +102,8 @@ class ReferralLevelEligibility
                 ->where('version_code', 'proposed_activation_unlock_v1')
                 ->first();
             if ($previewVersion !== null && $previewVersion->bands->isNotEmpty()) {
-                $previewCount = $qualification->countForVersion($memberId, $previewVersion);
+                $previewBreakdown = $qualification->breakdownForVersion($memberId, $previewVersion);
+                $previewCount = (int) $previewBreakdown['total_metric'];
                 $previewActivated = $qualification->isPersonallyActivatedForVersion($memberId, $previewVersion);
                 $authorizedPreview = $this->resolver->simulateUnlockedLevels(
                     $previewVersion->bands->map(fn ($b): array => [
@@ -114,6 +117,9 @@ class ReferralLevelEligibility
                 );
                 $protectedPreview = $grandfather->previewMember($memberId, $previewVersion, $authorizedPreview);
                 $qualificationPreview = $qualification->memberPreview($memberId, $previewVersion);
+                if ($qualificationBreakdown === null) {
+                    $qualificationBreakdown = $previewBreakdown;
+                }
             }
         }
 
@@ -165,6 +171,7 @@ class ReferralLevelEligibility
             'applicable_note' => $note,
             'eligibility_context' => $eligibilityContext,
             'qualification_preview' => $qualificationPreview,
+            'qualification_breakdown' => $qualificationBreakdown,
         ];
     }
 

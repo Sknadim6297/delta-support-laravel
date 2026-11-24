@@ -121,6 +121,47 @@
                             <span>Grandfather existing legacy unlock (prevent migration-only reductions)</span>
                         </label>
                     </div>
+
+                    <h3 style="margin:1rem 0 .5rem;">Combined joining + purchase contributions</h3>
+                    <p class="ds-muted" style="margin:0 0 .75rem;">Used only when basis is “Combined: direct joining + package purchases”. Exact formula requires client approval before authorize. Staged settings do not change live legacy unlock.</p>
+                    <div class="ds-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin-bottom:1rem;">
+                        <label style="display:flex;align-items:flex-end;gap:.5rem;">
+                            <input type="checkbox" name="combined_joining_enabled" value="1" @checked(old('combined_joining_enabled', $editing->combined_joining_enabled ?? false)) {{ $isDraft ? '' : 'disabled' }}>
+                            <span>Count direct joining (registered directs)</span>
+                        </label>
+                        <label style="display:flex;align-items:flex-end;gap:.5rem;">
+                            <input type="checkbox" name="combined_purchase_enabled" value="1" @checked(old('combined_purchase_enabled', $editing->combined_purchase_enabled ?? false)) {{ $isDraft ? '' : 'disabled' }}>
+                            <span>Count package purchases independently</span>
+                        </label>
+                        <label>Purchase scope
+                            <select name="combined_purchase_scope" {{ $isDraft ? '' : 'disabled' }}>
+                                @foreach (($purchaseScopeLabels ?? []) as $scopeKey => $scopeLabel)
+                                    <option value="{{ $scopeKey }}" @selected(old('combined_purchase_scope', $editing->combined_purchase_scope ?? 'approved_package_directs') === $scopeKey)>{{ $scopeLabel }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label>Repeat purchase mode
+                            <select name="combined_repeat_purchase_mode" {{ $isDraft ? '' : 'disabled' }}>
+                                @foreach (($repeatModeLabels ?? []) as $modeKey => $modeLabel)
+                                    <option value="{{ $modeKey }}" @selected(old('combined_repeat_purchase_mode', $editing->combined_repeat_purchase_mode ?? 'unique_directs') === $modeKey)>{{ $modeLabel }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label>Double-credit policy
+                            <select name="combined_double_credit_policy" {{ $isDraft ? '' : 'disabled' }}>
+                                @foreach (($doubleCreditPolicyLabels ?? []) as $policyKey => $policyLabel)
+                                    <option value="{{ $policyKey }}" @selected(old('combined_double_credit_policy', $editing->combined_double_credit_policy ?? 'prevent_overlap') === $policyKey)>{{ $policyLabel }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label>Joining unit value
+                            <input type="number" min="0" max="100" name="combined_joining_unit_value" value="{{ old('combined_joining_unit_value', $editing->combined_joining_unit_value ?? 1) }}" {{ $isDraft ? '' : 'readonly' }}>
+                        </label>
+                        <label>Purchase unit value
+                            <input type="number" min="0" max="100" name="combined_purchase_unit_value" value="{{ old('combined_purchase_unit_value', $editing->combined_purchase_unit_value ?? 1) }}" {{ $isDraft ? '' : 'readonly' }}>
+                        </label>
+                    </div>
+
                     @if (! $isDraft)
                         <input type="hidden" name="direct_qualification_basis" value="{{ $editing->direct_qualification_basis ?? 'income_eligible_directs' }}">
                         @if ($editing->tour_only_qualifies_for_unlock ?? false)
@@ -129,11 +170,23 @@
                         @if ($editing->grandfather_existing_unlock ?? false)
                             <input type="hidden" name="grandfather_existing_unlock" value="1">
                         @endif
+                        @if ($editing->combined_joining_enabled ?? false)
+                            <input type="hidden" name="combined_joining_enabled" value="1">
+                        @endif
+                        @if ($editing->combined_purchase_enabled ?? false)
+                            <input type="hidden" name="combined_purchase_enabled" value="1">
+                        @endif
+                        <input type="hidden" name="combined_purchase_scope" value="{{ $editing->combined_purchase_scope ?? 'approved_package_directs' }}">
+                        <input type="hidden" name="combined_repeat_purchase_mode" value="{{ $editing->combined_repeat_purchase_mode ?? 'unique_directs' }}">
+                        <input type="hidden" name="combined_double_credit_policy" value="{{ $editing->combined_double_credit_policy ?? 'prevent_overlap' }}">
+                        <input type="hidden" name="combined_joining_unit_value" value="{{ $editing->combined_joining_unit_value ?? 1 }}">
+                        <input type="hidden" name="combined_purchase_unit_value" value="{{ $editing->combined_purchase_unit_value ?? 1 }}">
                     @endif
                     <div class="ds-stat-grid" style="margin-bottom:1rem;">
                         <x-ui.stat label="Draft basis" :value="str_replace('_', ' ', (string) ($preview['direct_qualification_basis'] ?? 'income_eligible_directs'))" hint="{{ $preview['direct_qualification_basis_label'] ?? '' }}" />
                         <x-ui.stat label="Tour Only unlock" :value="($preview['tour_only_qualifies_for_unlock'] ?? false) ? 'Included' : 'Excluded'" hint="Independent of ROI eligibility" />
                         <x-ui.stat label="Grandfathering" :value="($preview['grandfather_existing_unlock'] ?? false) ? 'Enabled' : 'Off'" hint="{{ ($preview['grandfather_summary']['captured'] ?? false) ? 'Baseline captured' : 'Capture required before authorize' }}" />
+                        <x-ui.stat label="Combined contributions" :value="(($preview['combined_joining_enabled'] ?? false) || ($preview['combined_purchase_enabled'] ?? false)) ? 'Staged' : 'Off'" hint="Requires basis=combined + BD formula approval" />
                     </div>
 
                     <h3 style="margin:1rem 0 .5rem;">Existing member level protection</h3>
@@ -268,6 +321,17 @@
                     @if (old('grandfather_existing_unlock', $editing->grandfather_existing_unlock ?? false))
                         <input type="hidden" name="grandfather_existing_unlock" value="1">
                     @endif
+                    @if (old('combined_joining_enabled', $editing->combined_joining_enabled ?? false))
+                        <input type="hidden" name="combined_joining_enabled" value="1">
+                    @endif
+                    @if (old('combined_purchase_enabled', $editing->combined_purchase_enabled ?? false))
+                        <input type="hidden" name="combined_purchase_enabled" value="1">
+                    @endif
+                    <input type="hidden" name="combined_purchase_scope" value="{{ old('combined_purchase_scope', $editing->combined_purchase_scope ?? 'approved_package_directs') }}">
+                    <input type="hidden" name="combined_repeat_purchase_mode" value="{{ old('combined_repeat_purchase_mode', $editing->combined_repeat_purchase_mode ?? 'unique_directs') }}">
+                    <input type="hidden" name="combined_double_credit_policy" value="{{ old('combined_double_credit_policy', $editing->combined_double_credit_policy ?? 'prevent_overlap') }}">
+                    <input type="hidden" name="combined_joining_unit_value" value="{{ old('combined_joining_unit_value', $editing->combined_joining_unit_value ?? 1) }}">
+                    <input type="hidden" name="combined_purchase_unit_value" value="{{ old('combined_purchase_unit_value', $editing->combined_purchase_unit_value ?? 1) }}">
                     @foreach ($bands as $i => $band)
                         <input type="hidden" name="bands[{{ $i }}][start_level]" value="{{ $band->start_level }}">
                         <input type="hidden" name="bands[{{ $i }}][end_level]" value="{{ $band->end_level }}">

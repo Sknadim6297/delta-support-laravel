@@ -214,6 +214,28 @@
         <p><strong>Team Active Investment:</strong> {{ \App\Support\MoneyDisplay::usdt($metrics['teamActiveInvestment']) }}</p>
     </section>
 
+    @if (!empty($metrics['levelUnlock']))
+        <section id="level-unlock">
+            <x-ui.section title="Level Income unlock" lead="Commission levels (20). Live rules stay legacy until Admin authorizes a new version. Combined joining + purchase settings appear only as preview when configured." />
+            <div class="ds-dash-kpis">
+                <x-ui.stat label="Unlocked levels" :value="(string) (($metrics['levelUnlock']['unlocked_levels'] ?? 0)).' / 20'" />
+                <x-ui.stat label="Registered directs" :value="(string) ($metrics['levelUnlock']['registered_direct_count'] ?? 0)" />
+                <x-ui.stat label="Qualifying metric" :value="(string) ($metrics['levelUnlock']['qualifying_direct_count'] ?? 0)" />
+                <x-ui.stat label="Rule mode" :value="(string) ($metrics['levelUnlock']['rule_mode'] ?? 'legacy')" />
+            </div>
+            @if (!empty($metrics['levelUnlock']['qualification_breakdown']))
+                <dl class="ds-detail">
+                    <div><dt>Qualification mode</dt><dd>{{ $metrics['levelUnlock']['qualification_breakdown']['mode'] ?? 'single_basis' }}</dd></div>
+                    <div><dt>Joining contribution</dt><dd>{{ (int) ($metrics['levelUnlock']['qualification_breakdown']['joining_weighted'] ?? 0) }} {{ !empty($metrics['levelUnlock']['qualification_breakdown']['joining_enabled']) ? '' : '(off)' }}</dd></div>
+                    <div><dt>Purchase contribution</dt><dd>{{ (int) ($metrics['levelUnlock']['qualification_breakdown']['purchase_weighted'] ?? 0) }} {{ !empty($metrics['levelUnlock']['qualification_breakdown']['purchase_enabled']) ? '' : '(off)' }}</dd></div>
+                    <div><dt>Combined total</dt><dd>{{ (int) ($metrics['levelUnlock']['qualification_breakdown']['total_metric'] ?? 0) }}</dd></div>
+                </dl>
+                <p class="ds-muted">{{ $metrics['levelUnlock']['qualification_breakdown']['formula_note'] ?? '' }}</p>
+            @endif
+            <p><a href="{{ route('member.eligibility') }}">Open full referral eligibility</a></p>
+        </section>
+    @endif
+
     <section>
         <x-ui.section title="Recent transactions" lead="Purchase requests already saved for this member." />
         @if ($recentPurchases->isEmpty())

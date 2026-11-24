@@ -28,6 +28,24 @@ class LevelIncomeRuleVersion extends Model
 
     public const QUAL_APPROVED_PACKAGE_PURCHASE_COUNT = 'approved_package_purchase_count';
 
+    public const QUAL_COMBINED_JOINING_AND_PURCHASES = 'combined_joining_and_purchases';
+
+    public const COMBINED_SCOPE_APPROVED_PACKAGE_DIRECTS = 'approved_package_directs';
+
+    public const COMBINED_SCOPE_INCOME_ELIGIBLE_DIRECTS = 'income_eligible_directs';
+
+    public const COMBINED_SCOPE_APPROVED_PACKAGE_PURCHASE_COUNT = 'approved_package_purchase_count';
+
+    public const COMBINED_REPEAT_UNIQUE_DIRECTS = 'unique_directs';
+
+    public const COMBINED_REPEAT_EACH_PURCHASE = 'each_approved_purchase';
+
+    public const COMBINED_DOUBLE_ALLOW_SUM = 'allow_sum';
+
+    public const COMBINED_DOUBLE_PREVENT_OVERLAP = 'prevent_overlap';
+
+    public const COMBINED_DOUBLE_MAX_ONLY = 'max_only';
+
     protected $fillable = [
         'version_code',
         'label',
@@ -36,6 +54,13 @@ class LevelIncomeRuleVersion extends Model
         'applicability',
         'direct_qualification_basis',
         'tour_only_qualifies_for_unlock',
+        'combined_joining_enabled',
+        'combined_purchase_enabled',
+        'combined_purchase_scope',
+        'combined_repeat_purchase_mode',
+        'combined_double_credit_policy',
+        'combined_joining_unit_value',
+        'combined_purchase_unit_value',
         'grandfather_existing_unlock',
         'grandfather_transition_date',
         'grandfather_captured_at',
@@ -51,6 +76,10 @@ class LevelIncomeRuleVersion extends Model
     protected $casts = [
         'posting_authorized' => 'boolean',
         'tour_only_qualifies_for_unlock' => 'boolean',
+        'combined_joining_enabled' => 'boolean',
+        'combined_purchase_enabled' => 'boolean',
+        'combined_joining_unit_value' => 'integer',
+        'combined_purchase_unit_value' => 'integer',
         'grandfather_existing_unlock' => 'boolean',
         'grandfather_transition_date' => 'date',
         'grandfather_captured_at' => 'datetime',

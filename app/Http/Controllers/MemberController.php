@@ -238,6 +238,7 @@ class MemberController extends Controller
         $packageBusiness = app(TeamBusinessCalculationService::class)
             ->businessForMembers([$member->member_id])[$member->member_id];
         $fundSummary = app(MemberFundSummary::class)->forMember($member);
+        $levelUnlock = app(\App\Services\ReferralLevelEligibility::class)->forMember($member->member_id);
 
         $request->session()->put('member_context_id', $member->member_id);
 
@@ -305,6 +306,7 @@ class MemberController extends Controller
                 'rank' => $rankData['current_rank']?->name ?? 'Unranked',
                 'rankSummary' => $rankData,
                 'packageBusiness' => $packageBusiness,
+                'levelUnlock' => $levelUnlock,
                 'fundSummary' => $fundSummary,
                 'teamActiveInvestment' => $teamActiveInvestment,
                 'teamInactiveInvestment' => $teamInactiveInvestment,
