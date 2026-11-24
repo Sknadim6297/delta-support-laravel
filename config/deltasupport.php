@@ -135,6 +135,19 @@ return [
         'lifetime_minutes' => (int) env('MEMBER_PREVIEW_LIFETIME', 120),
     ],
 
+    /*
+    | Individual member payment stop/resume.
+    | Admin may configure controls while financial_integration_authorized is false;
+    | PackageIncomeAccrual ignores member blocks until that flag is explicitly true.
+    | Does not invent an Agent role. Does not enable Associate Commission posting.
+    */
+    'member_payment_controls' => [
+        'financial_integration_authorized' => filter_var(
+            env('DELTASUPPORT_MEMBER_PAYMENT_CONTROLS_AUTHORIZED', false),
+            FILTER_VALIDATE_BOOLEAN
+        ),
+    ],
+
     'associate_commission' => [
         'active_version' => env('DELTASUPPORT_ASSOCIATE_COMMISSION_VERSION', 'associate_v1'),
         'posting_enabled' => filter_var(env('DELTASUPPORT_ASSOCIATE_COMMISSION_POSTING', false), FILTER_VALIDATE_BOOLEAN),

@@ -2,161 +2,463 @@
 @section('title', 'Commission Settings')
 @section('page-title', 'Commission Settings')
 @section('content')
+@php
+    $editing = $editing ?? null;
+    $isDraft = $editing && $editing->status === \App\Models\LevelIncomeRuleVersion::STATUS_DRAFT;
+    $bands = $editing?->bands ?? collect();
+    if ($bands->isEmpty()) {
+        $bands = collect([
+            (object)['start_level'=>1,'end_level'=>4,'min_qualifying_directs'=>1,'requires_personal_activation'=>true],
+            (object)['start_level'=>5,'end_level'=>8,'min_qualifying_directs'=>2,'requires_personal_activation'=>true],
+            (object)['start_level'=>9,'end_level'=>12,'min_qualifying_directs'=>3,'requires_personal_activation'=>true],
+            (object)['start_level'=>13,'end_level'=>16,'min_qualifying_directs'=>4,'requires_personal_activation'=>true],
+            (object)['start_level'=>17,'end_level'=>20,'min_qualifying_directs'=>5,'requires_personal_activation'=>true],
+        ]);
+    }
+@endphp
 <div class="ds-finance">
     <x-ui.page-header
         kicker="Level Income"
         title="Commission Settings"
-        lead="Legacy percentage plan stays inactive. The Associate Commission Structure stores fixed USDT/day ranks for Silver/Gold/Premium/VIP over 400 days. This page does not generate or credit level income."
+        lead="Versioned unlock bands and 20-level commission percentages. Live financial:daily posting keeps hard-coded legacy rules until a published version is explicitly posting-authorized. Associate Commission posting stays disabled."
     />
+
     <div class="ds-stat-grid">
-        <x-ui.stat label="Levels stored" :value="$levels->count()" hint="Rows in the stored percentage plan" />
-        <x-ui.stat label="Combined rate" :value="$total.'%'" hint="Sum of stored percentages" />
-        <x-ui.stat label="Percentage plan" :value="$active ? 'Active' : 'Inactive'" hint="Inactive plans do not pay commission" />
-        <x-ui.stat label="Associate version" :value="$associate['version_code']" hint="{{ $associate['is_active'] ? 'Marked active' : 'Stored inactive' }}" />
-        <x-ui.stat label="Associate engine" :value="($associateEngine['mode'] ?? 'dry_run_only')" hint="Posting {{ ($associateEngine['posting_enabled'] ?? false) ? 'ENABLED' : 'disabled' }} · Snapshot {{ ($associateEngine['snapshot_on_approval'] ?? false) ? 'on' : 'disabled' }}" />
+        <x-ui.stat label="Live unlock source" :value="$liveUsesHardcoded ? 'Hard-coded legacy' : 'Authorized DB version'" hint="{{ $authorized?->version_code ?? 'posting_authorized=false' }}" />
+        <x-ui.stat label="Published baseline" :value="$published?->version_code ?? 'None'" hint="{{ $published?->label ?? 'No published version' }}" />
+        <x-ui.stat label="Configuration version" :value="$editing?->version_code ?? '—'" hint="Status: {{ $editing?->status ?? 'n/a' }}" />
+        <x-ui.stat label="Publication status" :value="$editing?->status ?? '—'" hint="Authorize is separate from publish" />
+        <x-ui.stat label="Financial authorization" :value="($editing?->posting_authorized ?? false) ? 'Authorized' : 'Unauthorized'" hint="{{ ($preview['authorization_status'] ?? 'unauthorized') }}" />
+        <x-ui.stat label="Applicability policy" :value="str_replace('_', ' ', (string) ($preview['applicability'] ?? $editing?->applicability ?? 'unspecified'))" hint="Recommended default: future purchases only" />
+        <x-ui.stat label="Effective date" :value="$preview['effective_from'] ?? (optional($editing?->effective_from)?->toDateString() ?? 'Not set')" hint="Asia/Kolkata business date boundary" />
+        <x-ui.stat label="Rate total" :value="$editTotal.'%'" hint="Must equal 100.0000% to publish" />
+        <x-ui.stat label="Associate engine" :value="($associateEngine['mode'] ?? 'dry_run_only')" hint="Posting {{ ($associateEngine['posting_enabled'] ?? false) ? 'ENABLED' : 'disabled' }}" />
     </div>
-    @if ($errors !== [])
-        <x-ui.alert type="warning">
-            @foreach ($errors as $error)
-                <p>{{ $error }}</p>
-            @endforeach
-        </x-ui.alert>
-    @endif
-    @if (($associate['integrity_errors'] ?? []) !== [])
-        <x-ui.alert type="warning">
-            @foreach ($associate['integrity_errors'] as $error)
-                <p>{{ $error }}</p>
-            @endforeach
-        </x-ui.alert>
-    @else
-        <x-ui.alert type="info">
-            {{ $associate['interpretation'] }}
-            Posting enabled: {{ $associate['posting_enabled'] ? 'yes' : 'no' }}.
-            Snapshot on approval: {{ $associate['snapshot_on_approval'] ? 'yes' : 'no' }}.
-            Theoretical totals are not earned/posted amounts.
-            Calculation engine: {{ $associateEngine['name'] ?? 'associate_commission_calculator_v1' }} ({{ $associateEngine['mode'] ?? 'dry_run_only' }}; never mutates wallets/ledgers).
-        </x-ui.alert>
-    @endif
 
-    <x-ui.card title="Associate unlock thresholds (read-only)" subtitle="Existing ReferralLevelEligibility rules. Qualifying directs unlock ranks; directs ≠ unlocked levels.">
-        <x-ui.table>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Qualifying direct referrals</th>
-                        <th>Unlocked ranks</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach ($unlockRules as $rule)
-                    <tr>
-                        <td>{{ $rule['directs'] }}</td>
-                        <td>{{ $rule['levels'] }}</td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </x-ui.table>
-        <p>Eligibility is evaluated at calculation time (same as legacy level accrual). Associate posting remains disabled.</p>
+    <x-ui.card title="Applicability impact" subtitle="Runtime accrual selects legacy vs authorized rules per source purchase and business date. Historical credits are never recalculated.">
+        <div class="ds-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.75rem;">
+            <div>
+                <p class="ds-muted" style="margin:0 0 .25rem;">Existing purchase impact</p>
+                <p style="margin:0;">{{ $preview['existing_purchase_impact'] ?? '—' }}</p>
+            </div>
+            <div>
+                <p class="ds-muted" style="margin:0 0 .25rem;">Future purchase impact</p>
+                <p style="margin:0;">{{ $preview['future_purchase_impact'] ?? '—' }}</p>
+            </div>
+            <div>
+                <p class="ds-muted" style="margin:0 0 .25rem;">Historical protection</p>
+                <p style="margin:0;">{{ $preview['historical_protection'] ?? '—' }}</p>
+            </div>
+            <div>
+                <p class="ds-muted" style="margin:0 0 .25rem;">Approved purchases on file</p>
+                <p style="margin:0;">{{ number_format((int) ($preview['approved_purchase_count'] ?? 0)) }}</p>
+            </div>
+        </div>
     </x-ui.card>
 
-    <x-ui.card title="Associate Commission Structure" :subtitle="'Version '.$associate['version_code'].' · '.$associate['commission_days'].' days · read-only preview'">
-        @foreach ($associate['tiers'] as $tier)
-            <h3 style="margin: 1rem 0 0.5rem;">{{ $tier['label'] }} · {{ $tier['package_price'] }} USDT</h3>
-            <p>
-                Mapped code: {{ $tier['mapped_package_code'] ?: 'Unmapped' }}
-                ({{ $tier['catalog_package_found'] ? 'catalog configured' : 'catalog pending' }}).
-                Daily total {{ $tier['daily_total'] }} USDT.
-                Max 400-day total {{ $tier['duration_total'] }} USDT (theoretical — not posted income).
-                ROI: {{ $tier['roi_display'] }}.
-                Snapshot: {{ $associate['snapshot_on_approval'] ? 'flag on' : 'disabled' }}.
-                Posting: {{ $associate['posting_enabled'] ? 'ENABLED' : 'disabled' }}.
-            </p>
-            @if ($tier['warnings'] !== [])
-                <ul>
-                    @foreach ($tier['warnings'] as $warning)
-                        <li>{{ $warning }}</li>
+    @if (session('status'))
+        <x-ui.alert type="success"><p>{{ session('status') }}</p></x-ui.alert>
+    @endif
+    @if ($errors->any())
+        <x-ui.alert type="warning">
+            @foreach ($errors->all() as $error)
+                <p>{{ $error }}</p>
+            @endforeach
+        </x-ui.alert>
+    @endif
+    @if ($bandValidation !== [] || $rateValidation !== [])
+        <x-ui.alert type="warning">
+            @foreach (array_merge($bandValidation, $rateValidation) as $error)
+                <p>{{ $error }}</p>
+            @endforeach
+        </x-ui.alert>
+    @endif
+
+    <x-ui.card title="Configuration tabs" subtitle="Draft edits never change live accrual. Publish stores the version; authorize posting is a separate explicit step.">
+        <div class="ds-btn-row" style="flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;">
+            <a class="ds-btn {{ $tab === 'unlock' ? 'ds-btn-primary' : 'ds-btn-secondary' }}" href="{{ route('admin.finance.commission-settings', ['tab' => 'unlock', 'version' => $editing?->id]) }}">Level Unlock Rules</a>
+            <a class="ds-btn {{ $tab === 'rates' ? 'ds-btn-primary' : 'ds-btn-secondary' }}" href="{{ route('admin.finance.commission-settings', ['tab' => 'rates', 'version' => $editing?->id]) }}">Commission Percentages</a>
+            <a class="ds-btn {{ $tab === 'packages' ? 'ds-btn-primary' : 'ds-btn-secondary' }}" href="{{ route('admin.finance.commission-settings', ['tab' => 'packages', 'version' => $editing?->id]) }}">Package Commission Preview</a>
+            <a class="ds-btn {{ $tab === 'history' ? 'ds-btn-primary' : 'ds-btn-secondary' }}" href="{{ route('admin.finance.commission-settings', ['tab' => 'history', 'version' => $editing?->id]) }}">Configuration History</a>
+        </div>
+
+        @if (in_array($tab, ['unlock', 'rates'], true) && $editing)
+            <form method="POST" action="{{ route('admin.finance.level-income-rules.draft') }}" id="levelIncomeDraftForm">
+                @csrf
+                <input type="hidden" name="version_id" value="{{ $isDraft ? $editing->id : '' }}">
+                <div class="ds-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-bottom:1rem;">
+                    <label>Version code
+                        <input type="text" name="version_code" value="{{ old('version_code', $isDraft ? $editing->version_code : '') }}" {{ $isDraft ? 'readonly' : '' }} placeholder="auto if blank" maxlength="64">
+                    </label>
+                    <label>Label
+                        <input type="text" name="label" value="{{ old('label', $editing->label) }}" required maxlength="160">
+                    </label>
+                    <label>Change note
+                        <input type="text" name="change_note" value="{{ old('change_note', $editing->change_note) }}" maxlength="1000">
+                    </label>
+                </div>
+                <label style="display:block;margin-bottom:1rem;">Notes
+                    <textarea name="notes" rows="2" maxlength="2000">{{ old('notes', $editing->notes) }}</textarea>
+                </label>
+
+                @if ($tab === 'unlock')
+                    <h3 style="margin:0 0 .5rem;">Unlock bands (levels 1–20, no gaps/overlaps)</h3>
+                    <x-ui.table>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Start</th>
+                                    <th>End</th>
+                                    <th>Min qualifying directs</th>
+                                    <th>Requires personal activation</th>
+                                </tr>
+                            </thead>
+                            <tbody id="unlockBandsBody">
+                            @foreach ($bands as $i => $band)
+                                <tr>
+                                    <td><input type="number" name="bands[{{ $i }}][start_level]" min="1" max="20" value="{{ old('bands.'.$i.'.start_level', $band->start_level) }}" required></td>
+                                    <td><input type="number" name="bands[{{ $i }}][end_level]" min="1" max="20" value="{{ old('bands.'.$i.'.end_level', $band->end_level) }}" required></td>
+                                    <td><input type="number" name="bands[{{ $i }}][min_qualifying_directs]" min="0" max="100" value="{{ old('bands.'.$i.'.min_qualifying_directs', $band->min_qualifying_directs) }}" required></td>
+                                    <td>
+                                        <label><input type="checkbox" name="bands[{{ $i }}][requires_personal_activation]" value="1" @checked(old('bands.'.$i.'.requires_personal_activation', $band->requires_personal_activation))> Required</label>
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </x-ui.table>
+                    <div class="ds-btn-row" style="gap:.5rem;margin:.75rem 0;">
+                        <button type="button" class="ds-btn ds-btn-secondary" id="addUnlockBand">Add band</button>
+                        <button type="button" class="ds-btn ds-btn-secondary" id="removeUnlockBand">Remove last</button>
+                    </div>
+
+                    <h3 style="margin:1rem 0 .5rem;">Live vs draft ladder (activated member)</h3>
+                    <x-ui.table>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Qualifying directs</th>
+                                    <th>Legacy / live</th>
+                                    <th>Draft (if activated)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach ($unlockLadder as $row)
+                                <tr>
+                                    <td>{{ $row['directs'] }}</td>
+                                    <td>{{ $row['live'] }} of 20</td>
+                                    <td>{{ $row['draft_active'] }} of 20</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </x-ui.table>
+                @endif
+
+                @if ($tab === 'rates')
+                    <h3 style="margin:0 0 .5rem;">Commission percentages (4 decimal places, total 100%)</h3>
+                    <x-ui.table>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Level</th>
+                                    <th class="ds-money">Percentage</th>
+                                    <th class="ds-money">Legacy baseline</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @for ($level = 1; $level <= $maxLevels; $level++)
+                                <tr>
+                                    <td>L{{ $level }}</td>
+                                    <td class="ds-money">
+                                        <input class="js-rate-input" data-level="{{ $level }}" type="number" step="0.0001" min="0" name="rates[{{ $level }}]" value="{{ old('rates.'.$level, $editRates[$level] ?? '0.0000') }}" required style="width:7rem;text-align:right;">
+                                    </td>
+                                    <td class="ds-money">{{ $legacyRates[$level] ?? '—' }}%</td>
+                                </tr>
+                            @endfor
+                                <tr>
+                                    <td>Total</td>
+                                    <td class="ds-money"><strong id="rateTotalDisplay">{{ $editTotal }}%</strong></td>
+                                    <td class="ds-money">100.0000%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </x-ui.table>
+                @else
+                    {{-- Keep rates in form when editing unlock tab --}}
+                    @for ($level = 1; $level <= $maxLevels; $level++)
+                        <input type="hidden" name="rates[{{ $level }}]" value="{{ old('rates.'.$level, $editRates[$level] ?? ($legacyRates[$level] ?? '0.0000')) }}">
+                    @endfor
+                @endif
+
+                @if ($tab === 'rates')
+                    {{-- Keep bands in form when editing rates tab --}}
+                    @foreach ($bands as $i => $band)
+                        <input type="hidden" name="bands[{{ $i }}][start_level]" value="{{ $band->start_level }}">
+                        <input type="hidden" name="bands[{{ $i }}][end_level]" value="{{ $band->end_level }}">
+                        <input type="hidden" name="bands[{{ $i }}][min_qualifying_directs]" value="{{ $band->min_qualifying_directs }}">
+                        @if ($band->requires_personal_activation)
+                            <input type="hidden" name="bands[{{ $i }}][requires_personal_activation]" value="1">
+                        @endif
                     @endforeach
-                </ul>
+                @endif
+
+                <div class="ds-btn-row" style="gap:.5rem;margin-top:1rem;flex-wrap:wrap;">
+                    <button type="submit" class="ds-btn ds-btn-primary" {{ $isDraft || ! $editing->isPublished() ? '' : 'disabled' }}>Save draft</button>
+                    @if (! $isDraft)
+                        <span class="ds-muted">Clone a published version to edit, or open the proposed draft.</span>
+                    @endif
+                </div>
+            </form>
+
+            @if ($editing)
+                <form method="POST" action="{{ route('admin.finance.level-income-rules.clone') }}" style="margin-top:.75rem;">
+                    @csrf
+                    <input type="hidden" name="version_id" value="{{ $editing->id }}">
+                    <button type="submit" class="ds-btn ds-btn-secondary">Clone as new draft</button>
+                </form>
             @endif
-            <x-ui.table>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th class="ds-money">Daily USDT</th>
-                            <th class="ds-money">400-day USDT</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach ($tier['ranks'] as $rank)
-                        <tr>
-                            <td>{{ $rank['rank'] }}</td>
-                            <td class="ds-money">{{ $rank['daily_amount'] }}</td>
-                            <td class="ds-money">{{ $rank['duration_amount'] }}</td>
-                        </tr>
-                    @endforeach
-                        <tr>
-                            <td>Total</td>
-                            <td class="ds-money">{{ $tier['daily_total'] }}</td>
-                            <td class="ds-money">{{ $tier['duration_total'] }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </x-ui.table>
-        @endforeach
-    </x-ui.card>
+        @endif
 
-    <x-ui.table>
-        <table>
-            <thead>
-                <tr>
-                    <th>Level</th>
-                    <th class="ds-money">Percentage</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-            @forelse ($levels as $level)
-                <tr>
-                    <td>{{ $level->level }}</td>
-                    <td class="ds-money">{{ $level->percentage }}%</td>
-                    <td><x-ui.badge :tone="$level->is_active ? 'success' : 'muted'">{{ $level->is_active ? 'Active' : 'Inactive' }}</x-ui.badge></td>
-                </tr>
-            @empty
-                <tr><td class="ds-empty-cell" colspan="3">No commission plan is stored.</td></tr>
-            @endforelse
-            </tbody>
-        </table>
-    </x-ui.table>
-    @foreach ($pools as $pool)
-        <x-ui.card :title="$pool['name'].' legacy daily distribution'" subtitle="Pool {{ $pool['pool'] }} USDT for {{ $pool['days'] }} days. Full pool {{ $pool['duration_total'] }} USDT. Actual payouts still require an eligible sponsor and unlocked levels. Generation is disabled.">
+        @if ($tab === 'packages')
+            <x-ui.alert type="info">
+                <p>Read-only simulator using applicable package plan definitions (PackageIncomeDefinitionResolver / authorized package plans). Pool and duration come from the package definition — not derived from ROI or price unless that definition specifies it.</p>
+                <p>{{ $preview['historical_protection'] }} Approved purchases counted: {{ $preview['approved_purchase_count'] }}.</p>
+            </x-ui.alert>
+            <h3 style="margin:1rem 0 .5rem;">Unlock impact scenarios</h3>
             <x-ui.table>
                 <table>
                     <thead>
                         <tr>
-                            <th>Level</th>
-                            <th class="ds-money">Rate</th>
-                            <th class="ds-money">Daily USDT</th>
+                            <th>Scenario</th>
+                            <th>Legacy unlocked</th>
+                            <th>Candidate unlocked</th>
                         </tr>
                     </thead>
                     <tbody>
-                    @foreach ($pool['levels'] as $level)
+                    @foreach ($preview['scenarios'] as $scenario)
                         <tr>
-                            <td>{{ $level['level'] }}</td>
-                            <td class="ds-money">{{ $level['rate'] }}%</td>
-                            <td class="ds-money">{{ $level['amount'] }}</td>
+                            <td>{{ $scenario['label'] }}</td>
+                            <td>{{ $scenario['legacy_unlocked'] }}</td>
+                            <td>{{ $scenario['candidate_unlocked'] }}</td>
                         </tr>
                     @endforeach
-                        <tr>
-                            <td>Total</td>
-                            <td class="ds-money">100.0000%</td>
-                            <td class="ds-money">{{ $pool['sum'] }}</td>
-                        </tr>
                     </tbody>
                 </table>
             </x-ui.table>
-        </x-ui.card>
-    @endforeach
+            @forelse ($preview['package_previews'] as $pool)
+                <x-ui.card :title="$pool['name'].' daily distribution preview'" :subtitle="'Pool '.$pool['pool'].' USDT · '.($pool['days'] ?? '—').' days · source '.($pool['source'] ?? 'n/a')">
+                    <x-ui.table>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Level</th>
+                                    <th class="ds-money">Rate</th>
+                                    <th class="ds-money">Daily USDT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach ($pool['levels'] as $level)
+                                <tr>
+                                    <td>{{ $level['level'] }}</td>
+                                    <td class="ds-money">{{ $level['rate'] }}%</td>
+                                    <td class="ds-money">{{ $level['amount'] }}</td>
+                                </tr>
+                            @endforeach
+                                <tr>
+                                    <td>Total</td>
+                                    <td class="ds-money">100.0000%</td>
+                                    <td class="ds-money">{{ $pool['daily_sum'] }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </x-ui.table>
+                </x-ui.card>
+            @empty
+                <p>No level-commission-eligible packages with a resolvable commission pool were found.</p>
+            @endforelse
+        @endif
+
+        @if ($tab === 'history')
+            <h3 style="margin:0 0 .5rem;">Versions</h3>
+            <x-ui.table>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Status</th>
+                            <th>Posting</th>
+                            <th>Applicability</th>
+                            <th>Effective</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach ($versions as $version)
+                        <tr>
+                            <td>{{ $version->version_code }}<br><span class="ds-muted">{{ $version->label }}</span></td>
+                            <td>{{ $version->status }}</td>
+                            <td>{{ $version->posting_authorized ? 'authorized' : 'off' }}</td>
+                            <td>{{ $version->applicability }}</td>
+                            <td>{{ optional($version->effective_from)?->toDateString() ?? '—' }}</td>
+                            <td><a href="{{ route('admin.finance.commission-settings', ['tab' => 'unlock', 'version' => $version->id]) }}">Open</a></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </x-ui.table>
+
+            @if ($editing && $editing->isDraft())
+                <x-ui.card title="Publish draft" subtitle="Publishing does not authorize financial:daily. Recommended default applicability is future_purchases_only.">
+                    <form method="POST" action="{{ route('admin.finance.level-income-rules.publish') }}">
+                        @csrf
+                        <input type="hidden" name="version_id" value="{{ $editing->id }}">
+                        <div class="ds-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem;">
+                            <label>Applicability
+                                <select name="applicability" required>
+                                    <option value="future_purchases_only" @selected(old('applicability', $editing->applicability ?: 'future_purchases_only') === 'future_purchases_only')>Future approved purchases only (recommended)</option>
+                                    <option value="existing_prospective" @selected(old('applicability', $editing->applicability) === 'existing_prospective')>Existing members prospectively from effective date</option>
+                                    <option value="unspecified" @selected(old('applicability', $editing->applicability) === 'unspecified')>Unspecified (cannot authorize posting)</option>
+                                </select>
+                            </label>
+                            <label>Effective from
+                                <input type="date" name="effective_from" value="{{ old('effective_from', optional($editing->effective_from)?->toDateString()) }}">
+                            </label>
+                            <label>Change note
+                                <input type="text" name="change_note" maxlength="1000">
+                            </label>
+                        </div>
+                        <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_publish" value="1" required> I confirm this publish is intentional and does not activate posting.</label>
+                        <button type="submit" class="ds-btn ds-btn-primary" @disabled($bandValidation !== [] || $rateValidation !== [])>Publish configuration</button>
+                    </form>
+                </x-ui.card>
+            @endif
+
+            @if ($editing && $editing->isPublished())
+                <x-ui.card title="Posting authorization" subtitle="Stop before activating new business rules unless business approval is explicit. This control is intentionally separate from publish. Runtime enforcement uses purchase approval + effective date.">
+                    @if (! $editing->posting_authorized)
+                        <form method="POST" action="{{ route('admin.finance.level-income-rules.authorize') }}">
+                            @csrf
+                            <input type="hidden" name="version_id" value="{{ $editing->id }}">
+                            <p>Current policy: <strong>{{ $editing->applicability }}</strong> / effective <strong>{{ optional($editing->effective_from)?->toDateString() ?? 'no date' }}</strong>.</p>
+                            <p class="ds-muted">{{ $preview['existing_purchase_impact'] ?? '' }}</p>
+                            <p class="ds-muted">{{ $preview['future_purchase_impact'] ?? '' }}</p>
+                            <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_impact_preview" value="1" required> I reviewed the applicability impact preview above (existing vs future purchases).</label>
+                            @if ($editing->applicability === 'existing_prospective')
+                                <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_existing_prospective" value="1" required> I confirm existing_prospective: new rules apply from the effective business date for all source purchases with no historical backfill.</label>
+                            @endif
+                            <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_authorize" value="1" required> I authorize this version for financial:daily Level Income posting.</label>
+                            <button type="submit" class="ds-btn ds-btn-primary">Authorize posting</button>
+                        </form>
+                    @else
+                        <form method="POST" action="{{ route('admin.finance.level-income-rules.revoke') }}">
+                            @csrf
+                            <input type="hidden" name="version_id" value="{{ $editing->id }}">
+                            <p>This version is currently authorized for posting.</p>
+                            <button type="submit" class="ds-btn ds-btn-secondary">Revoke posting authorization</button>
+                        </form>
+                    @endif
+                </x-ui.card>
+            @endif
+
+            <h3 style="margin:1.25rem 0 .5rem;">Audit log</h3>
+            <x-ui.table>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Action</th>
+                            <th>Version</th>
+                            <th>Actor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @forelse ($audits as $audit)
+                        <tr>
+                            <td>{{ $audit->created_at }}</td>
+                            <td>{{ $audit->action }}</td>
+                            <td>{{ $audit->version?->version_code ?? '—' }}</td>
+                            <td>{{ $audit->actor?->email ?? 'system' }}</td>
+                        </tr>
+                    @empty
+                        <tr><td class="ds-empty-cell" colspan="4">No audits yet.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </x-ui.table>
+
+            <x-ui.card title="Associate Commission Structure" :subtitle="'Version '.$associate['version_code'].' · '.$associate['commission_days'].' days · dry_run_only'">
+                <p>{{ $associate['interpretation'] ?? 'Associate structure remains separate. Posting stays disabled.' }}</p>
+                <p>Stored percentage plan integrity: {{ ($integrityErrors ?? []) === [] ? 'OK' : implode('; ', $integrityErrors) }}. Percentage plan: {{ $active ? 'Active' : 'Inactive' }}.</p>
+                @foreach ($associate['tiers'] as $tier)
+                    <h3 style="margin: 1rem 0 0.5rem;">{{ $tier['label'] }} · {{ $tier['package_price'] }} USDT</h3>
+                    <p>
+                        Mapped code: {{ $tier['mapped_package_code'] ?: 'Unmapped' }}.
+                        Daily total {{ $tier['daily_total'] }} USDT.
+                        Max 400-day total {{ $tier['duration_total'] }} USDT (theoretical — not posted income).
+                    </p>
+                    <x-ui.table>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th class="ds-money">Daily USDT</th>
+                                    <th class="ds-money">400-day USDT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach ($tier['ranks'] as $rank)
+                                <tr>
+                                    <td>{{ $rank['rank'] }}</td>
+                                    <td class="ds-money">{{ $rank['daily_amount'] }}</td>
+                                    <td class="ds-money">{{ $rank['duration_amount'] }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </x-ui.table>
+                @endforeach
+            </x-ui.card>
+        @endif
+    </x-ui.card>
 </div>
+@if (in_array($tab, ['unlock', 'rates'], true))
+<script>
+(() => {
+    const totalEl = document.getElementById('rateTotalDisplay');
+    const inputs = () => [...document.querySelectorAll('.js-rate-input')];
+    const recalc = () => {
+        if (!totalEl) return;
+        let sum = 0;
+        inputs().forEach((el) => { sum += Number(el.value || 0); });
+        totalEl.textContent = sum.toFixed(4) + '%';
+        totalEl.style.color = Math.abs(sum - 100) < 0.00005 ? '' : '#b45309';
+    };
+    inputs().forEach((el) => el.addEventListener('input', recalc));
+    recalc();
+
+    const body = document.getElementById('unlockBandsBody');
+    const addBtn = document.getElementById('addUnlockBand');
+    const removeBtn = document.getElementById('removeUnlockBand');
+    if (body && addBtn) {
+        addBtn.addEventListener('click', () => {
+            const i = body.querySelectorAll('tr').length;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="number" name="bands[${i}][start_level]" min="1" max="20" required></td>
+                <td><input type="number" name="bands[${i}][end_level]" min="1" max="20" required></td>
+                <td><input type="number" name="bands[${i}][min_qualifying_directs]" min="0" max="100" value="0" required></td>
+                <td><label><input type="checkbox" name="bands[${i}][requires_personal_activation]" value="1" checked> Required</label></td>`;
+            body.appendChild(tr);
+        });
+    }
+    if (body && removeBtn) {
+        removeBtn.addEventListener('click', () => {
+            const rows = body.querySelectorAll('tr');
+            if (rows.length > 1) rows[rows.length - 1].remove();
+        });
+    }
+})();
+</script>
+@endif
 @endsection

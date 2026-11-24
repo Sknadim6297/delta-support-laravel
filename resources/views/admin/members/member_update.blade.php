@@ -85,6 +85,16 @@
             </div>
         </section>
 
+        @if ($member)
+            @include('admin.members.partials.payment-controls', [
+                'member' => $member,
+                'paymentControl' => $paymentControl,
+                'paymentEvents' => $paymentEvents,
+                'paymentIntegrationAuthorized' => $paymentIntegrationAuthorized,
+                'suggestedPaymentEffectiveFrom' => $suggestedPaymentEffectiveFrom,
+            ])
+        @endif
+
         <x-members.panel title="Find a member" subtitle="Enter the member ID and load the saved profile.">
             <div class="ds-mm-filters ds-member-lookup">
                 <div>

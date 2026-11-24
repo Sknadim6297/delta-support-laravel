@@ -35,7 +35,20 @@
             </button>
             <div class="pv-menu-panel" role="menu">
                 @forelse ($supportNotices ?? [] as $notice)
-                    <a href="{{ $notice->audience === \App\Models\SupportNotification::AUDIENCE_MEMBER ? route('member.support.show', $notice->support_ticket_id) : route('admin.support.show', $notice->support_ticket_id) }}">{{ $notice->summary }}</a>
+                    @php
+                        if (! empty($notice->tour_interest_request_id)) {
+                            $noticeHref = $notice->audience === \App\Models\SupportNotification::AUDIENCE_MEMBER
+                                ? route('member.dashboard')
+                                : route('admin.tour-requests.show', $notice->tour_interest_request_id);
+                        } elseif (! empty($notice->support_ticket_id)) {
+                            $noticeHref = $notice->audience === \App\Models\SupportNotification::AUDIENCE_MEMBER
+                                ? route('member.support.show', $notice->support_ticket_id)
+                                : route('admin.support.show', $notice->support_ticket_id);
+                        } else {
+                            $noticeHref = '#';
+                        }
+                    @endphp
+                    <a href="{{ $noticeHref }}">{{ $notice->summary }}</a>
                 @empty
                     <p>No new notifications</p>
                 @endforelse

@@ -47,6 +47,38 @@
         </section>
     @endif
 
+    <x-ui.card title="Interested in a Tour?" class="ds-tour-interest">
+        <p>Tell our travel team you want to go on a tour. This is an interest request only — not a confirmed booking and not a payment.</p>
+        @if (session('tour_interest_status'))
+            <x-ui.alert type="success"><p>{{ session('tour_interest_status') }}</p></x-ui.alert>
+        @endif
+        @if ($tourInterest ?? null)
+            <div class="ds-mm-stats" style="margin:0.75rem 0;">
+                <article class="ds-mm-stat">
+                    <span>Status</span>
+                    <strong><x-ui.badge :tone="$tourInterest->statusTone()">{{ $tourInterest->statusLabel() }}</x-ui.badge></strong>
+                </article>
+                <article class="ds-mm-stat">
+                    <span>Submitted</span>
+                    <strong>{{ $tourInterest->submitted_at?->timezone('Asia/Kolkata')->format('d M Y, H:i') }}</strong>
+                </article>
+            </div>
+            <p>{{ \App\Services\TourInterestService::CONFIRMATION_MESSAGE }}</p>
+            <form method="POST" action="{{ route('member.tour-interest.withdraw') }}" onsubmit="return confirm('Withdraw your tour interest request?');">
+                @csrf
+                <button type="submit" class="ds-btn ds-btn-secondary">Withdraw interest</button>
+            </form>
+        @else
+            <form method="POST" action="{{ route('member.tour-interest.enable') }}" class="ds-tour-interest-toggle">
+                @csrf
+                <label class="ds-toggle-row" style="display:flex;align-items:center;gap:.75rem;margin:0.75rem 0;">
+                    <input type="checkbox" name="interested" value="1" onchange="this.form.requestSubmit()" aria-label="I want to go on a tour">
+                    <span>I want to go on a tour</span>
+                </label>
+            </form>
+        @endif
+    </x-ui.card>
+
     <section class="ds-dash-kpis" aria-label="Account">
         <x-ui.stat label="Member ID" :value="$member->member_id" />
         <x-ui.stat label="Member Name" :value="$member->member_name" />
@@ -118,7 +150,7 @@
         </x-ui.card>
         <x-ui.card title="Level income summary">
             <p class="ds-stat-value">{{ \App\Support\MoneyDisplay::usdt($metrics['levelIncome']) }}</p>
-            <p>Stored level income only. The business-plan poster describes 20 levels for a $100 package, with 1 direct opening 4 levels. That schedule is not activated here.</p>
+            <p>Stored level income only. Unlock follows the applicable 20-level commission configuration evaluated at posting time. Opening this page does not credit income.</p>
         </x-ui.card>
     </div>
 
@@ -175,7 +207,7 @@
         <dl class="ds-detail">
             <div><dt>Current Rank</dt><dd>{{ $metrics['rankSummary']['current_rank']?->name ?? 'Unranked' }}</dd></div>
             <div><dt>Full Team Business</dt><dd>{{ \App\Support\MoneyDisplay::usdt($metrics['rankSummary']['full_team_business']) }}</dd></div>
-            <div><dt>Levels Unlocked</dt><dd>{{ $metrics['rankSummary']['unlocked_levels'] }} / 32</dd></div>
+            <div><dt>Rank levels</dt><dd>{{ $metrics['rankSummary']['unlocked_levels'] }} / 32 <span class="ds-muted">(rank system, not Level Income)</span></dd></div>
             <div><dt>Next Rank</dt><dd>{{ $metrics['rankSummary']['next_rank']?->name ?? 'Maximum Rank Achieved' }}</dd></div>
             <div><dt>Remaining Business</dt><dd>{{ \App\Support\MoneyDisplay::usdt($metrics['rankSummary']['remaining_business']) }}</dd></div>
         </dl>

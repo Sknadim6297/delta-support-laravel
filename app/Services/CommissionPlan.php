@@ -35,6 +35,22 @@ class CommissionPlan
         20 => '7.5000',
     ];
 
+    /**
+     * Runtime rate chart used by PackageIncomePolicy / accrual.
+     * Uses authorized DB configuration when posting is authorized; otherwise hard-coded baseline.
+     *
+     * @return array<int, string>
+     */
+    public function rateChart(): array
+    {
+        return app(LevelIncomeRuleResolver::class)->rateChart();
+    }
+
+    public function rateForLevel(int $level): ?string
+    {
+        return app(LevelIncomeRuleResolver::class)->rateForLevel($level);
+    }
+
     public function levels(): Collection
     {
         return CommissionPlanLevel::query()

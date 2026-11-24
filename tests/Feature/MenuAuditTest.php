@@ -34,10 +34,13 @@ class MenuAuditTest extends TestCase
             ->assertSeeText('Package income status')
             ->assertSeeText('Disabled');
 
-        $this->actingAs($admin)->get(route('admin.finance.commission-settings'))
+        $this->actingAs($admin)->get(route('admin.finance.commission-settings', ['tab' => 'rates']))
             ->assertOk()
             ->assertSeeText('25.0000%')
-            ->assertSeeText('100.0000%')
+            ->assertSeeText('100.0000%');
+
+        $this->actingAs($admin)->get(route('admin.finance.commission-settings', ['tab' => 'history']))
+            ->assertOk()
             ->assertSeeText('Inactive');
 
         $this->actingAs($admin)->get(route('admin.finance.level-unlock-rules'))

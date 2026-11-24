@@ -26,6 +26,7 @@ class SupportNotification extends Model
         'member_id',
         'user_id',
         'support_ticket_id',
+        'tour_interest_request_id',
         'summary',
         'email_status',
         'read_at',

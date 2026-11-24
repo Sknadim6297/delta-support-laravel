@@ -43,12 +43,14 @@ class MemberRankTest extends TestCase
 
         $this->get(route('member.reports.level-income'))
             ->assertOk()
+            ->assertSeeText('Level Commission Access (20 levels)')
+            ->assertSeeText('Commission unlock: 0 / 20')
             ->assertSeeText('L1')
             ->assertSeeText('L4')
             ->assertSeeText('L5')
             ->assertSeeText('Locked levels are not eligible for Level Commission')
             ->assertSee('level-locked', false)
-            ->assertSee('level-unlocked', false);
+            ->assertDontSee('level-unlocked', false);
     }
 
     public function test_member_cannot_change_rank_context_with_member_id_parameter(): void

@@ -280,23 +280,25 @@ class AssociateCommissionStructureTest extends TestCase
             ->assertDontSeeText('Open full Rank 1–20 breakdown');
 
         $this->actingAs($admin)
-            ->get(route('admin.finance.commission-settings'))
+            ->get(route('admin.finance.commission-settings', ['tab' => 'history']))
             ->assertOk()
             ->assertSeeText('Associate Commission Structure')
             ->assertSeeText('dry_run_only')
-            ->assertSeeText('Associate unlock thresholds')
             ->assertSeeText('SILVER PACKAGE')
             ->assertSeeText('GOLD PACKAGE')
             ->assertSeeText('PREMIUM PACKAGE')
             ->assertSeeText('VIP PACKAGE')
-            ->assertSeeText('DST-TOUR-001')
-            ->assertSeeText('DST-TOUR-003')
-            ->assertSeeText('DST-TOUR-004')
             ->assertSeeText('0.0300')
             ->assertSeeText('0.6000')
             ->assertSeeText('48.0000')
             ->assertSeeText('960.0000')
             ->assertSeeText('theoretical');
+
+        $this->actingAs($admin)
+            ->get(route('admin.finance.commission-settings', ['tab' => 'unlock']))
+            ->assertOk()
+            ->assertSeeText('Level Unlock Rules')
+            ->assertSeeText('Hard-coded legacy');
 
         $this->actingAs($admin)
             ->get(route('admin.packages.edit', Package::query()->where('code', 'DST-ROI-002')->firstOrFail()))

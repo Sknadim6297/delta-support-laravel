@@ -20,6 +20,7 @@ class PackageIncomeCalculationPreview
         private readonly PackageIncomePolicy $policy,
         private readonly PackageIncomeAccrual $accrual,
         private readonly ReferralLevelEligibility $eligibility,
+        private readonly LevelIncomeRuleResolver $levelRules,
     ) {
     }
 
@@ -153,7 +154,7 @@ class PackageIncomeCalculationPreview
 
         $levels = [];
         if ($commissionWindow) {
-            $levels = $this->levels($member, $purchase, (string) $definition['commission_pool'], $commissionPlan);
+            $levels = $this->levels($member, $purchase, (string) $definition['commission_pool'], $commissionPlan, $date->toDateString());
             $payable = $this->sum(array_column($levels, 'payable_amount'));
             if (bccomp($payable, '0', 4) === 1) {
                 $labels[] = 'Eligible for commission';
@@ -223,7 +224,7 @@ class PackageIncomeCalculationPreview
      * @param  Collection<int, array<string, string>>  $commissionPlan
      * @return list<array<string, string>>
      */
-    private function levels(?Member $source, PackagePurchase $purchase, string $pool, Collection $commissionPlan): array
+    private function levels(?Member $source, PackagePurchase $purchase, string $pool, Collection $commissionPlan, string $businessDate): array
     {
         $planned = [];
         foreach ($commissionPlan as $row) {
@@ -245,7 +246,7 @@ class PackageIncomeCalculationPreview
         $cursor = $source->sponsor_id;
         $seen = [$source->member_id => true];
         for ($level = 1; $level <= ReferralLevelEligibility::MAX_LEVELS; $level++) {
-            $rateAmount = $this->policy->levelAmount($pool, $level) ?? '0.0000';
+            $rateAmount = $this->policy->levelAmountForPurchase($pool, $level, $purchase, $businessDate) ?? '0.0000';
             if (! filled($cursor) || isset($seen[$cursor])) {
                 $rows[] = $this->levelRow((string) $level, 'Not stored', '0', $rateAmount, '0.0000', 'Blocked by ineligible sponsor', 'The sponsor chain stopped before this level.');
                 break;
@@ -260,7 +261,7 @@ class PackageIncomeCalculationPreview
                 $rows[] = $this->levelRow((string) $level, (string) $cursor, '0', $rateAmount, '0.0000', 'Blocked by ineligible sponsor', 'This sponsor has no member record.');
                 break;
             }
-            $unlocked = (string) $this->eligibility->forMember($sponsor->member_id)['unlocked_levels'];
+            $unlocked = (string) $this->eligibility->forMember($sponsor->member_id, $purchase, $businessDate)['unlocked_levels'];
             $plannedRow = $planned[$level.'|'.$sponsor->member_id] ?? null;
             if ($plannedRow) {
                 $rows[] = $this->levelRow((string) $level, $sponsor->member_id, $unlocked, $rateAmount, $plannedRow['amount'], 'Eligible for commission', 'Payable from the accrual preview.');

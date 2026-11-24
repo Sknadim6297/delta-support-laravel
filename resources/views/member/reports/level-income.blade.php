@@ -50,8 +50,13 @@
     @isset($levelAccess)
     <section class="ds-report-block">
         <header class="ds-dash-head">
-            <h2>Level Commission Access</h2>
-            <p>{{ $rankData['current_rank']?->name ?? 'Unranked' }} · {{ $rankData['unlocked_levels'] ?? 0 }} / 32 levels unlocked</p>
+            <h2>Level Commission Access (20 levels)</h2>
+            <p>
+                Commission unlock: {{ $commissionEligibility['unlocked_levels'] ?? 0 }} / 20
+                · Personal activation: {{ ($commissionEligibility['personally_activated'] ?? false) ? 'yes' : 'no' }}
+                · Qualifying directs: {{ $commissionEligibility['qualifying_direct_count'] ?? 0 }}
+            </p>
+            <p class="ds-report-note">Rank ladder ({{ $rankData['current_rank']?->name ?? 'Unranked' }} · {{ $rankData['unlocked_levels'] ?? 0 }} / 32) is separate and does not pay Level Income.</p>
         </header>
         <div class="ds-report-card">
             <div class="ds-level-row">
@@ -59,7 +64,7 @@
                     <span class="ds-level-chip {{ $access['unlocked'] ? 'level-unlocked' : 'level-locked' }}">L{{ $access['level'] }}</span>
                 @endforeach
             </div>
-            <p class="ds-report-note">Locked levels are not eligible for Level Commission.</p>
+            <p class="ds-report-note">Locked levels are not eligible for Level Commission. Locked commission levels are skipped (no spillover). This report lists stored LevelCommissionTransaction rows only — it does not double-count PackageLevelAccrual ledger credits.</p>
         </div>
     </section>
     @endisset

@@ -22,6 +22,8 @@ class PackageIncomeAccrual
         private readonly WalletLedgerPoster $ledger,
         private readonly PackageIncomeActivationGate $activation,
         private readonly PackageAutoRoiControl $autoRoi,
+        private readonly MemberPaymentControlService $paymentControls,
+        private readonly LevelIncomeRuleResolver $levelRules,
     ) {
     }
 
@@ -572,6 +574,9 @@ class PackageIncomeAccrual
                 ->first();
             if ($existingForDate?->status === 'accrued') {
                 // Fully posted for this business date.
+            } elseif (! $this->paymentControls->allowsRoi($purchase->member_id, $date->toDateString())) {
+                // Recipient payment stop: skip calculation and credit; calendar day still consumes window.
+                $skipped[] = $purchase->member_id.' ROI payment is stopped for '.$date->toDateString().'.';
             } else {
                 $count = PackageRoiAccrual::query()->where('package_purchase_id', $purchase->id)->count();
                 if ($count >= $definition['roi_days'] && $existingForDate === null) {
@@ -641,18 +646,22 @@ class PackageIncomeAccrual
                 break;
             }
             $next = $sponsor->sponsor_id;
-            $unlocked = $this->eligibility->forMember($sponsor->member_id)['unlocked_levels'];
+            $businessDate = $date->toDateString();
+            $unlocked = $this->eligibility->forMember($sponsor->member_id, $purchase, $businessDate)['unlocked_levels'];
             $eligible = $recipients[$sponsor->member_id] ??= $this->recipientEligible($sponsor->member_id);
-            if ($eligible && $unlocked >= $level && $sponsor->member_id !== $this->policy->adminRootId()) {
+            $paymentAllowed = $this->paymentControls->allowsLevel($sponsor->member_id, $businessDate);
+            if ($eligible && $unlocked >= $level && $paymentAllowed && $sponsor->member_id !== $this->policy->adminRootId()) {
                 $existingForDate = PackageLevelAccrual::query()
                     ->where('package_purchase_id', $purchase->id)
                     ->where('member_id', $sponsor->member_id)
-                    ->whereDate('business_date', $date->toDateString())
+                    ->whereDate('business_date', $businessDate)
                     ->first();
                 if ($existingForDate?->status === 'accrued') {
                     // Fully posted for this purchase, recipient, and business date.
                 } else {
-                    $amount = $this->policy->levelAmount($pool, $level);
+                    $rate = $this->levelRules->rateForLevelForPurchase($purchase, $businessDate, (int) $level)
+                        ?? CommissionPlan::RATE_BY_LEVEL[$level];
+                    $amount = $this->policy->levelAmount($pool, $level, $rate);
                     if ($amount !== null && bccomp($amount, '0', 4) === 1) {
                         $commissions[] = [
                             'purchase_id' => (string) $purchase->id,
@@ -663,15 +672,20 @@ class PackageIncomeAccrual
                             'level' => (string) $level,
                             'package_code' => $purchase->package_code,
                             'package_name' => $purchase->package_name,
-                            'business_date' => $date->toDateString(),
+                            'business_date' => $businessDate,
                             'pool' => $pool,
-                            'rate' => CommissionPlan::RATE_BY_LEVEL[$level],
+                            'rate' => $rate,
                             'amount' => $amount,
                         ];
                     }
                 }
             } else {
-                $skipped[] = $sponsor->member_id.' was not paid at level '.$level.'.';
+                if (! $paymentAllowed) {
+                    $skipped[] = $sponsor->member_id.' Level Income payment is stopped for '.$date->toDateString().'.';
+                } else {
+                    $skipped[] = $sponsor->member_id.' was not paid at level '.$level.'.';
+                }
+                // Continue upline traversal — recipient stop does not suppress other uplines.
             }
             $cursor = $next;
         }
@@ -702,6 +716,9 @@ class PackageIncomeAccrual
         return DB::transaction(function () use ($row, $reason, $creditWallet, $allowDemo): bool {
             $member = Member::query()->where('member_id', $row['member_id'])->lockForUpdate()->first();
             if (! $member || (! $allowDemo && app(LocalTestMarker::class)->isEmail($member->email))) {
+                return false;
+            }
+            if (! $this->paymentControls->allowsRoi($member->member_id, (string) $row['business_date'])) {
                 return false;
             }
 
@@ -782,6 +799,9 @@ class PackageIncomeAccrual
         return DB::transaction(function () use ($row, $reason, $creditWallet, $allowDemo): bool {
             $member = Member::query()->where('member_id', $row['member_id'])->lockForUpdate()->first();
             if (! $member || $member->member_id === $this->policy->adminRootId() || (! $allowDemo && app(LocalTestMarker::class)->isEmail($member->email))) {
+                return false;
+            }
+            if (! $this->paymentControls->allowsLevel($member->member_id, (string) $row['business_date'])) {
                 return false;
             }
 

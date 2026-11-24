@@ -52,8 +52,12 @@ class ReportController extends Controller
         });
     }
 
-    public function levelIncomeReport(Request $request, RankService $rankService, ReportSummaryService $summaryService): View
-    {
+    public function levelIncomeReport(
+        Request $request,
+        RankService $rankService,
+        ReportSummaryService $summaryService,
+        \App\Services\ReferralLevelEligibility $eligibility,
+    ): View {
         $member = $this->currentMember($request);
         $query = $this->levelIncomeQuery($member, $request);
         $level = $request->filled('level') ? (int) $request->query('level') : null;
@@ -71,9 +75,11 @@ class ReportController extends Controller
             ->orderBy('level')
             ->pluck('level');
         $rankData = $rankService->calculateForMember($member);
-        $levelAccess = collect(range(1, 32))->map(fn (int $level): array => [
+        $commissionEligibility = $eligibility->forMember($member->member_id);
+        $unlockedCommissionLevels = (int) $commissionEligibility['unlocked_levels'];
+        $levelAccess = collect(range(1, \App\Services\ReferralLevelEligibility::MAX_LEVELS))->map(fn (int $level): array => [
             'level' => $level,
-            'unlocked' => $level <= $rankData['unlocked_levels'],
+            'unlocked' => $level <= $unlockedCommissionLevels,
         ]);
 
         return view('member.reports.level-income', [
@@ -82,6 +88,7 @@ class ReportController extends Controller
             'totalAmount' => $totalAmount,
             'levels' => $levels,
             'rankData' => $rankData,
+            'commissionEligibility' => $commissionEligibility,
             'levelAccess' => $levelAccess,
         ]);
     }

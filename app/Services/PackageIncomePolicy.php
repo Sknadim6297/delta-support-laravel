@@ -114,14 +114,24 @@ class PackageIncomePolicy
         return $businessDate->greaterThanOrEqualTo($first) && $businessDate->lessThanOrEqualTo($last);
     }
 
-    public function levelAmount(string $pool, int $level): ?string
+    public function levelAmount(string $pool, int $level, ?string $rate = null): ?string
     {
-        $rate = CommissionPlan::RATE_BY_LEVEL[$level] ?? null;
+        $rate ??= app(LevelIncomeRuleResolver::class)->rateForLevel($level);
         if ($rate === null) {
             return null;
         }
 
         return bcdiv(bcmul($pool, $rate, 4), '100', 4);
+    }
+
+    /**
+     * Level amount using purchase-scoped Level Income rates (applicability-aware).
+     */
+    public function levelAmountForPurchase(string $pool, int $level, PackagePurchase $purchase, string $businessDate): ?string
+    {
+        $rate = app(LevelIncomeRuleResolver::class)->rateForLevelForPurchase($purchase, $businessDate, $level);
+
+        return $this->levelAmount($pool, $level, $rate);
     }
 
     private function approved(PackagePurchase $purchase): bool

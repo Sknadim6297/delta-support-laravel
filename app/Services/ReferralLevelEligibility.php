@@ -21,16 +21,45 @@ class ReferralLevelEligibility
         Package::TYPE_ROI,
     ];
 
+    public function __construct(private readonly LevelIncomeRuleResolver $resolver)
+    {
+    }
+
     /**
-     * @return array{qualifying_direct_count: int, unlocked_levels: int}
+     * Member unlock summary. When $sourcePurchase + $businessDate are provided,
+     * unlock uses purchase-scoped applicability (legacy vs authorized).
+     *
+     * @return array{
+     *   qualifying_direct_count: int,
+     *   unlocked_levels: int,
+     *   personally_activated: bool,
+     *   next_unlock: ?array{required_directs: int, target_levels: int, message: string},
+     *   rule_mode: string
+     * }
      */
-    public function forMember(string $memberId): array
+    public function forMember(string $memberId, ?PackagePurchase $sourcePurchase = null, ?string $businessDate = null): array
     {
         $count = $this->qualifyingDirectCount($memberId);
+        $activated = $this->resolver->isPersonallyActivated($memberId);
+
+        if ($sourcePurchase !== null && $businessDate !== null) {
+            $unlocked = $this->resolver->unlockedLevelsForPurchase($sourcePurchase, $businessDate, $count, $activated);
+            $mode = $this->resolver->usesAuthorizedConfiguration($sourcePurchase, $businessDate)
+                ? LevelIncomeRuleResolver::MODE_AUTHORIZED
+                : LevelIncomeRuleResolver::MODE_LEGACY;
+        } else {
+            $unlocked = $this->resolver->unlockedLevels($count, $activated);
+            $mode = $this->resolver->authorizedVersion() !== null
+                ? LevelIncomeRuleResolver::MODE_AUTHORIZED
+                : LevelIncomeRuleResolver::MODE_LEGACY;
+        }
 
         return [
             'qualifying_direct_count' => $count,
-            'unlocked_levels' => $this->levelsForCount($count),
+            'unlocked_levels' => $unlocked,
+            'personally_activated' => $activated,
+            'next_unlock' => $this->nextUnlockRequirement($count, $activated, $unlocked),
+            'rule_mode' => $mode,
         ];
     }
 
@@ -76,7 +105,13 @@ class ReferralLevelEligibility
      * Two grouped counts for a page of members. This does not walk the full genealogy tree.
      *
      * @param  list<string>  $memberIds
-     * @return array<string, array{direct_count: int, qualifying_direct_count: int, unlocked_levels: int, status: string}>
+     * @return array<string, array{
+     *   direct_count: int,
+     *   qualifying_direct_count: int,
+     *   unlocked_levels: int,
+     *   personally_activated: bool,
+     *   status: string
+     * }>
      */
     public function summariesForMemberIds(array $memberIds): array
     {
@@ -102,14 +137,25 @@ class ReferralLevelEligibility
             ->groupBy('sponsor_id')
             ->pluck('aggregate', 'sponsor_id');
 
+        $activatedIds = Member::query()
+            ->whereIn('member_id', $memberIds)
+            ->whereExists(function ($query): void {
+                $this->qualifyingPurchaseConstraint($query);
+            })
+            ->pluck('member_id')
+            ->all();
+        $activatedLookup = array_fill_keys($activatedIds, true);
+
         $summaries = [];
         foreach ($memberIds as $memberId) {
             $qualifying = (int) ($qualifyingCounts[$memberId] ?? 0);
-            $unlocked = $this->levelsForCount($qualifying);
+            $activated = isset($activatedLookup[$memberId]);
+            $unlocked = $this->resolver->unlockedLevels($qualifying, $activated);
             $summaries[$memberId] = [
                 'direct_count' => (int) ($directCounts[$memberId] ?? 0),
                 'qualifying_direct_count' => $qualifying,
                 'unlocked_levels' => $unlocked,
+                'personally_activated' => $activated,
                 'status' => $this->statusLabel($unlocked),
             ];
         }
@@ -153,15 +199,54 @@ class ReferralLevelEligibility
             });
     }
 
+    /**
+     * Legacy ladder helper. When posting is unauthorized, matches live financial behavior.
+     * Prefer forMember() when personal activation matters under authorized configs.
+     */
     public function levelsForCount(int $qualifyingDirectCount): int
     {
-        return match (true) {
-            $qualifyingDirectCount >= 5 => self::MAX_LEVELS,
-            $qualifyingDirectCount === 4 => 16,
-            $qualifyingDirectCount === 3 => 12,
-            $qualifyingDirectCount === 2 => 8,
-            $qualifyingDirectCount === 1 => 4,
-            default => 0,
-        };
+        // Keep live posting behavior stable: until a version is posting_authorized,
+        // always return the hard-coded legacy ladder (ignore draft/proposed bands).
+        if ($this->resolver->authorizedVersion() === null) {
+            return $this->resolver->legacyLevelsForCount($qualifyingDirectCount);
+        }
+
+        // Authorized configs need activation context; without it, treat as inactive.
+        return $this->resolver->unlockedLevels($qualifyingDirectCount, true);
+    }
+
+    /**
+     * @return ?array{required_directs: int, target_levels: int, message: string}
+     */
+    public function nextUnlockRequirement(int $qualifyingDirectCount, bool $personallyActivated, int $unlockedLevels): ?array
+    {
+        if ($unlockedLevels >= self::MAX_LEVELS) {
+            return null;
+        }
+
+        if (! $personallyActivated) {
+            return [
+                'required_directs' => $qualifyingDirectCount,
+                'target_levels' => max(1, $unlockedLevels),
+                'message' => 'Personal activation via a qualifying approved package is required before Level Income unlocks.',
+            ];
+        }
+
+        for ($directs = $qualifyingDirectCount + 1; $directs <= 20; $directs++) {
+            $next = $this->resolver->unlockedLevels($directs, true);
+            if ($next > $unlockedLevels) {
+                $needed = $directs - $qualifyingDirectCount;
+
+                return [
+                    'required_directs' => $directs,
+                    'target_levels' => $next,
+                    'message' => $needed === 1
+                        ? "1 more qualifying direct unlocks levels 1–{$next}."
+                        : "{$needed} more qualifying directs unlock levels 1–{$next}.",
+                ];
+            }
+        }
+
+        return null;
     }
 }

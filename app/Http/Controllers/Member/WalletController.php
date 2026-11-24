@@ -142,8 +142,11 @@ class WalletController extends Controller
         ]);
     }
 
-    public function eligibility(Request $request, ReferralLevelEligibility $eligibility): View
-    {
+    public function eligibility(
+        Request $request,
+        ReferralLevelEligibility $eligibility,
+        \App\Services\LevelIncomeRuleResolver $resolver,
+    ): View {
         $member = $this->member($request);
         $summary = $eligibility->forMember($member->member_id);
         $directs = Member::query()
@@ -153,12 +156,27 @@ class WalletController extends Controller
             ->paginate(10, ['member_id', 'member_name']);
         $qualifyingIds = $eligibility->qualifyingIdsAmong($directs->pluck('member_id')->all());
 
+        $levelIncomeTotal = \App\Models\PackageLevelAccrual::query()
+            ->where('member_id', $member->member_id)
+            ->where('status', 'accrued')
+            ->sum('amount');
+        $levelIncomeToday = \App\Models\PackageLevelAccrual::query()
+            ->where('member_id', $member->member_id)
+            ->where('status', 'accrued')
+            ->whereDate('business_date', now()->toDateString())
+            ->sum('amount');
+
         return view('member.finance.eligibility', [
             'member' => $member,
             'directCount' => $eligibility->directCount($member->member_id),
             'qualifyingCount' => $summary['qualifying_direct_count'],
             'unlockedLevels' => $summary['unlocked_levels'],
+            'personallyActivated' => (bool) ($summary['personally_activated'] ?? false),
+            'nextUnlock' => $summary['next_unlock'] ?? null,
             'status' => $eligibility->statusLabel($summary['unlocked_levels']),
+            'rateChart' => $resolver->rateChart(),
+            'levelIncomeTotal' => bcadd((string) $levelIncomeTotal, '0', 4),
+            'levelIncomeToday' => bcadd((string) $levelIncomeToday, '0', 4),
             'referralUrl' => route('member.register', ['sponsor_id' => $member->member_id]),
             'directs' => $directs,
             'qualifyingIds' => $qualifyingIds,

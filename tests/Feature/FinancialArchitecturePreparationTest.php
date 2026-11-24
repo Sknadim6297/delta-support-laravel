@@ -87,10 +87,10 @@ class FinancialArchitecturePreparationTest extends TestCase
 
         $unrelated = $this->member('STELIG008', 'ST666666');
         $eligibility = app(ReferralLevelEligibility::class);
-        $this->assertSame([
-            'qualifying_direct_count' => 1,
-            'unlocked_levels' => 4,
-        ], $eligibility->forMember($sponsor->member_id));
+        $summary = $eligibility->forMember($sponsor->member_id);
+        $this->assertSame(1, $summary['qualifying_direct_count']);
+        $this->assertSame(4, $summary['unlocked_levels']);
+        $this->assertTrue($summary['personally_activated']);
         $this->assertSame(1, $eligibility->forMember($otherSponsor->member_id)['qualifying_direct_count']);
         $this->assertSame(0, $eligibility->forMember($unrelated->member_id)['qualifying_direct_count']);
         $this->assertSame(0, $eligibility->levelsForCount(0));

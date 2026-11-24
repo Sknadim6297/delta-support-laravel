@@ -105,6 +105,11 @@ class Member extends Model
         return $this->hasMany(PackagePurchase::class, 'member_id', 'member_id');
     }
 
+    public function paymentControl(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(MemberPaymentControl::class, 'member_id', 'member_id');
+    }
+
     /**
      * Approved and pending purchases used on admin member directories.
      */

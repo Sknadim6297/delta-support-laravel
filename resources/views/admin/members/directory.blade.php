@@ -38,8 +38,17 @@
                 @endforeach
             </select>
         </div>
+        <div>
+            <label for="member-payment">Payments</label>
+            <select id="member-payment" name="payment_status">
+                <option value="">All</option>
+                <option value="active" @selected(($paymentFilter ?? '') === 'active')>Active</option>
+                <option value="partial" @selected(($paymentFilter ?? '') === 'partial')>Partially Stopped</option>
+                <option value="stopped" @selected(($paymentFilter ?? '') === 'stopped')>Stopped</option>
+            </select>
+        </div>
         <button class="ds-btn" type="submit">Search</button>
-        @if (request()->filled('q') || request()->filled('status') || request()->filled('package'))
+        @if (request()->filled('q') || request()->filled('status') || request()->filled('package') || request()->filled('payment_status'))
             <a class="ds-btn ds-btn-secondary" href="{{ route('admin.members.directory') }}">Clear</a>
         @endif
     </form>
@@ -58,6 +67,7 @@
                         <th>Sponsor Name</th>
                         <th>Registration Date</th>
                         <th>Account</th>
+                        <th>Payments</th>
                         <th>Package</th>
                         <th>First Level Business</th>
                         <th>Total Team Business</th>
@@ -66,6 +76,7 @@
                 </thead>
                 <tbody>
                 @forelse($members as $member)
+                    @php($pay = $paymentBadges[$member->member_id] ?? ['label' => 'Active', 'tone' => 'success'])
                     <tr>
                         <td><span class="ds-mm-id">{{ $member->member_id }}</span></td>
                         <td>{{ $member->member_name }} @if (str_ends_with(strtolower((string) $member->email), '@local-test.invalid'))<x-ui.badge tone="warning">Local test</x-ui.badge>@endif</td>
@@ -77,6 +88,9 @@
                         <td>{{ $member->created_at?->format('d M Y') }}</td>
                         <td>
                             <x-ui.badge :tone="$member->status === 'active' ? 'success' : 'warning'">{{ $member->status === 'active' ? 'Active' : 'Inactive' }}</x-ui.badge>
+                        </td>
+                        <td>
+                            <x-ui.badge :tone="$pay['tone']">{{ $pay['label'] }}</x-ui.badge>
                         </td>
                         <td>
                             @php($packageDisplay = $member->packageDirectoryDisplay())
@@ -96,7 +110,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr class="ds-mm-empty"><td colspan="13">No members yet.</td></tr>
+                    <tr class="ds-mm-empty"><td colspan="14">No members yet.</td></tr>
                 @endforelse
                 </tbody>
             </table>

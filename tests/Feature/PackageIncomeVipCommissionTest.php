@@ -372,7 +372,7 @@ class PackageIncomeVipCommissionTest extends TestCase
             ->assertOk()
             ->assertSeeText('2.5000 USDT')
             ->assertSeeText('400');
-        $this->actingAs($admin)->get(route('admin.finance.commission-settings'))
+        $this->actingAs($admin)->get(route('admin.finance.commission-settings', ['tab' => 'history']))
             ->assertOk()
             ->assertSeeText('0.6000')
             ->assertSeeText('960.0000')

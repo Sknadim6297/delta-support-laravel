@@ -28,6 +28,13 @@
             </x-navigation.panel-group>
 
             <li class="pv-nav-section"><span class="pv-nav-section-label">Commerce</span></li>
+            @php($pendingTourRequests = \Illuminate\Support\Facades\Schema::hasTable('tour_interest_requests') ? app(\App\Services\TourInterestService::class)->pendingCount() : 0)
+            <li class="pv-nav-item">
+                <a href="{{ route('admin.tour-requests.index') }}" @class(['pv-nav-link', 'is-active' => request()->routeIs('admin.tour-requests.*')])>
+                    <i class="ri-plane-line" aria-hidden="true"></i>
+                    <span class="pv-nav-label">Tour Requests @if ($pendingTourRequests > 0)<span class="pv-nav-count">{{ $pendingTourRequests }}</span>@endif</span>
+                </a>
+            </li>
             <x-navigation.panel-group icon="ri-archive-line" label="Package Management" :open="request()->routeIs('admin.packages.*', 'admin.purchases.*')">
                 <x-navigation.panel-link :href="route('admin.packages.index')" :active="request()->routeIs('admin.packages.index')">All Packages</x-navigation.panel-link>
                 <x-navigation.panel-link :href="route('admin.packages.create')" :active="request()->routeIs('admin.packages.create')">Add Package</x-navigation.panel-link>

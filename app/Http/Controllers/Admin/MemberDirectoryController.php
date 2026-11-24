@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\PackagePurchase;
+use App\Models\MemberPaymentControl;
 use App\Services\MemberEmailAccountPolicy;
+use App\Services\MemberPaymentControlService;
 use App\Services\Rewards\TeamBusinessCalculationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,9 +15,10 @@ use Illuminate\View\View;
 
 class MemberDirectoryController extends Controller
 {
-    public function index(Request $request, TeamBusinessCalculationService $business): View
+    public function index(Request $request, TeamBusinessCalculationService $business, MemberPaymentControlService $payments): View
     {
         $packageFilter = trim((string) $request->query('package', ''));
+        $paymentFilter = trim((string) $request->query('payment_status', ''));
 
         $members = Member::query()
             ->with('directoryPackagePurchases')
@@ -35,6 +38,16 @@ class MemberDirectoryController extends Controller
                 });
             })
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->query('status')))
+            ->when($paymentFilter !== '', function ($query) use ($paymentFilter): void {
+                if ($paymentFilter === MemberPaymentControl::STATUS_ACTIVE) {
+                    $query->where(function ($inner): void {
+                        $inner->whereDoesntHave('paymentControl')
+                            ->orWhereHas('paymentControl', fn ($q) => $q->where('status', MemberPaymentControl::STATUS_ACTIVE));
+                    });
+                } else {
+                    $query->whereHas('paymentControl', fn ($q) => $q->where('status', $paymentFilter));
+                }
+            })
             ->when($packageFilter !== '', function ($query) use ($packageFilter): void {
                 $query->whereHas('packagePurchases', function ($purchaseQuery) use ($packageFilter): void {
                     $purchaseQuery->where('status', PackagePurchase::APPROVED)
@@ -44,7 +57,9 @@ class MemberDirectoryController extends Controller
             ->latest('id')
             ->paginate(20)
             ->withQueryString();
-        $businessSummaries = $business->businessForMembers($members->getCollection()->pluck('member_id')->all());
+        $memberIds = $members->getCollection()->pluck('member_id')->all();
+        $businessSummaries = $business->businessForMembers($memberIds);
+        $paymentBadges = $payments->badgesForMemberIds($memberIds);
 
         $statusCounts = Member::query()
             ->selectRaw('status, COUNT(*) as aggregate')
@@ -78,6 +93,8 @@ class MemberDirectoryController extends Controller
             'approvedPackageCount',
             'packageOptions',
             'packageFilter',
+            'paymentFilter',
+            'paymentBadges',
             'businessSummaries',
             'emailAccountCounts',
         ));

@@ -22,7 +22,11 @@
     use App\Http\Controllers\Admin\MemberDirectoryController;
     use App\Http\Controllers\Admin\MemberImpersonationController;
     use App\Services\MemberImpersonation;
+    use App\Http\Controllers\Admin\LevelIncomeRuleController;
+    use App\Http\Controllers\Admin\MemberPaymentControlController;
+    use App\Http\Controllers\Admin\TourInterestRequestController;
     use App\Http\Controllers\Admin\OperationsController;
+    use App\Http\Controllers\Member\TourInterestController;
     use App\Http\Controllers\Admin\PackageController;
     use App\Http\Controllers\Admin\PaymentReviewController;
     use App\Http\Controllers\Admin\WithdrawalReviewController;
@@ -213,7 +217,10 @@
         Route::get('/admin/members', [MemberDirectoryController::class, 'index'])->name('admin.members.directory');
         Route::post('/admin/members/{member}/impersonate', [MemberImpersonationController::class, 'start'])->name('admin.members.impersonate');
         Route::post('/admin/members/preview/open', [MemberImpersonationController::class, 'open'])->name('admin.members.preview.open');
-        Route::patch('/admin/members/{memberId}/status', [MemberDirectoryController::class, 'updateStatus'])->name('admin.members.status');
+            Route::patch('/admin/members/{memberId}/status', [MemberDirectoryController::class, 'updateStatus'])->name('admin.members.status');
+            Route::post('/admin/members/{memberId}/payment-controls', [MemberPaymentControlController::class, 'update'])
+                ->middleware('throttle:20,1')
+                ->name('admin.members.payment-controls');
 
         Route::controller(PackageController::class)->prefix('admin/packages')->name('admin.packages.')->group(function () {
             Route::get('/', 'index')->name('index');
@@ -299,11 +306,26 @@
             Route::get('/admin/finance/roi-schedule', 'roiSchedule')->name('admin.finance.roi-schedule');
             Route::get('/admin/finance/real-income', 'realIncome')->name('admin.finance.real-income');
             Route::get('/admin/finance/level-income', 'levelIncomeHistory')->name('admin.finance.level-income');
-            Route::get('/admin/finance/commission-settings', 'commissionSettings')->name('admin.finance.commission-settings');
-            Route::get('/admin/finance/level-unlock-rules', 'levelUnlockRules')->name('admin.finance.level-unlock-rules');
             Route::get('/admin/finance/eligibility', 'eligibility')->name('admin.finance.eligibility');
             Route::get('/admin/wallets/{wallet}', 'wallet')->where('wallet', 'roi|working|activation')->name('admin.wallets.show');
             Route::get('/admin/tours', 'tours')->name('admin.tours.index');
+        });
+
+        Route::controller(TourInterestRequestController::class)->group(function () {
+            Route::get('/admin/tour-requests', 'index')->name('admin.tour-requests.index');
+            Route::get('/admin/tour-requests/export', 'export')->middleware('throttle:10,1')->name('admin.tour-requests.export');
+            Route::get('/admin/tour-requests/{tourRequest}', 'show')->name('admin.tour-requests.show');
+            Route::post('/admin/tour-requests/{tourRequest}', 'update')->middleware('throttle:30,1')->name('admin.tour-requests.update');
+        });
+
+        Route::controller(LevelIncomeRuleController::class)->group(function () {
+            Route::get('/admin/finance/commission-settings', 'settings')->name('admin.finance.commission-settings');
+            Route::get('/admin/finance/level-unlock-rules', 'levelUnlockRules')->name('admin.finance.level-unlock-rules');
+            Route::post('/admin/finance/level-income-rules/draft', 'saveDraft')->name('admin.finance.level-income-rules.draft');
+            Route::post('/admin/finance/level-income-rules/publish', 'publish')->name('admin.finance.level-income-rules.publish');
+            Route::post('/admin/finance/level-income-rules/authorize', 'authorizePosting')->name('admin.finance.level-income-rules.authorize');
+            Route::post('/admin/finance/level-income-rules/revoke', 'revokePosting')->name('admin.finance.level-income-rules.revoke');
+            Route::post('/admin/finance/level-income-rules/clone', 'cloneDraft')->name('admin.finance.level-income-rules.clone');
         });
 
         Route::get('/admin/catalog-reports/{report}/export', [\App\Http\Controllers\Admin\CatalogReportController::class, 'export'])
@@ -863,7 +885,13 @@
             return app(MemberController::class)->memberPanel($member->member_id, $request);
         })->name('member.dashboard');
 
-        
+        Route::post('/member/tour-interest', [TourInterestController::class, 'enable'])
+            ->middleware('throttle:10,1')
+            ->name('member.tour-interest.enable');
+        Route::post('/member/tour-interest/withdraw', [TourInterestController::class, 'withdraw'])
+            ->middleware('throttle:10,1')
+            ->name('member.tour-interest.withdraw');
+
        Route::get('/member/change-password', [MemberChangePasswordController::class, 'index'])
         ->name('member.change-password');
 

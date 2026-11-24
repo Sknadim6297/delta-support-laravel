@@ -227,11 +227,14 @@ class AssociateCommissionDryRunTest extends TestCase
 
         $admin = User::factory()->create(['is_admin' => true]);
         $this->actingAs($admin)
-            ->get(route('admin.finance.commission-settings'))
+            ->get(route('admin.finance.commission-settings', ['tab' => 'unlock']))
             ->assertOk()
             ->assertSeeText('dry_run_only')
-            ->assertSeeText('Associate unlock thresholds')
-            ->assertSeeText('5 or more')
+            ->assertSeeText('5 or more');
+
+        $this->actingAs($admin)
+            ->get(route('admin.finance.commission-settings', ['tab' => 'history']))
+            ->assertOk()
             ->assertSeeText('Associate Commission Structure')
             ->assertSeeText('0.0300')
             ->assertSeeText('0.6000');

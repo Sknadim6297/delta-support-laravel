@@ -91,14 +91,14 @@ class PackageIncomeHistoryPreview
             'commission_pool' => $pool,
             'commission_potential_pool' => bcmul($pool, (string) $commissionElapsed, 4),
             'level_credited_amount' => $levelCredited,
-            'blockers' => $this->blockers($purchase, $package, $roiEligible, $levelEligible),
+            'blockers' => $this->blockers($purchase, $package, $roiEligible, $levelEligible, $asOf->toDateString()),
         ];
     }
 
     /**
      * @return list<string>
      */
-    private function blockers(PackagePurchase $purchase, ?Package $package, bool $roiEligible, bool $levelEligible): array
+    private function blockers(PackagePurchase $purchase, ?Package $package, bool $roiEligible, bool $levelEligible, string $businessDate): array
     {
         $blockers = [];
         if ($purchase->status !== PackagePurchase::APPROVED) {
@@ -141,7 +141,7 @@ class PackageIncomeHistoryPreview
 
             return $blockers;
         }
-        $unlocked = $this->eligibility->forMember($sponsor->member_id)['unlocked_levels'];
+        $unlocked = $this->eligibility->forMember($sponsor->member_id, $purchase, $businessDate)['unlocked_levels'];
         $eligible = Member::query()
             ->where('member_id', $sponsor->member_id)
             ->whereExists(function ($query): void {

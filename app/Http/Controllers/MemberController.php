@@ -267,11 +267,14 @@ class MemberController extends Controller
             }
         }
 
+        $tourInterest = app(\App\Services\TourInterestService::class)->activeForMember($member->member_id);
+
         return view('member.dashboard', [
             'member' => $member,
             'approvedPackage' => $approvedPackage,
             'recentPurchases' => $recentPurchases,
             'rewardPopupCampaign' => $rewardPopupCampaign,
+            'tourInterest' => $tourInterest,
             'packageOptions' => \App\Models\Package::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')
@@ -528,11 +531,25 @@ class MemberController extends Controller
     {
         $member = null;
         $fundSummary = null;
+        $paymentControl = null;
+        $paymentEvents = collect();
+        $paymentIntegrationAuthorized = false;
+        $suggestedPaymentEffectiveFrom = null;
         $memberId = trim((string) $request->query('member_id', ''));
         if ($memberId !== '') {
             $member = Member::query()->where('member_id', $memberId)->first();
             if ($member) {
                 $fundSummary = app(MemberFundSummary::class)->forMember($member);
+                $payments = app(\App\Services\MemberPaymentControlService::class);
+                $paymentControl = $payments->controlFor($member->member_id);
+                $paymentEvents = \App\Models\MemberPaymentControlEvent::query()
+                    ->with('actor')
+                    ->where('member_id', $member->member_id)
+                    ->orderByDesc('id')
+                    ->limit(25)
+                    ->get();
+                $paymentIntegrationAuthorized = $payments->financialIntegrationAuthorized();
+                $suggestedPaymentEffectiveFrom = $payments->suggestEffectiveFrom();
             }
         }
         $walletTransactions = $member
@@ -543,6 +560,10 @@ class MemberController extends Controller
             'member' => $member,
             'fundSummary' => $fundSummary,
             'walletTransactions' => $walletTransactions,
+            'paymentControl' => $paymentControl,
+            'paymentEvents' => $paymentEvents,
+            'paymentIntegrationAuthorized' => $paymentIntegrationAuthorized,
+            'suggestedPaymentEffectiveFrom' => $suggestedPaymentEffectiveFrom,
         ]);
     }
 
