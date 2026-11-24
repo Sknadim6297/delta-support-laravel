@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 @section('title', $campaign->title)
 @section('page-title', $campaign->title)
+@push('styles')
+    @vite('resources/css/features/rewards.css')
+@endpush
 @section('content')
 <div class="ds-catalog">
     <x-ui.page-header :lead="$campaign->starts_on->format('d M Y').' – '.$campaign->ends_on->format('d M Y').' · Asia/Kolkata'">
@@ -30,7 +33,15 @@
             <p>{{ $campaign->gift_description }}</p>
         @endif
         <p>{{ $campaign->stock_quantity === null ? 'No stock limit' : $campaign->stock_quantity.' in stock' }}</p>
+        <p class="ds-pkg-hint">Login popup: {{ $campaign->promote_on_login ? 'Enabled when Active' : 'Disabled' }}</p>
     </x-ui.card>
+    @if ($campaign->hasVideo())
+        <x-ui.card title="Campaign video">
+            <video class="ds-reward-video-preview" controls preload="metadata" playsinline @if($campaign->hasBanner()) poster="{{ route('admin.rewards.image', $campaign) }}" @endif>
+                <source src="{{ route('admin.rewards.video', $campaign) }}" type="video/mp4">
+            </video>
+        </x-ui.card>
+    @endif
     @if ($campaign->description)
         <x-ui.card title="Description"><p>{{ $campaign->description }}</p></x-ui.card>
     @endif
@@ -55,6 +66,13 @@
         @endif
         @if (in_array($campaign->status, ['active', 'completed'], true))
             <form method="POST" action="{{ route('admin.rewards.evaluate', $campaign) }}">@csrf<x-ui.button type="submit" variant="outline">Recalculate</x-ui.button></form>
+        @endif
+        @if (in_array($campaign->status, ['draft', 'cancelled'], true))
+            <form method="POST" action="{{ route('admin.rewards.destroy', $campaign) }}" onsubmit="return confirm('Permanently delete this campaign and unreferenced media?');">
+                @csrf
+                @method('DELETE')
+                <x-ui.button type="submit" variant="danger">Delete permanently</x-ui.button>
+            </form>
         @endif
     </div>
 </div>

@@ -140,18 +140,18 @@
 </div>
 
 <style>
-    .wrapper .ds-content .ds-pin-page {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-page {
         width: 100%;
     }
 
-    .wrapper .ds-content .ds-pin-layout {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-layout {
         display: grid;
         grid-template-columns: minmax(280px, 0.92fr) minmax(340px, 1.08fr);
         gap: 24px;
         align-items: start;
     }
 
-    .wrapper .ds-content .ds-pin-page section {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-page section {
         border: 0;
         border-radius: 0;
         background: transparent;
@@ -159,15 +159,15 @@
         box-shadow: none;
     }
 
-    .wrapper .ds-content .ds-pin-aside,
-    .wrapper .ds-content .ds-pin-main {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-aside,
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-main {
         display: flex;
         min-width: 0;
         flex-direction: column;
         gap: 16px;
     }
 
-    .wrapper .ds-content .ds-pin-kicker {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-kicker {
         margin: 0;
         color: #2563eb;
         font-size: 12px;
@@ -176,7 +176,7 @@
         text-transform: uppercase;
     }
 
-    .wrapper .ds-content .ds-pin-aside h2 {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-aside h2 {
         margin: 0;
         color: #092747;
         font-size: 32px;
@@ -185,7 +185,7 @@
         line-height: 1.1;
     }
 
-    .wrapper .ds-content .ds-pin-copy {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-copy {
         margin: 0;
         max-width: 46ch;
         color: #526277;
@@ -193,7 +193,7 @@
         line-height: 1.55;
     }
 
-    .wrapper .ds-content .ds-pin-banner {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-banner {
         display: flex;
         align-items: flex-start;
         gap: 12px;
@@ -210,13 +210,13 @@
         line-height: 1.45;
     }
 
-    .wrapper .ds-content .ds-pin-banner.is-transfer i {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-banner.is-transfer i {
         flex: none;
         margin-top: 1px;
         font-size: 20px;
     }
 
-    .wrapper .ds-content .ds-pin-banner p {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-banner p {
         margin: 0;
         color: #6b4708;
         font-size: 14px;
@@ -224,7 +224,7 @@
         line-height: 1.45;
     }
 
-    .wrapper .ds-content .ds-pin-banner.ds-alert-error {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-banner.ds-alert-error {
         border-color: #fecaca;
         border-left-color: #dc2626;
         background: linear-gradient(180deg, #fff5f5 0%, #fff 72%);
@@ -232,28 +232,28 @@
         color: #b91c1c;
     }
 
-    .wrapper .ds-content .ds-pin-status {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-status {
         display: flex;
         flex-direction: column;
         gap: 12px;
     }
 
-    .wrapper .ds-content .ds-pin-card,
-    .wrapper .ds-content .ds-pin-help {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-card,
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-help {
         border: 1px solid #e3ebf5;
         border-radius: 16px;
         background: #fff;
         box-shadow: 0 10px 28px rgba(9, 39, 71, 0.05);
     }
 
-    .wrapper .ds-content .ds-pin-card {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-card {
         display: flex;
         align-items: flex-start;
         gap: 14px;
         padding: 16px 16px 15px;
     }
 
-    .wrapper .ds-content .ds-pin-card-icon {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-card-icon {
         display: inline-flex;
         width: 42px;
         height: 42px;
@@ -266,30 +266,30 @@
         font-size: 20px;
     }
 
-    .wrapper .ds-content .ds-pin-card.is-ok .ds-pin-card-icon {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-card.is-ok .ds-pin-card-icon {
         background: #e8f8ef;
         color: #15803d;
     }
 
-    .wrapper .ds-content .ds-pin-card.is-warn .ds-pin-card-icon {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-card.is-warn .ds-pin-card-icon {
         background: #fff6e6;
         color: #d9890b;
     }
 
-    .wrapper .ds-content .ds-pin-card.is-danger .ds-pin-card-icon {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-card.is-danger .ds-pin-card-icon {
         background: #fef2f2;
         color: #dc2626;
     }
 
-    .wrapper .ds-content .ds-pin-card-label,
-    .wrapper .ds-content .ds-pin-form-head span {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-card-label,
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-form-head span {
         color: #667085;
         font-size: 12px;
         font-weight: 600;
         line-height: 1.3;
     }
 
-    .wrapper .ds-content .ds-pin-card strong {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-card strong {
         display: block;
         margin-top: 3px;
         color: #092747;
@@ -300,7 +300,7 @@
         overflow-wrap: anywhere;
     }
 
-    .wrapper .ds-content .ds-pin-card small {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-card small {
         display: block;
         margin-top: 4px;
         color: #8795a8;
@@ -309,34 +309,34 @@
         line-height: 1.4;
     }
 
-    .wrapper .ds-content .ds-pin-help {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-help {
         padding: 16px 18px 14px;
     }
 
-    .wrapper .ds-content .ds-pin-help h3 {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-help h3 {
         margin: 0 0 8px;
         color: #092747;
         font-size: 14px;
         font-weight: 700;
     }
 
-    .wrapper .ds-content .ds-pin-help ul {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-help ul {
         margin: 0;
         padding-left: 18px;
     }
 
-    .wrapper .ds-content .ds-pin-help li {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-help li {
         margin: 0;
         color: #526277;
         font-size: 13px;
         line-height: 1.5;
     }
 
-    .wrapper .ds-content .ds-pin-help li + li {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-help li + li {
         margin-top: 6px;
     }
 
-    .wrapper .ds-content form.ds-pin-form {
+    :is(.wrapper, .pv-app) .ds-content form.ds-pin-form {
         display: flex;
         width: 100%;
         max-width: none;
@@ -352,16 +352,16 @@
         box-shadow: 0 16px 36px rgba(9, 39, 71, 0.07);
     }
 
-    .wrapper .ds-content form.ds-pin-form > * {
+    :is(.wrapper, .pv-app) .ds-content form.ds-pin-form > * {
         width: 100%;
         max-width: none;
     }
 
-    .wrapper .ds-content form.ds-pin-form.is-quiet {
+    :is(.wrapper, .pv-app) .ds-content form.ds-pin-form.is-quiet {
         background: linear-gradient(180deg, #f8fbff 0%, #fff 48%);
     }
 
-    .wrapper .ds-content .ds-pin-form-head p {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-form-head p {
         margin: 0 0 4px;
         color: #2563eb;
         font-size: 12px;
@@ -370,7 +370,7 @@
         text-transform: uppercase;
     }
 
-    .wrapper .ds-content .ds-pin-form-head h2 {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-form-head h2 {
         margin: 0 0 6px;
         color: #092747;
         font-size: 24px;
@@ -379,27 +379,27 @@
         line-height: 1.2;
     }
 
-    .wrapper .ds-content .ds-pin-form-head span {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-form-head span {
         display: block;
         font-size: 14px;
         font-weight: 500;
         line-height: 1.45;
     }
 
-    .wrapper .ds-content .ds-pin-fields {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-fields {
         display: flex;
         flex-direction: column;
         gap: 18px;
     }
 
-    .wrapper .ds-content .ds-pin-hint {
+    :is(.wrapper, .pv-app) .ds-content .ds-pin-hint {
         margin: -4px 0 0;
         color: #667085;
         font-size: 13px;
         line-height: 1.45;
     }
 
-    .wrapper .ds-content form.ds-pin-form button[type="submit"] {
+    :is(.wrapper, .pv-app) .ds-content form.ds-pin-form button[type="submit"] {
         width: 100%;
         min-height: 48px;
         border-radius: 14px;
@@ -408,22 +408,22 @@
     }
 
     @media (max-width: 980px) {
-        .wrapper .ds-content .ds-pin-layout {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin-layout {
             grid-template-columns: 1fr;
         }
 
-        .wrapper .ds-content .ds-pin-aside h2 {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin-aside h2 {
             font-size: 28px;
         }
     }
 
     @media (max-width: 640px) {
-        .wrapper .ds-content form.ds-pin-form {
+        :is(.wrapper, .pv-app) .ds-content form.ds-pin-form {
             padding: 16px;
             border-radius: 16px;
         }
 
-        .wrapper .ds-content .ds-pin-card {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin-card {
             padding: 14px;
         }
     }

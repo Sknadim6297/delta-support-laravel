@@ -129,6 +129,34 @@
             </div>
         </x-ui.card>
 
+        @php
+            $validityUnlimited = (bool) old('validity_unlimited', $plan->validity_unlimited ?? $package->validity_unlimited ?? false);
+            $validityDuration = old('validity_duration', $plan->validity_duration ?? $package->validity_duration ?? '');
+            $validityUnit = old('validity_unit', $plan->validity_unit ?? $package->validity_unit ?? '');
+        @endphp
+        <x-ui.card title="Package Validity" subtitle="How long this package remains valid. Separate from ROI Days and Tour Nights/Days. Does not stop ROI or benefits automatically.">
+            <div class="ds-pkg-grid">
+                <label class="ds-pkg-field ds-pkg-span-2 ds-pkg-check">
+                    <input type="checkbox" name="validity_unlimited" id="validity_unlimited" value="1" @checked($validityUnlimited)>
+                    <span>Unlimited validity</span>
+                </label>
+                <label class="ds-pkg-field">
+                    <span>Duration number</span>
+                    <input type="number" name="validity_duration" id="validity_duration" value="{{ $validityDuration }}" min="1" max="100000" placeholder="e.g. 12" @disabled($validityUnlimited)>
+                </label>
+                <label class="ds-pkg-field">
+                    <span>Duration unit</span>
+                    <select name="validity_unit" id="validity_unit" @disabled($validityUnlimited)>
+                        <option value="">Select unit</option>
+                        @foreach (\App\Support\PackageValidityDisplay::UNITS as $unitValue => $unitLabel)
+                            <option value="{{ $unitValue }}" @selected($validityUnit === $unitValue)>{{ $unitLabel }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            </div>
+            <p class="ds-pkg-hint">Saving updates the catalog for future purchases only. Existing approved purchases keep their original validity snapshot. Expiry rules are not enforced yet.</p>
+        </x-ui.card>
+
         <x-ui.card title="Returns" subtitle="Daily ROI in USDT. Monthly and total returns calculate automatically.">
             @if ($tourOnly || ($package->package_type === \App\Models\Package::TYPE_TOUR && ! old('package_type')))
                 <x-ui.alert type="info">Tour Only packages have no Daily ROI. Auto ROI stays OFF.</x-ui.alert>
@@ -271,6 +299,23 @@
         type && type.addEventListener(evt, refresh);
     });
     refresh();
+
+    const validityUnlimited = document.getElementById('validity_unlimited');
+    const validityDuration = document.getElementById('validity_duration');
+    const validityUnit = document.getElementById('validity_unit');
+    function refreshValidity() {
+        const unlimited = !!(validityUnlimited && validityUnlimited.checked);
+        if (validityDuration) {
+            validityDuration.disabled = unlimited;
+            if (unlimited) validityDuration.value = '';
+        }
+        if (validityUnit) {
+            validityUnit.disabled = unlimited;
+            if (unlimited) validityUnit.value = '';
+        }
+    }
+    validityUnlimited && validityUnlimited.addEventListener('change', refreshValidity);
+    refreshValidity();
 
     const autoForm = document.getElementById('auto-roi-form');
     if (autoForm) {

@@ -111,6 +111,9 @@ class PackagePurchase extends Model
         'member_id',
         'package_id',
         'package_plan_version_id',
+        'validity_unlimited',
+        'validity_duration',
+        'validity_unit',
         'package_code',
         'package_name',
         'package_type',
@@ -140,6 +143,8 @@ class PackagePurchase extends Model
 
     protected $casts = [
         'price_usd' => 'decimal:4',
+        'validity_unlimited' => 'boolean',
+        'validity_duration' => 'integer',
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
     ];

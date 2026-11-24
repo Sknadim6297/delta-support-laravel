@@ -4,41 +4,35 @@
     $showReset = $showReset ?? false;
 @endphp
 
-<div class="lh-native-tree" data-genealogy @if (! empty($childrenUrl)) data-tree-children="{{ $childrenUrl }}" @endif>
-    <div class="lh-card">
-        <div class="lh-card-header">
-            <h4 class="lh-card-title">Referral Tree</h4>
-        </div>
-        <div class="lh-card-content">
-    <form method="GET" action="{{ $formAction }}" id="{{ $formId }}" class="lh-filter" data-genealogy-search>
-        <label for="{{ $inputId }}">Member ID</label>
-        <input
-            type="text"
-            id="{{ $inputId }}"
-            name="member_id"
-            value="{{ $selectedMemberId }}"
-            placeholder="Enter member ID"
-            data-member-autocomplete
-            autocomplete="off"
-            @if ($memberNotFound) aria-invalid="true" aria-describedby="{{ $inputId }}-error" @endif
-        >
-        <button type="submit" class="lh-primary-btn">
-            <svg class="ds-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <span>Search</span>
-        </button>
-        @if ($showReset)
-            <a class="ds-btn ds-btn-secondary" href="{{ $resetUrl }}">Reset</a>
-        @endif
-        @if ($memberNotFound)
-            <p class="validation-message" id="{{ $inputId }}-error">Member not found.</p>
-        @elseif (! empty($searchHint))
-            <p class="ds-hint">{{ $searchHint }}</p>
-        @endif
-    </form>
-        </div>
-    </div>
+<div class="pv-genealogy" data-genealogy @if (! empty($childrenUrl)) data-tree-children="{{ $childrenUrl }}" @endif>
+    <x-ui.card title="Referral Tree" :lead="$searchHint ?? null">
+        <form method="GET" action="{{ $formAction }}" id="{{ $formId }}" class="ds-filter-form" data-genealogy-search>
+            <label for="{{ $inputId }}">Member ID
+                <input
+                    type="text"
+                    id="{{ $inputId }}"
+                    name="member_id"
+                    value="{{ $selectedMemberId }}"
+                    placeholder="Enter member ID"
+                    data-member-autocomplete
+                    autocomplete="off"
+                    @if ($memberNotFound) aria-invalid="true" aria-describedby="{{ $inputId }}-error" @endif
+                >
+            </label>
+            <button type="submit" class="ds-report-btn ds-report-btn-blue">
+                <svg class="ds-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <span>Search</span>
+            </button>
+            @if ($showReset)
+                <a class="ds-btn ds-btn-secondary" href="{{ $resetUrl }}">Reset</a>
+            @endif
+            @if ($memberNotFound)
+                <p class="validation-message" id="{{ $inputId }}-error">Member not found.</p>
+            @endif
+        </form>
+    </x-ui.card>
 
-    <section class="tree-workspace lh-card" aria-label="Referral network">
+    <section class="tree-workspace" aria-label="Referral network">
         @include('shared.genealogy-controls')
 
         <div id="treeContainer" class="tree-canvas" tabindex="0" aria-label="Referral tree canvas">

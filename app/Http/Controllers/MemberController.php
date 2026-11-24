@@ -252,10 +252,26 @@ class MemberController extends Controller
             ->limit(5)
             ->get();
 
+        $rewardPopupCampaign = null;
+        if (! $request->routeIs('admin.member-panel')
+            && $request->session()->pull('reward_popup_pending') === true) {
+            $dismissed = array_map('intval', (array) $request->session()->get('reward_popup_dismissed', []));
+            $candidate = \App\Models\RewardCampaign::query()
+                ->promotableForLogin()
+                ->when($dismissed !== [], fn ($query) => $query->whereNotIn('id', $dismissed))
+                ->first();
+            if ($candidate) {
+                $rewardPopupCampaign = $candidate;
+                $dismissed[] = (int) $candidate->id;
+                $request->session()->put('reward_popup_dismissed', array_values(array_unique($dismissed)));
+            }
+        }
+
         return view('member.dashboard', [
             'member' => $member,
             'approvedPackage' => $approvedPackage,
             'recentPurchases' => $recentPurchases,
+            'rewardPopupCampaign' => $rewardPopupCampaign,
             'packageOptions' => \App\Models\Package::query()
                 ->where('is_active', true)
                 ->orderBy('sort_order')

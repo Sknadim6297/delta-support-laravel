@@ -713,12 +713,14 @@
             Route::get('/{campaign}', 'show')->name('show');
             Route::get('/{campaign}/edit', 'edit')->name('edit');
             Route::put('/{campaign}', 'update')->name('update');
+            Route::delete('/{campaign}', 'destroy')->name('destroy');
             Route::post('/{campaign}/publish', 'publish')->name('publish');
             Route::post('/{campaign}/pause', 'pause')->name('pause');
             Route::post('/{campaign}/close', 'close')->name('close');
             Route::post('/{campaign}/cancel', 'cancel')->name('cancel');
             Route::post('/{campaign}/evaluate', 'evaluate')->name('evaluate');
             Route::get('/{campaign}/image', 'image')->name('image');
+            Route::get('/{campaign}/video', 'video')->name('video');
         });
         
         
@@ -745,7 +747,9 @@
             ->name('member.rank');
 
         Route::get('/member/rewards', [MemberRewardController::class, 'index'])->name('member.rewards.index');
+        Route::get('/member/rewards/{campaign}', [MemberRewardController::class, 'show'])->name('member.rewards.show');
         Route::get('/member/rewards/{campaign}/image', [MemberRewardController::class, 'image'])->name('member.rewards.image');
+        Route::get('/member/rewards/{campaign}/video', [MemberRewardController::class, 'video'])->name('member.rewards.video');
 
         Route::controller(CatalogController::class)->group(function () {
             Route::get('/member/packages', 'explore')->name('member.packages.explore');

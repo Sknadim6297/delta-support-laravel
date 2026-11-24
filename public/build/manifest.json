@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-CzL77cKJ.css",
+    "file": "assets/app-Es6wn9G4.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -9,7 +9,7 @@
     ]
   },
   "resources/css/auth-portal.css": {
-    "file": "assets/auth-portal-B5n2_HYj.css",
+    "file": "assets/auth-portal-qJ3FFg57.css",
     "src": "resources/css/auth-portal.css",
     "isEntry": true,
     "name": "auth-portal",
@@ -17,8 +17,17 @@
       "auth-portal.css"
     ]
   },
+  "resources/css/features/rewards.css": {
+    "file": "assets/rewards-Cy5MydHO.css",
+    "src": "resources/css/features/rewards.css",
+    "isEntry": true,
+    "name": "rewards",
+    "names": [
+      "rewards.css"
+    ]
+  },
   "resources/css/lux-pages.css": {
-    "file": "assets/lux-pages-Ci8tEWT-.css",
+    "file": "assets/lux-pages-CZLoIra6.css",
     "src": "resources/css/lux-pages.css",
     "isEntry": true,
     "name": "lux-pages",
@@ -27,7 +36,7 @@
     ]
   },
   "resources/css/lux-shell.css": {
-    "file": "assets/lux-shell-Ci8Uy3Wb.css",
+    "file": "assets/lux-shell-DvuYHv42.css",
     "src": "resources/css/lux-shell.css",
     "isEntry": true,
     "name": "lux-shell",
@@ -35,8 +44,17 @@
       "lux-shell.css"
     ]
   },
+  "resources/css/panel-v2.css": {
+    "file": "assets/panel-v2-DL4ij-jF.css",
+    "src": "resources/css/panel-v2.css",
+    "isEntry": true,
+    "name": "panel-v2",
+    "names": [
+      "panel-v2.css"
+    ]
+  },
   "resources/css/panel.css": {
-    "file": "assets/panel-NEw0_zs9.css",
+    "file": "assets/panel-YtZbyNEO.css",
     "src": "resources/css/panel.css",
     "isEntry": true,
     "name": "panel",
@@ -54,7 +72,7 @@
     ]
   },
   "resources/css/site.css": {
-    "file": "assets/site-B0Fav1HB.css",
+    "file": "assets/site-DGtptVhd.css",
     "src": "resources/css/site.css",
     "isEntry": true,
     "name": "site",
@@ -72,6 +90,12 @@
     "file": "assets/lux-shell-BYXVsiIO.js",
     "name": "lux-shell",
     "src": "resources/js/lux-shell.js",
+    "isEntry": true
+  },
+  "resources/js/panel-v2.js": {
+    "file": "assets/panel-v2-C3L6-056.js",
+    "name": "panel-v2",
+    "src": "resources/js/panel-v2.js",
     "isEntry": true
   },
   "resources/js/panel.js": {

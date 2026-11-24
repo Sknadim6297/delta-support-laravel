@@ -332,6 +332,9 @@ class PackagePurchaseService
                 }
             }
 
+            // Snapshot package validity for this approval only. Never rewrites older purchases.
+            $this->snapshotPackageValidity($locked->fresh());
+
             // Immutable income-term snapshot. Associate ranks fill only when
             // DELTASUPPORT_ASSOCIATE_COMMISSION_SNAPSHOT=true. Never credits wallets.
             app(PackageIncomeTermRecorder::class)->record($locked->fresh());
@@ -639,6 +642,43 @@ class PackagePurchaseService
         } while (PackagePurchaseReservation::query()->where('reservation_reference', $code)->exists());
 
         return $code;
+    }
+
+    /**
+     * Capture catalog/plan validity onto a newly approved purchase.
+     * Does not overwrite an existing snapshot. Does not enforce expiry.
+     */
+    private function snapshotPackageValidity(PackagePurchase $purchase): void
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('package_purchases', 'validity_duration')
+            && ! \Illuminate\Support\Facades\Schema::hasColumn('package_purchases', 'validity_unlimited')) {
+            return;
+        }
+
+        $locked = PackagePurchase::query()->whereKey($purchase->id)->lockForUpdate()->first();
+        if ($locked === null) {
+            return;
+        }
+        if ($locked->validity_unlimited !== null || $locked->validity_duration !== null || $locked->validity_unit !== null) {
+            return;
+        }
+
+        $source = null;
+        if ($locked->package_plan_version_id) {
+            $source = \App\Models\PackagePlanVersion::query()->find($locked->package_plan_version_id);
+        }
+        if ($source === null && $locked->package_id) {
+            $source = Package::query()->whereKey($locked->package_id)->first();
+        }
+        if ($source === null) {
+            return;
+        }
+
+        $locked->forceFill([
+            'validity_unlimited' => (bool) ($source->validity_unlimited ?? false),
+            'validity_duration' => $source->validity_unlimited ? null : $source->validity_duration,
+            'validity_unit' => $source->validity_unlimited ? null : $source->validity_unit,
+        ])->save();
     }
 
     private function assertAdmin(User $admin): void

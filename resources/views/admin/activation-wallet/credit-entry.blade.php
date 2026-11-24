@@ -3,123 +3,45 @@
 @section('title', 'Activation Credit')
 @section('page-title', 'Activation Credit')
 
-@section('content') 
-        <main>
+@section('content')
+<div class="ds-reports">
+    <x-ui.page-header lead="Transfer from the working wallet to a member activation wallet." />
 
-    
+    @include('partials.legacy-financial-lock')
 
-    <div>
-        @include('partials.legacy-financial-lock')
+    @if ($errors->any())
+        <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
+    @endif
 
-        @if ($errors->any())
-            <div>{{ $errors->first() }}</div>
-        @endif
+    @if (session('success'))
+        <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+    @endif
 
-        @if (session('success'))
-            <div>{{ session('success') }}</div>
-        @endif
-
-        <!-- TITLE -->
-        <div>
-            <h4>Transfer to Member Activation Wallet</h4>
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Transfer to Member Activation Wallet</h2>
+        </header>
+        <div class="ds-report-card">
+            <form method="POST" action="{{ route('admin.activation-wallet.store-credit-entry') }}" id="activationWalletForm" class="ds-filter-form">
+                @csrf
+                <label>Member ID
+                    <input type="text" id="memberId" name="member_id" data-error-for="member_id" placeholder="Enter Member ID">
+                </label>
+                <label>Member Name
+                    <input type="text" id="memberName" name="member_name" placeholder="Enter Member Name" readonly>
+                </label>
+                <label>Activation Wallet Amount (USDT)
+                    <input type="text" id="walletAmount" name="wallet_amount" placeholder="Activation Wallet Amount" readonly>
+                </label>
+                <label>Amount Want to Transfer (USDT)
+                    <input type="number" id="transferAmount" name="amount" data-error-for="amount" placeholder="Enter Amount">
+                </label>
+                <button type="button" id="fetchMemberDetails" class="ds-report-btn ds-report-btn-blue"><i></i> Submit</button>
+                <button type="reset" id="resetActivationWalletForm" class="ds-report-btn ds-report-btn-amber"><i></i> Reset</button>
+            </form>
         </div>
-
-        <form method="POST" action="{{ route('admin.activation-wallet.store-credit-entry') }}" id="activationWalletForm">
-            @csrf
-        <div>
-
-            <!-- MEMBER ID -->
-            <div>
-                <label>
-                    Member ID
-                </label>
-
-                <input type="text"
-                      id="memberId"
-                      name="member_id"
-                      data-error-for="member_id"
-                      
-                       placeholder="Enter Member ID">
-            </div>
-
-
-            <!-- MEMBER NAME -->
-            <div>
-                <label>
-                    Member Name
-                </label>
-
-                <input type="text"
-                      id="memberName"
-                      name="member_name"
-                      
-                      placeholder="Enter Member Name"
-                      readonly>
-            </div>
-
-
-            <!-- ACTIVATION WALLET AMOUNT -->
-            <div>
-                <label>
-                    Activation Wallet Amount (USDT)
-                </label>
-
-                <input type="text"
-                      id="walletAmount"
-                      name="wallet_amount"
-                      
-                       placeholder="Activation Wallet Amount"
-                       readonly>
-            </div>
-
-
-            <!-- TRANSFER AMOUNT -->
-            <div>
-                <label>
-                    Amount Want to Transfer (USDT)
-                </label>
-
-                <input type="number"
-                       id="transferAmount"
-                      name="amount"
-                      data-error-for="amount"
-                      
-                       placeholder="Enter Amount">
-            </div>
-
-        </div>
-
-
-        <!-- BUTTONS -->
-        <div>
-
-            <button type="button"
-                    id="fetchMemberDetails"
-                   
-                   >
-
-                <i></i>
-                Submit
-
-            </button>
-
-                    <button type="reset"
-                    id="resetActivationWalletForm"
-                   
-                    >
-
-                <i></i>
-                Reset
-
-            </button>
-
-        </div>
-        </form>
-
-    </div>
-
-
-</main>
+    </section>
+</div>
 @endsection
 
 @section('scripts')

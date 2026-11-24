@@ -56,6 +56,7 @@
             @if ($assignment?->conflict_campaign_id)
                 <p>A later campaign also qualifies. An admin will review it. This gift stays as recorded.</p>
             @endif
+            <p><a href="{{ route('member.rewards.show', $campaign) }}">View campaign details</a></p>
         </x-ui.card>
     @empty
         <x-ui.card title="Campaigns"><p>No reward campaigns are open.</p></x-ui.card>

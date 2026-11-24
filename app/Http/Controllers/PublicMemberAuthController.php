@@ -153,6 +153,7 @@ class PublicMemberAuthController extends Controller
         if ($member && $this->memberCanAuthenticate($member) && $this->passwordMatches($member, $credentials['password'])) {
             $request->session()->regenerate();
             $request->session()->put('member_context_id', $member->member_id);
+            $request->session()->put('reward_popup_pending', true);
 
             return redirect()->intended(route('member.dashboard'));
         }
@@ -182,6 +183,7 @@ class PublicMemberAuthController extends Controller
                     && $this->passwordMatches($emailMember, $credentials['password'])) {
                     $request->session()->regenerate();
                     $request->session()->put('member_context_id', $emailMember->member_id);
+                    $request->session()->put('reward_popup_pending', true);
 
                     return redirect()->intended(route('member.dashboard'));
                 }

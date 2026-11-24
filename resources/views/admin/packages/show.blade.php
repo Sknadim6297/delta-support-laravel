@@ -33,6 +33,7 @@
             <div><strong>Price</strong><div>{{ \App\Support\MoneyDisplay::format($package->price_usd, $package->denomination) }}</div></div>
             <div><strong>Type</strong><div>{{ $package->typeLabel() }}</div></div>
             <div><strong>Purchases</strong><div>{{ $package->purchases()->count() }}</div></div>
+            <div><strong>Package Validity</strong><div>{{ \App\Support\PackageValidityDisplay::label($plan ?? $package) }}</div></div>
             <div class="ds-field-span"><strong>Description</strong><div>{{ $package->description ?: '—' }}</div></div>
         </div>
         <form method="POST" action="{{ route('admin.packages.status', $package) }}" style="margin-top:1rem;" onsubmit="return confirm('Confirm catalog status change? This does not authorize income posting.');">

@@ -1,0 +1,117 @@
+/* Alerts, banners, referral, detail lists, empty */
+
+    .ds-alert {
+        margin-bottom: 16px;
+        border: 1px solid #b7e4c7;
+        border-radius: 12px;
+        background: #f0fdf4;
+        padding: 12px 14px;
+        color: var(--color-ok);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .ds-alert-error {
+        border-color: #fecaca;
+        background: #fef2f2;
+        color: var(--color-danger);
+    }
+
+    .ds-alert-warning {
+        border-color: #fde68a;
+        background: #fffbeb;
+        color: #b45309;
+    }
+
+    .ds-alert .ds-btn {
+        margin-top: 12px;
+    }
+
+    .ds-activation-banner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+        border: 1px solid #fde68a;
+        border-radius: 16px;
+        background: #fffbeb;
+        padding: 18px 20px;
+    }
+
+    .ds-activation-banner.is-active {
+        border-color: #b7e4c7;
+        background: #f0fdf4;
+    }
+
+    .ds-activation-banner h2 {
+        margin: 8px 0 6px;
+        color: var(--color-navy);
+        font-size: 22px;
+        line-height: 1.25;
+    }
+
+    .ds-activation-banner p {
+        max-width: 68ch;
+        margin: 0;
+        color: var(--color-navy);
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .ds-alert-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .ds-alert-actions .ds-btn {
+        margin-top: 0;
+    }
+
+    .ds-referral-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .ds-referral-row input {
+        flex: 1 1 220px;
+        min-width: 0;
+    }
+
+    .ds-detail {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+    }
+
+    .ds-detail div {
+        display: grid;
+        gap: 2px;
+    }
+
+    .ds-detail dt {
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .ds-detail dd {
+        margin: 0;
+        color: var(--color-navy);
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .ds-empty {
+        padding: 28px;
+        text-align: center;
+    }
+
+    .ds-empty h3 {
+        margin: 0;
+        font-size: 16px;
+    }

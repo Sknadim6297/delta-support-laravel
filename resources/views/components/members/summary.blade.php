@@ -2,22 +2,26 @@
 
 <div class="ds-mm-stats">
     <article class="ds-mm-stat">
+        <span class="pv-stat-icon" aria-hidden="true"><i class="ri-group-line"></i></span>
         <span>Total members</span>
         <strong>{{ number_format($total) }}</strong>
         <small>Every saved account</small>
     </article>
     <article class="ds-mm-stat">
+        <span class="pv-stat-icon is-green" aria-hidden="true"><i class="ri-user-follow-line"></i></span>
         <span>Active</span>
         <strong>{{ number_format($active) }}</strong>
         <small>Status is active</small>
     </article>
     <article class="ds-mm-stat">
+        <span class="pv-stat-icon is-amber" aria-hidden="true"><i class="ri-user-unfollow-line"></i></span>
         <span>Inactive</span>
         <strong>{{ number_format($inactive) }}</strong>
         <small>Status is inactive</small>
     </article>
     @if ($approved !== null)
         <article class="ds-mm-stat">
+            <span class="pv-stat-icon is-teal" aria-hidden="true"><i class="ri-checkbox-circle-line"></i></span>
             <span>Approved packages</span>
             <strong>{{ number_format($approved) }}</strong>
             <small>Members with a verified purchase</small>

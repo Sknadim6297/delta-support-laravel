@@ -4,109 +4,44 @@
 @section('page-title', 'Investment Entry')
 
 @section('content')
-    <div>
-        @include('partials.legacy-financial-lock')
+<div class="ds-reports">
+    <x-ui.page-header lead="Create a stored investment for a member." />
 
-        <!-- TITLE -->
-        <div>
-            <h4>Investment Entry</h4>
+    @include('partials.legacy-financial-lock')
+
+    @if (session('success'))
+        <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+    @endif
+
+    @if ($errors->any())
+        <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
+    @endif
+
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Investment Entry</h2>
+        </header>
+        <div class="ds-report-card">
+            <form method="POST" action="{{ route('admin.investments.store') }}" class="ds-filter-form">
+                @csrf
+                <label>Investment ID
+                    <input type="text" id="investmentId" name="investment_id" value="{{ old('investment_id', $investmentId) }}" readonly placeholder="Enter Investment ID">
+                </label>
+                <label>Member ID
+                    <input type="text" id="memberId" name="member_id" value="{{ old('member_id') }}" data-error-for="member_id" placeholder="Enter Member ID">
+                </label>
+                <label>Member Name
+                    <input type="text" id="memberName" name="member_name" value="{{ old('member_name') }}" placeholder="Enter Member Name" readonly>
+                </label>
+                <label>Investment Amount (USDT)
+                    <input type="number" id="investmentAmount" name="amount" value="{{ old('amount') }}" data-error-for="amount" placeholder="Enter Investment Amount" step="0.0001">
+                </label>
+                <button class="ds-report-btn ds-report-btn-blue" type="submit"><i></i> Submit</button>
+                <button class="ds-report-btn ds-report-btn-amber" type="reset"><i></i> Reset</button>
+            </form>
         </div>
-
-        @if (session('success'))
-            <div>{{ session('success') }}</div>
-        @endif
-
-        @if ($errors->any())
-            <div>{{ $errors->first() }}</div>
-        @endif
-
-        <form method="POST" action="{{ route('admin.investments.store') }}">
-            @csrf
-        <div>
-
-            <!-- INVESTMENT ID -->
-            <div>
-                <label>Investment ID</label>
-
-                <input type="text"
-                       id="investmentId"
-                      name="investment_id"
-                      value="{{ old('investment_id', $investmentId) }}"
-                      readonly
-                      
-                       placeholder="Enter Investment ID">
-            </div>
-
-
-            <!-- MEMBER ID -->
-            <div>
-                <label>Member ID</label>
-
-                <input type="text"
-                      id="memberId"
-                      name="member_id"
-                      value="{{ old('member_id') }}"
-                      data-error-for="member_id"
-                      
-                       placeholder="Enter Member ID">
-            </div>
-
-
-            <!-- MEMBER NAME -->
-            <div>
-                <label>Member Name</label>
-
-                <input type="text"
-                      id="memberName"
-                      name="member_name"
-                      value="{{ old('member_name') }}"
-                      
-                      placeholder="Enter Member Name"
-                      readonly>
-            </div>
-
-            <!-- INVESTMENT AMOUNT -->
-            <div>
-                <label>Investment Amount (USDT)</label>
-
-                <input type="number"
-                        id="investmentAmount"
-                        name="amount"
-                        value="{{ old('amount') }}"
-                        data-error-for="amount"
-                      
-                       placeholder="Enter Investment Amount"
-                       step="0.0001">
-            </div>
-
-        </div>
-
-
-        <!-- BUTTONS -->
-        <div>
-
-            <button type="submit"
-                   
-                    >
-
-                <i></i>
-                Submit
-
-            </button>
-
-            <button type="reset"
-                   
-                    >
-
-                <i></i>
-                Reset
-
-            </button>
-
-        </div>
-        </form>
-
-    </div>
+    </section>
+</div>
 @endsection
 
 @section('scripts')

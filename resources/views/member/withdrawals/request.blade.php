@@ -20,13 +20,20 @@
         <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
     @endif
     <div class="ds-stat-grid">
-        @foreach (['roi', 'working', 'activation'] as $wallet)
-            <article class="ds-stat">
-                <p class="ds-stat-label">{{ $walletLabels[$wallet] }}</p>
-                <p class="ds-stat-value">{{ \App\Support\MoneyDisplay::usdt($balances[$wallet]['stored']) }}</p>
-                <p class="ds-stat-hint">Available {{ \App\Support\MoneyDisplay::usdt($balances[$wallet]['available']) }}</p>
-            </article>
+        @foreach ([
+            'roi' => ['ri-line-chart-line', 'teal'],
+            'working' => ['ri-briefcase-line', 'violet'],
+            'activation' => ['ri-flashlight-line', 'amber'],
+        ] as $wallet => [$icon, $tone])
+            <x-ui.stat
+                :icon="$icon"
+                :tone="$tone"
+                :label="$walletLabels[$wallet]"
+                :value="\App\Support\MoneyDisplay::usdt($balances[$wallet]['stored'])"
+                :hint="'Available '.\App\Support\MoneyDisplay::usdt($balances[$wallet]['available'])"
+            />
         @endforeach
+        <x-ui.stat icon="ri-bank-card-line" label="Charge" :value="$charge ?? 'Not configured'" hint="Applied when a request is stored" />
     </div>
     @if ($requestsEnabled)
         <form class="ds-settings-form" method="POST" action="{{ route('member.withdrawals.store') }}">

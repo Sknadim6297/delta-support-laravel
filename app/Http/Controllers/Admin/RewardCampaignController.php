@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RewardCampaignRequest;
 use App\Models\RewardCampaign;
 use App\Services\Rewards\RewardCampaignLifecycle;
+use App\Services\Rewards\RewardCampaignMedia;
 use App\Services\Rewards\RewardEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,9 +14,14 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RewardCampaignController extends Controller
 {
+    public function __construct(private readonly RewardCampaignMedia $media)
+    {
+    }
+
     public function index(): View
     {
         return view('admin.rewards.index', [
@@ -32,7 +38,10 @@ class RewardCampaignController extends Controller
     public function create(): View
     {
         return view('admin.rewards.form', [
-            'campaign' => new RewardCampaign(['denomination' => 'USDT']),
+            'campaign' => new RewardCampaign([
+                'denomination' => 'USDT',
+                'promote_on_login' => true,
+            ]),
         ]);
     }
 
@@ -42,7 +51,7 @@ class RewardCampaignController extends Controller
         $campaign->status = RewardCampaign::DRAFT;
         $campaign->created_by = $request->user()->id;
         $campaign->save();
-        $this->storeImage($request, $campaign);
+        $this->applyMedia($request, $campaign);
 
         return redirect()
             ->route('admin.rewards.show', $campaign)
@@ -83,7 +92,7 @@ class RewardCampaignController extends Controller
         }
 
         $campaign->fill($attributes)->save();
-        $this->storeImage($request, $campaign);
+        $this->applyMedia($request, $campaign);
 
         return redirect()
             ->route('admin.rewards.show', $campaign)
@@ -118,6 +127,26 @@ class RewardCampaignController extends Controller
         return back()->with('success', 'Campaign cancelled. Committed gifts were left for manual review.');
     }
 
+    public function destroy(Request $request, RewardCampaign $campaign): RedirectResponse
+    {
+        abort_unless($request->user()?->is_admin === true, 403);
+
+        if (! in_array($campaign->status, [RewardCampaign::DRAFT, RewardCampaign::CANCELLED], true)) {
+            return back()->withErrors([
+                'status' => 'Only draft or cancelled campaigns can be permanently deleted.',
+            ]);
+        }
+
+        $image = $campaign->gift_image_path;
+        $video = $campaign->video_path;
+        $campaign->delete();
+        $this->media->deleteOrphanPaths([$image, $video]);
+
+        return redirect()
+            ->route('admin.rewards.index')
+            ->with('success', 'Campaign permanently deleted. Owned media files were removed when unreferenced.');
+    }
+
     public function evaluate(RewardCampaign $campaign, RewardEligibilityService $eligibility): RedirectResponse
     {
         if (! in_array($campaign->status, [RewardCampaign::ACTIVE, RewardCampaign::COMPLETED], true)) {
@@ -137,38 +166,31 @@ class RewardCampaignController extends Controller
     public function image(RewardCampaign $campaign): BinaryFileResponse
     {
         $path = (string) $campaign->gift_image_path;
-        abort_unless($this->isRewardImagePath($path) && Storage::disk('local')->exists($path), 404);
+        abort_unless($this->media->isSafeImagePath($path) && Storage::disk('local')->exists($path), 404);
 
         return response()->file(Storage::disk('local')->path($path));
     }
 
-    private function storeImage(RewardCampaignRequest $request, RewardCampaign $campaign): void
+    public function video(RewardCampaign $campaign): StreamedResponse|BinaryFileResponse
     {
-        if (! $request->hasFile('image')) {
-            return;
-        }
+        $path = (string) $campaign->video_path;
+        abort_unless($this->media->isSafeVideoPath($path) && Storage::disk('local')->exists($path), 404);
 
-        $file = $request->file('image');
-        $path = $file?->store('rewards', 'local');
-        $storedMime = is_string($path) ? mime_content_type(Storage::disk('local')->path($path)) : false;
-        if (! is_string($path) || ! in_array($storedMime, ['image/jpeg', 'image/png', 'image/webp'], true) || ! $this->isRewardImagePath($path)) {
-            if (is_string($path)) {
-                Storage::disk('local')->delete($path);
-            }
-            throw ValidationException::withMessages([
-                'image' => 'Upload a JPG, PNG, or WebP image.',
-            ]);
-        }
-
-        $previous = $campaign->gift_image_path;
-        $campaign->forceFill(['gift_image_path' => $path])->save();
-        if (is_string($previous) && $previous !== $path && $this->isRewardImagePath($previous)) {
-            Storage::disk('local')->delete($previous);
-        }
+        return response()->file(Storage::disk('local')->path($path));
     }
 
-    private function isRewardImagePath(string $path): bool
+    private function applyMedia(RewardCampaignRequest $request, RewardCampaign $campaign): void
     {
-        return str_starts_with($path, 'rewards/') && ! str_contains($path, '..');
+        if ($request->boolean('remove_image') && ! $request->hasFile('image')) {
+            $this->media->removeBanner($campaign);
+        } elseif ($request->hasFile('image')) {
+            $this->media->storeBanner($campaign, $request->file('image'));
+        }
+
+        if ($request->boolean('remove_video') && ! $request->hasFile('video')) {
+            $this->media->removeVideo($campaign);
+        } elseif ($request->hasFile('video')) {
+            $this->media->storeVideo($campaign, $request->file('video'));
+        }
     }
 }

@@ -8,14 +8,53 @@
     <link rel="icon" href="{{ \App\Support\BrandTokens::logoUrl() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    @if (\App\Support\PanelTheme::isV2())
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    @else
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    @endif
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    @vite(['resources/css/panel.css', 'resources/css/lux-shell.css', 'resources/css/lux-pages.css', 'resources/js/panel.js', 'resources/js/lux-shell.js'])
+    @if (\App\Support\PanelTheme::isV2())
+        @vite(['resources/css/panel.css', 'resources/css/panel-v2.css', 'resources/js/panel.js', 'resources/js/panel-v2.js'])
+    @else
+        @vite(['resources/css/panel.css', 'resources/css/lux-shell.css', 'resources/css/lux-pages.css', 'resources/js/panel.js', 'resources/js/lux-shell.js'])
+    @endif
     @include('partials.brand-tokens')
+    @stack('styles')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body data-lh-mode="light">
+<body @if (\App\Support\PanelTheme::isV2()) data-panel-theme="v2" @else data-lh-mode="light" data-panel-theme="lux" @endif>
+@if (\App\Support\PanelTheme::isV2())
+    <div class="pv-app" data-pv-shell>
+        <div class="pv-overlay" data-pv-overlay></div>
+        @include('layouts.panel.sidebar-member')
+        <div class="pv-main">
+            @include('layouts.panel.header', [
+                'pvTitle' => trim($__env->yieldContent('page-title')) ?: 'Member',
+                'pvHome' => route('member.dashboard'),
+                'pvName' => isset($member) ? $member->member_name : 'Member',
+                'pvMeta' => isset($member) ? $member->member_id : null,
+                'pvProfile' => route('member.profile'),
+                'pvProfileLabel' => 'My Profile',
+                'pvPassword' => route('member.change-password'),
+                'pvLogout' => route('member.logout'),
+            ])
+            <div class="pv-body">
+                @if (\App\Support\MemberContext::isPreview() && isset($member))
+                    @include('member.partials.impersonation-banner')
+                @endif
+                <div class="ds-content @yield('content-class')">
+                    @if (session('success'))
+                        <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+                    @endif
+                    @yield('content')
+                </div>
+            </div>
+            @include('layouts.panel.footer', ['pvAudience' => 'Member'])
+        </div>
+    </div>
+@else
     <main class="wrapper sb-default">
         @include('partials.lux-bar', [
             'luxTitle' => trim($__env->yieldContent('page-title')) ?: 'Member',
@@ -62,6 +101,7 @@
             </div>
         </footer>
     </main>
+@endif
 
     <script>
         (function () {

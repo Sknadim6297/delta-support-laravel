@@ -1,0 +1,183 @@
+/* Shell responsive + print */
+
+@media (max-width: 1279px) {
+    #dsSidebar {
+        width: min(288px, calc(100vw - 48px));
+        transform: translateX(-105%);
+        transition: transform 180ms ease;
+        box-shadow: 0 16px 40px rgba(9, 39, 71, 0.16);
+    }
+
+    #dsSidebar.is-open {
+        transform: translateX(0);
+    }
+
+    #dsSidebar[hidden] {
+        display: flex;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    #dsSidebar.is-open[hidden] {
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    .ds-sidebar-close,
+    .header-toggle {
+        display: inline-flex;
+    }
+
+    .ds-main {
+        margin-left: 0;
+    }
+}
+
+@media (min-width: 768px) {
+    .ds-header .ds-search {
+        display: block;
+    }
+}
+
+@media (max-width: 1023px) {
+    .ds-stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ds-user-copy,
+    .ds-user-chevron {
+        display: none;
+    }
+
+    .ds-user-btn {
+        padding: 0;
+    }
+}
+
+@media (max-width: 767px) {
+    .tree-canvas {
+        height: min(58vh, 520px);
+        min-height: 280px;
+    }
+
+    .tree-stage {
+        padding: 24px 16px 48px;
+    }
+
+    .tree-zoom {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 639px) {
+    .ds-header,
+    .ds-content,
+    .ds-footer {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .ds-header {
+        height: 60px;
+        gap: 8px;
+    }
+
+    .ds-header-title {
+        font-size: 14px;
+    }
+
+    .header-toggle,
+    .ds-icon-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .ds-stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ds-page-head h1 {
+        font-size: 22px;
+    }
+
+    .ds-content form.ds-searchbar input,
+    .ds-content form.ds-searchbar button,
+    .ds-content form.ds-searchbar .ds-btn,
+    .ds-content form.ds-filter > label,
+    .ds-content form.ds-filter-form > label,
+    .ds-content form.ds-filter .ds-filter-actions,
+    .ds-content form.ds-filter-form button,
+    .ds-content form.ds-filter-form .ds-btn {
+        flex: 1 1 100%;
+        max-width: none;
+        width: 100%;
+    }
+}
+
+@media (max-width: 360px) {
+    .ds-stat-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+html,
+body {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #dsSidebar,
+    .ds-chevron,
+    .ds-content button.tree-toggle svg {
+        transition: none;
+    }
+}
+
+.ds-print {
+    margin: 0;
+    background: #fff;
+    color: #092747;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.ds-print article {
+    margin: 24px auto;
+    max-width: 840px;
+    border: 1px solid #e3edf7;
+    border-radius: 14px;
+    padding: 24px;
+}
+
+.ds-print img {
+    height: 56px;
+    width: auto;
+    object-fit: contain;
+}
+
+.ds-print table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ds-print th,
+.ds-print td {
+    padding: 10px 0;
+    border-bottom: 1px solid #e3edf7;
+    text-align: left;
+}
+
+.ds-print button {
+    border: 0;
+    border-radius: 12px;
+    background: #0878d1;
+    padding: 8px 14px;
+    color: #fff;
+    font-weight: 600;
+}
+
+@media print {
+    .ds-print button {
+        display: none;
+    }
+}

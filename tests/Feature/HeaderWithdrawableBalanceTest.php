@@ -46,7 +46,7 @@ class HeaderWithdrawableBalanceTest extends TestCase
         $this->actingAs(User::factory()->create(['is_admin' => true]))
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSeeText('$39.0000')
+            ->assertSeeText('$39.00')
             ->assertSee('ri-wallet-3-line', false)
             ->assertDontSeeText('Total Balance');
     }
@@ -77,7 +77,7 @@ class HeaderWithdrawableBalanceTest extends TestCase
         $this->withSession(['member_context_id' => $member->member_id])
             ->get(route('member.dashboard'))
             ->assertOk()
-            ->assertSeeText('$23.0000')
+            ->assertSeeText('$23.00')
             ->assertSee('ri-wallet-3-line', false)
             ->assertDontSeeText('Total Balance');
     }

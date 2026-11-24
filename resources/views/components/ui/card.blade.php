@@ -1,14 +1,24 @@
-@props(['title' => null, 'subtitle' => null])
+@props([
+    'title' => null,
+    'subtitle' => null,
+    'lead' => null,
+    'flush' => false,
+])
 
-<section {{ $attributes->merge(['class' => 'ds-card']) }}>
-    @if ($title || $subtitle || isset($action))
+@php
+    $cardSubtitle = $subtitle ?? $lead;
+    $cardClass = 'ds-card'.($flush ? ' is-flush' : '');
+@endphp
+
+<section {{ $attributes->merge(['class' => $cardClass]) }}>
+    @if ($title || $cardSubtitle || isset($action))
         <div class="ds-card-head">
             <div>
                 @if ($title)
                     <h2>{{ $title }}</h2>
                 @endif
-                @if ($subtitle)
-                    <p>{{ $subtitle }}</p>
+                @if ($cardSubtitle)
+                    <p>{{ $cardSubtitle }}</p>
                 @endif
             </div>
             @isset($action)

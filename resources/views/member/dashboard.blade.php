@@ -3,6 +3,10 @@
 @section('title', 'Member Dashboard')
 @section('page-title', 'Dashboard')
 
+@push('styles')
+    @vite('resources/css/features/rewards.css')
+@endpush
+
 @section('content')
 @php
     $hasApprovedPackage = $approvedPackage !== null;
@@ -226,4 +230,7 @@
         </div>
     </section>
 </div>
+@if (! empty($rewardPopupCampaign))
+    @include('member.rewards.popup', ['rewardPopupCampaign' => $rewardPopupCampaign])
+@endif
 @endsection

@@ -1,99 +1,63 @@
-<!-- //now fix the all details as a member -->
-
 @extends('member.layouts.app')
 
 @section('title', 'Account Security')
 @section('page-title', 'Account Security')
 @section('content')
+<div class="ds-finance">
+    <x-ui.page-header
+        kicker="Account"
+        title="Change Password"
+        lead="Update the password used to sign in to the Member Panel."
+        :heading="true"
+    />
 
-        <main>
+    @if ($errors->any())
+        <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
+    @endif
 
-    <div>
+    @if (session('success'))
+        <x-ui.alert>{{ session('success') }}</x-ui.alert>
+    @endif
 
-
-        @if ($errors->any())
-            <div>{{ $errors->first() }}</div>
-        @endif
-
-        @if (session('success'))
-            <div>{{ session('success') }}</div>
-        @endif
-
-        <!-- TITLE -->
-        <div>
-            <h4>Change Password</h4>
-        </div>
-
-        <form method="POST" action="{{ route('member.change-password.post') }}" id="changePasswordForm">
+    <x-ui.card title="Password" subtitle="Use at least 8 characters. Keep this password private.">
+        <form method="POST" action="{{ route('member.change-password.post') }}" id="changePasswordForm" class="ds-settings-form">
             @csrf
-            <div>
-
-                <!-- OLD PASSWORD -->
-                <div>
-                    <label>
-                        Old Password <span>*</span>
-                    </label>
-
+            <div class="ds-field-grid">
+                <label>
+                    <span>Old Password <span class="ds-req">*</span></span>
                     <input type="password"
                            id="currentPassword"
                            name="current_password"
-                          
                            data-error-for="current_password"
-                           placeholder="Enter Old Password">
-                </div>
-
-
-                <!-- NEW PASSWORD -->
-                <div>
-                    <label>
-                        New Password <span>*</span>
-                    </label>
-
+                           placeholder="Enter Old Password"
+                           autocomplete="current-password">
+                </label>
+                <label>
+                    <span>New Password <span class="ds-req">*</span></span>
                     <input type="password"
                            id="newPassword"
                            name="new_password"
-                          
                            data-error-for="new_password"
-                           placeholder="Enter New Password">
-                </div>
-
-
-                <!-- CONFIRM PASSWORD -->
-                <div>
-                    <label>
-                        Confirm New Password <span>*</span>
-                    </label>
-
+                           placeholder="Enter New Password"
+                           autocomplete="new-password">
+                </label>
+                <label>
+                    <span>Confirm New Password <span class="ds-req">*</span></span>
                     <input type="password"
                            id="confirmPassword"
                            name="new_password_confirmation"
-                          
                            data-error-for="new_password_confirmation"
-                           placeholder="Confirm New Password">
-                </div>
-
+                           placeholder="Confirm New Password"
+                           autocomplete="new-password">
+                </label>
             </div>
-
-
-            <!-- SUBMIT -->
-            <div>
-
-                <button type="submit"
-                       
-                       >
-
-                    <i></i>
-                    Submit
-
-                </button>
-
+            <div class="ds-actions">
+                <button type="submit" class="ds-btn">Submit</button>
             </div>
         </form>
-
-    </div>
-
-       </main>
-       @endsection
+    </x-ui.card>
+</div>
+@endsection
 
 @section('scripts')
     <script>

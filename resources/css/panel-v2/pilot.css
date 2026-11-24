@@ -1,0 +1,350 @@
+/* Pilot page layouts — Admin/Member dashboards + Rewards listing */
+
+.pv-app .pv-section {
+    margin-bottom: 18px;
+}
+
+.pv-app .pv-section-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.pv-app .pv-section-head h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.pv-app .pv-section-head p {
+    margin: 3px 0 0;
+    color: var(--pv-muted);
+    font-size: 12.5px;
+}
+
+.pv-app .pv-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+}
+
+.pv-app .pv-kpi {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px;
+    background: var(--pv-surface);
+    border: 1px solid var(--pv-border);
+    border-radius: var(--pv-radius);
+    box-shadow: var(--pv-shadow);
+}
+
+.pv-app a.pv-kpi {
+    color: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pv-app a.pv-kpi:hover {
+    border-color: #99f6e4;
+    box-shadow: var(--pv-shadow-md);
+}
+
+.pv-app .pv-kpi-label {
+    margin: 0;
+    color: var(--pv-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.pv-app .pv-kpi-value {
+    margin: 6px 0 0;
+    font-size: 24px;
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.pv-app .pv-kpi-hint {
+    margin: 8px 0 0;
+    color: var(--pv-muted);
+    font-size: 12px;
+}
+
+.pv-app .pv-kpi-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: var(--pv-brand);
+    flex: none;
+}
+
+.pv-app .pv-kpi-icon.is-green { background: var(--pv-ok-soft); color: var(--pv-ok); }
+.pv-app .pv-kpi-icon.is-amber { background: var(--pv-warn-soft); color: var(--pv-warn); }
+.pv-app .pv-kpi-icon.is-teal { background: var(--pv-accent-soft); color: var(--pv-accent); }
+.pv-app .pv-kpi-icon.is-orange { background: #ffedd5; color: #c2410c; }
+.pv-app .pv-kpi-icon.is-violet { background: #ede9fe; color: #6d28d9; }
+
+.pv-app .pv-card {
+    padding: 14px 16px;
+}
+
+.pv-app .pv-card-title {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.pv-app .pv-metric-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+}
+
+.pv-app .pv-metric-row:last-child {
+    border-bottom: 0;
+}
+
+.pv-app .pv-metric-row span {
+    color: var(--pv-muted);
+}
+
+.pv-app .pv-metric-row strong {
+    font-weight: 650;
+}
+
+.pv-app .pv-note {
+    margin: 10px 0 0;
+    color: var(--pv-muted);
+    font-size: 12px;
+}
+
+.pv-app .pv-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.pv-app .pv-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.pv-app .pv-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.pv-app .pv-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--pv-border);
+    border-radius: var(--pv-radius);
+    background: var(--pv-surface);
+    color: var(--pv-text);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: var(--pv-shadow);
+}
+
+.pv-app .pv-action i {
+    color: var(--pv-brand);
+}
+
+.pv-app .pv-action:hover {
+    border-color: #bfdbfe;
+    background: #f8fbff;
+}
+
+.pv-app .pv-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--pv-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.pv-app .pv-status.is-active,
+.pv-app .pv-status.is-approved {
+    background: var(--pv-ok-soft);
+    color: var(--pv-ok);
+}
+
+.pv-app .pv-status.is-pending {
+    background: var(--pv-warn-soft);
+    color: var(--pv-warn);
+}
+
+.pv-app .pv-progress {
+    height: 6px;
+    margin-top: 6px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+}
+
+.pv-app .pv-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--pv-brand);
+}
+
+.pv-app .pv-progress > span.is-green { background: var(--pv-ok); }
+.pv-app .pv-progress > span.is-amber { background: var(--pv-warn); }
+.pv-app .pv-progress > span.is-orange { background: #ea580c; }
+.pv-app .pv-progress > span.is-rose { background: var(--pv-danger); }
+
+.pv-app .pv-link {
+    color: var(--pv-brand);
+    font-weight: 600;
+    font-size: 12.5px;
+}
+
+.pv-app .pv-link:hover {
+    text-decoration: underline;
+}
+
+.pv-app .pv-rewards-toolbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    background: var(--pv-surface);
+    border: 1px solid var(--pv-border);
+    border-radius: var(--pv-radius);
+    box-shadow: var(--pv-shadow);
+}
+
+.pv-app .pv-rewards-toolbar h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+}
+
+.pv-app .pv-rewards-toolbar p {
+    margin: 4px 0 0;
+    max-width: 52ch;
+    color: var(--pv-muted);
+    font-size: 13px;
+}
+
+.pv-app .pv-rewards-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex: none;
+}
+
+.pv-app .pv-campaign-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 650;
+}
+
+.pv-app .ds-reward-media-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: var(--pv-muted);
+    font-size: 12px;
+}
+
+.pv-app .ds-dash-kpis,
+.pv-app .ds-dash-columns,
+.pv-app .ds-package-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.pv-app .ds-dash-kpis {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.pv-app .ds-dash-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 12px;
+}
+
+.pv-app .ds-activation-banner {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    border: 1px solid #99f6e4;
+    border-radius: var(--pv-radius);
+    background: #f0fdfa;
+}
+
+.pv-app .ds-activation-banner h2 {
+    margin: 6px 0 4px;
+    font-size: 16px;
+}
+
+.pv-app .ds-activation-banner p {
+    margin: 0;
+    color: var(--pv-muted);
+    font-size: 13px;
+}
+
+@media (max-width: 1100px) {
+    .pv-app .pv-kpi-grid,
+    .pv-app .pv-actions,
+    .pv-app .pv-grid-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    .pv-app .pv-kpi-grid,
+    .pv-app .pv-actions,
+    .pv-app .pv-grid-2,
+    .pv-app .pv-grid-3,
+    .pv-app .ds-dash-columns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pv-app .pv-rewards-toolbar {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 360px) {
+    .pv-app .pv-kpi-grid,
+    .pv-app .pv-actions,
+    .pv-app .pv-grid-2,
+    .pv-app .pv-grid-3,
+    .pv-app .ds-dash-columns {
+        grid-template-columns: 1fr;
+    }
+}

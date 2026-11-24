@@ -13,6 +13,11 @@ class RewardCampaignRequest extends FormRequest
 
     public function rules(): array
     {
+        $imageMax = (int) config('deltasupport.rewards.image_max_kb', 2048);
+        $videoMax = (int) config('deltasupport.rewards.video_max_kb', 204800);
+        $videoMimes = implode(',', (array) config('deltasupport.rewards.video_mimes', ['mp4', 'webm']));
+        $videoTypes = implode(',', (array) config('deltasupport.rewards.video_mimetypes', ['video/mp4', 'video/webm']));
+
         return [
             'title' => ['required', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:5000'],
@@ -24,7 +29,11 @@ class RewardCampaignRequest extends FormRequest
             'stock_quantity' => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'terms' => ['nullable', 'string', 'max:5000'],
             'admin_notes' => ['nullable', 'string', 'max:5000'],
-            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'mimetypes:image/jpeg,image/png,image/webp', 'max:2048'],
+            'promote_on_login' => ['nullable', 'boolean'],
+            'remove_image' => ['nullable', 'boolean'],
+            'remove_video' => ['nullable', 'boolean'],
+            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'mimetypes:image/jpeg,image/png,image/webp', 'max:'.$imageMax],
+            'video' => ['nullable', 'file', 'mimes:'.$videoMimes, 'mimetypes:'.$videoTypes, 'max:'.$videoMax],
         ];
     }
 
@@ -57,6 +66,7 @@ class RewardCampaignRequest extends FormRequest
             'stock_quantity' => $stock === null || $stock === '' ? null : (int) $stock,
             'terms' => $this->blank($this->input('terms')),
             'admin_notes' => $this->blank($this->input('admin_notes')),
+            'promote_on_login' => $this->boolean('promote_on_login'),
         ];
     }
 

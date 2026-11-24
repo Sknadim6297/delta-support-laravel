@@ -52,18 +52,18 @@
             gap: 8px;
         }
 
-        .wrapper .ds-content .ds-pin > .ds-password {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin > .ds-password {
             display: inline-block;
             width: 44px;
             min-width: 44px;
             max-width: 44px;
         }
 
-        .wrapper .ds-content .ds-pin > .ds-password .ds-password-toggle {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin > .ds-password .ds-password-toggle {
             display: none;
         }
 
-        .wrapper .ds-content input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
+        :is(.wrapper, .pv-app) .ds-content input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
             width: 44px;
             min-width: 44px;
             max-width: 44px;
@@ -78,43 +78,43 @@
             line-height: 52px;
         }
 
-        .wrapper .ds-content .ds-pin > .ds-password input.ds-pin-digit {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin > .ds-password input.ds-pin-digit {
             padding-right: 0;
         }
 
-        .wrapper .ds-content input.ds-pin-digit::-ms-reveal,
-        .wrapper .ds-content input.ds-pin-digit::-ms-clear {
+        :is(.wrapper, .pv-app) .ds-content input.ds-pin-digit::-ms-reveal,
+        :is(.wrapper, .pv-app) .ds-content input.ds-pin-digit::-ms-clear {
             display: none;
         }
 
         @media (max-width: 480px) {
-            .wrapper .ds-content .ds-pin > .ds-password,
-            .wrapper .ds-content input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
+            :is(.wrapper, .pv-app) .ds-content .ds-pin > .ds-password,
+            :is(.wrapper, .pv-app) .ds-content input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
                 width: 40px;
                 min-width: 40px;
                 max-width: 40px;
                 flex-basis: 40px;
             }
 
-            .wrapper .ds-content input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
+            :is(.wrapper, .pv-app) .ds-content input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
                 height: 48px;
                 min-height: 48px;
                 line-height: 48px;
             }
         }
 
-        .wrapper .ds-content .ds-pin-field.is-large > span {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin-field.is-large > span {
             font-size: 14px;
             font-weight: 700;
             letter-spacing: -0.01em;
         }
 
-        .wrapper .ds-content .ds-pin-field.is-large .ds-pin {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin-field.is-large .ds-pin {
             gap: 10px;
         }
 
-        .wrapper .ds-content .ds-pin-field.is-large .ds-pin > .ds-password,
-        .wrapper .ds-content .ds-pin-field.is-large input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin-field.is-large .ds-pin > .ds-password,
+        :is(.wrapper, .pv-app) .ds-content .ds-pin-field.is-large input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
             width: 56px;
             min-width: 56px;
             max-width: 56px;
@@ -127,19 +127,19 @@
             line-height: 64px;
         }
 
-        .wrapper .ds-content .ds-pin-field.is-large input.ds-pin-digit:focus {
+        :is(.wrapper, .pv-app) .ds-content .ds-pin-field.is-large input.ds-pin-digit:focus {
             border-color: #2563eb;
             background: #fff;
             outline: 3px solid rgba(37, 99, 235, 0.16);
         }
 
         @media (max-width: 640px) {
-            .wrapper .ds-content .ds-pin-field.is-large .ds-pin {
+            :is(.wrapper, .pv-app) .ds-content .ds-pin-field.is-large .ds-pin {
                 gap: 8px;
             }
 
-            .wrapper .ds-content .ds-pin-field.is-large .ds-pin > .ds-password,
-            .wrapper .ds-content .ds-pin-field.is-large input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
+            :is(.wrapper, .pv-app) .ds-content .ds-pin-field.is-large .ds-pin > .ds-password,
+            :is(.wrapper, .pv-app) .ds-content .ds-pin-field.is-large input.ds-pin-digit:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]) {
                 width: 46px;
                 min-width: 46px;
                 max-width: 46px;

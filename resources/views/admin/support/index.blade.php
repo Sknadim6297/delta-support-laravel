@@ -6,12 +6,12 @@
 <div class="ds-finance">
     <x-ui.page-header kicker="Support" title="Support Tickets" lead="Member conversations with the support team. Ticket totals are counts, not wallet amounts." />
     <div class="ds-stat-grid">
-        <x-ui.stat label="All" :value="(string) $stats['all']" />
-        <x-ui.stat label="Open" :value="(string) $stats['open']" />
-        <x-ui.stat label="Awaiting admin" :value="(string) $stats['awaiting_admin']" />
-        <x-ui.stat label="Awaiting member" :value="(string) $stats['awaiting_member']" />
-        <x-ui.stat label="Resolved" :value="(string) $stats['resolved']" />
-        <x-ui.stat label="Closed" :value="(string) $stats['closed']" />
+        <x-ui.stat icon="ri-customer-service-2-line" label="All" :value="(string) $stats['all']" />
+        <x-ui.stat icon="ri-mail-open-line" tone="amber" label="Open" :value="(string) $stats['open']" />
+        <x-ui.stat icon="ri-admin-line" tone="orange" label="Awaiting admin" :value="(string) $stats['awaiting_admin']" />
+        <x-ui.stat icon="ri-user-received-line" tone="violet" label="Awaiting member" :value="(string) $stats['awaiting_member']" />
+        <x-ui.stat icon="ri-checkbox-circle-line" tone="green" label="Resolved" :value="(string) $stats['resolved']" />
+        <x-ui.stat icon="ri-lock-line" tone="teal" label="Closed" :value="(string) $stats['closed']" />
     </div>
     <form class="ds-filter" method="GET">
         <label><span>Member ID</span><input name="member_id" value="{{ request('member_id') }}"></label>

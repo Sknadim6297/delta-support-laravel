@@ -1,0 +1,78 @@
+/* Stats, cards, empty states, action rows */
+
+    .ds-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .ds-stat,
+    .ds-card,
+    .ds-empty {
+        border: 1px solid var(--color-line);
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(9, 39, 71, 0.04);
+    }
+
+    .ds-stat {
+        padding: 16px;
+    }
+
+    .ds-stat-label,
+    .ds-card h2 {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .ds-stat-value {
+        margin: 8px 0 0;
+        color: var(--color-navy);
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+    }
+
+    .ds-stat-hint,
+    .ds-card p {
+        margin: 6px 0 0;
+        color: var(--color-muted);
+        font-size: 12px;
+    }
+
+    .ds-card {
+        margin-top: 0;
+        padding: 18px;
+    }
+
+    .ds-card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .ds-card-head h2,
+    .ds-card-head p {
+        margin-bottom: 0;
+    }
+
+    .ds-card-head p {
+        margin-top: 4px;
+    }
+
+    .ds-card h2 {
+        color: var(--color-navy);
+        font-size: 16px;
+    }
+
+    .ds-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }

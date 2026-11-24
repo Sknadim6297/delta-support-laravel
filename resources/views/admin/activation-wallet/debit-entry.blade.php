@@ -4,127 +4,47 @@
 @section('page-title', 'Activation Debit')
 
 @section('content')
+<div class="ds-reports">
+    <x-ui.page-header lead="Force debit from a member activation wallet." />
 
-        <main>
+    @include('partials.legacy-financial-lock')
 
-    
+    @if ($errors->any())
+        <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
+    @endif
 
-    <div>
-        @include('partials.legacy-financial-lock')
+    @if (session('success'))
+        <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+    @endif
 
-        @if ($errors->any())
-            <div>{{ $errors->first() }}</div>
-        @endif
-
-        @if (session('success'))
-            <div>{{ session('success') }}</div>
-        @endif
-
-        <!-- TITLE -->
-        <div>
-            <h4>Force Debit from Activation Wallet</h4>
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Force Debit from Activation Wallet</h2>
+        </header>
+        <div class="ds-report-card">
+            <form method="POST" action="{{ route('admin.activation-wallet.store-debit-entry') }}" id="activationWalletDebitForm" class="ds-filter-form">
+                @csrf
+                <label>Member ID
+                    <input type="text" id="memberId" name="member_id" data-error-for="member_id" placeholder="Enter Member ID">
+                </label>
+                <label>Member Name
+                    <input type="text" id="memberName" name="member_name" placeholder="Enter Member Name">
+                </label>
+                <label>Remarks
+                    <textarea id="remarks" name="remarks" rows="3" placeholder="Enter Remarks"></textarea>
+                </label>
+                <label>Activation Wallet Amount (USDT)
+                    <input type="text" id="walletAmount" name="wallet_amount" placeholder="Activation Wallet Amount" readonly>
+                </label>
+                <label>Debit Amount (USDT)
+                    <input type="number" id="debitAmount" name="amount" data-error-for="amount" placeholder="Enter Debit Amount">
+                </label>
+                <button type="button" id="fetchMemberDetails" class="ds-report-btn ds-report-btn-blue"><i></i> Submit</button>
+                <button type="reset" id="resetActivationWalletDebitForm" class="ds-report-btn ds-report-btn-amber"><i></i> Reset</button>
+            </form>
         </div>
-
-        <form method="POST" action="{{ route('admin.activation-wallet.store-debit-entry') }}" id="activationWalletDebitForm">
-            @csrf
-        <div>
-
-            <!-- MEMBER ID -->
-            <div>
-                <label>Member ID</label>
-
-                <input type="text"
-                       id="memberId"
-                       name="member_id"
-                       data-error-for="member_id"
-                      
-                       placeholder="Enter Member ID">
-            </div>
-
-
-            <!-- MEMBER NAME -->
-            <div>
-                <label>Member Name</label>
-
-                <input type="text"
-                       id="memberName"
-                       name="member_name"
-                      
-                       placeholder="Enter Member Name">
-            </div>
-
-
-            <!-- REMARKS -->
-            <div>
-                <label>Remarks</label>
-
-                <textarea 
-                          id="remarks"
-                          name="remarks"
-                         
-                          rows="3"
-                          placeholder="Enter Remarks"></textarea>
-            </div>
-
-
-            <!-- WALLET AMOUNT -->
-            <div>
-                <label>Activation Wallet Amount (USDT)</label>
-
-                <input type="text"
-                       id="walletAmount"
-                       name="wallet_amount"
-                      
-                       placeholder="Activation Wallet Amount"
-                       readonly>
-            </div>
-
-
-            <!-- DEBIT AMOUNT -->
-            <div>
-                <label>Debit Amount (USDT)</label>
-
-                <input type="number"
-                       id="debitAmount"
-                       name="amount"
-                       data-error-for="amount"
-                      
-                       placeholder="Enter Debit Amount">
-            </div>
-
-        </div>
-
-
-        <!-- BUTTONS -->
-        <div>
-
-            <button type="button"
-                    id="fetchMemberDetails"
-                   
-                    >
-
-                <i></i>
-                Submit
-
-            </button>
-
-            <button type="reset"
-                    id="resetActivationWalletDebitForm"
-                   
-                    >
-
-                <i></i>
-                Reset
-
-            </button>
-
-        </div>
-        </form>
-
-    </div>
-
-
-</main>
+    </section>
+</div>
 @endsection
 
 @section('scripts')

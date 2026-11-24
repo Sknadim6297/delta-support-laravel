@@ -25,6 +25,7 @@
                     <th>Package Name</th>
                     <th>Package Price (USDT)</th>
                     <th>Purchases</th>
+                    <th>Validity</th>
                     <th>Daily ROI (USDT)</th>
                     <th>ROI Days</th>
                     <th>Monthly Return (USDT)</th>
@@ -57,6 +58,7 @@
                             <div><small>{{ (int) $package->total_purchases_count }} total</small></div>
                         @endif
                     </td>
+                    <td>{{ \App\Support\PackageValidityDisplay::label($package->activePlanVersion ?? $package) }}</td>
                     <td>{{ $tourOnly ? '—' : ($daily ? $daily.' USDT' : 'Not set') }}</td>
                     <td>{{ $tourOnly ? '—' : ($days ?? '—') }}</td>
                     <td>{{ $tourOnly ? '—' : ($monthly ? $monthly.' USDT' : '—') }}</td>
@@ -81,7 +83,7 @@
                     <td><a href="{{ route('admin.packages.edit', $package) }}">Edit</a></td>
                 </tr>
             @empty
-                <tr><td colspan="10">No packages yet.</td></tr>
+                <tr><td colspan="11">No packages yet.</td></tr>
             @endforelse
             </tbody>
         </table>

@@ -4,71 +4,46 @@
 @section('page-title', 'Investment Withdrawal')
 
 @section('content')
-        <main>
+<div class="ds-reports">
+    <x-ui.page-header lead="Withdraw principal from an eligible investment." />
 
-    
-           
-           
+    @include('partials.legacy-financial-lock')
 
-    <div>
-        @include('partials.legacy-financial-lock')
+    @if (session('success'))
+        <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+    @endif
 
-        @if (session('success'))
-            <div>{{ session('success') }}</div>
-        @endif
+    @if ($errors->any())
+        <x-ui.alert type="error">{{ $errors->first() }}</x-ui.alert>
+    @endif
 
-        @if ($errors->any())
-            <div>{{ $errors->first() }}</div>
-        @endif
-
-        <form method="POST" action="{{ route('admin.investments.investment-withdrawal-store') }}" id="investmentWithdrawalForm">
-            @csrf
-
-        <div>
-
-            <div>
-                <label>Member ID</label>
-                <input type="text" id="withdrawalMemberId" name="member_id" value="{{ old('member_id') }}" placeholder="Enter Member ID" required>
-                <div class="validation-message" data-error-for="member_id" hidden></div>
-            </div>
-
-            <div>
-                <label>Member Name</label>
-                <input type="text" id="withdrawalMemberName" name="member_name" value="{{ old('member_name') }}" placeholder="Enter Member Name" readonly>
-            </div>
-
-            <div>
-                <label>Investment ID</label>
-                <input type="text" id="withdrawalInvestmentId" name="investment_id" value="{{ old('investment_id') }}" placeholder="Enter Sponsor ID" required>
-                <div class="validation-message" data-error-for="investment_id" hidden></div>
-            </div>
-
-          
-            <div>
-                <label>Investment Amount (USDT)</label>
-                <input type="number" id="withdrawalAmount" name="amount" value="{{ old('amount') }}" placeholder="Enter Amount" min="0.0001" step="0.0001" required>
-                <div class="validation-message" data-error-for="amount" hidden></div>
-            </div>
-
+    <section class="ds-report-block">
+        <header class="ds-dash-head">
+            <h2>Investment Withdrawal</h2>
+        </header>
+        <div class="ds-report-card">
+            <form method="POST" action="{{ route('admin.investments.investment-withdrawal-store') }}" id="investmentWithdrawalForm" class="ds-filter-form">
+                @csrf
+                <label>Member ID
+                    <input type="text" id="withdrawalMemberId" name="member_id" value="{{ old('member_id') }}" placeholder="Enter Member ID" required>
+                    <div class="validation-message" data-error-for="member_id" hidden></div>
+                </label>
+                <label>Member Name
+                    <input type="text" id="withdrawalMemberName" name="member_name" value="{{ old('member_name') }}" placeholder="Enter Member Name" readonly>
+                </label>
+                <label>Investment ID
+                    <input type="text" id="withdrawalInvestmentId" name="investment_id" value="{{ old('investment_id') }}" placeholder="Enter Sponsor ID" required>
+                    <div class="validation-message" data-error-for="investment_id" hidden></div>
+                </label>
+                <label>Investment Amount (USDT)
+                    <input type="number" id="withdrawalAmount" name="amount" value="{{ old('amount') }}" placeholder="Enter Amount" min="0.0001" step="0.0001" required>
+                    <div class="validation-message" data-error-for="amount" hidden></div>
+                </label>
+                <button class="ds-report-btn ds-report-btn-blue" type="submit"><i></i> Submit</button>
+            </form>
         </div>
-
-        <div>
-            <button type="submit">
-                <i></i>
-                Submit
-            </button>
-        </div>
-        </form>
-
-    </div>
-
-
-    
-
-    
-
-
-       </main>
+    </section>
+</div>
 @endsection
 
 @section('scripts')

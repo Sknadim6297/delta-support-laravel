@@ -1,0 +1,1183 @@
+/* Package catalog, purchase cards, package layouts */
+
+    .ds-content .ds-package-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .ds-package-card .ds-package-media,
+    .ds-content .ds-package-card img {
+        display: grid;
+        width: calc(100% + 32px);
+        height: 156px;
+        margin: -16px -16px 14px;
+        place-items: center;
+        object-fit: cover;
+        background: linear-gradient(135deg, #0878d1, #092747);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .ds-content .ds-package-hero .ds-package-banner {
+        height: 320px;
+        object-fit: contain;
+        background: #f4f7fb;
+    }
+
+    .ds-package-badges,
+    .ds-package-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .ds-purchase-list {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ds-purchase-card {
+        display: grid;
+        grid-template-columns: 180px minmax(0, 1fr);
+        gap: 16px;
+        align-items: center;
+        border: 1px solid var(--color-line);
+        border-radius: 16px;
+        background: #fff;
+        padding: 16px;
+    }
+
+    .ds-purchase-card img,
+    .ds-purchase-card .ds-package-media {
+        width: 100%;
+        height: 120px;
+        margin: 0;
+        border-radius: 12px;
+        object-fit: cover;
+    }
+
+    .ds-package-thumb {
+        display: block;
+        width: 72px;
+        height: 48px;
+        object-fit: cover;
+        border-radius: 8px;
+        background: #f4f7fb;
+    }
+
+    .ds-filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .ds-package-code,
+    .ds-package-benefits,
+    .ds-package-note,
+    .ds-pay-card p {
+        color: var(--color-muted);
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .ds-package-price {
+        margin: 10px 0;
+        color: var(--color-navy);
+        font-size: 24px;
+        font-weight: 750;
+        letter-spacing: 0;
+    }
+
+    .ds-package-meta {
+        margin-bottom: 14px;
+    }
+
+    .ds-package-body .ds-btn {
+        margin-top: 8px;
+    }
+
+    .ds-package-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(280px, .8fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    .ds-content .ds-package-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        min-width: 0;
+    }
+
+    .ds-package-main h3 {
+        margin: 14px 0 4px;
+        font-size: 14px;
+    }
+
+    .ds-pay-address {
+        overflow-wrap: anywhere;
+        border: 1px solid var(--color-line);
+        border-radius: 12px;
+        background: var(--color-canvas);
+        padding: 10px 12px;
+        color: var(--color-navy);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .ds-pay-qr {
+        display: block;
+        width: min(100%, 240px);
+        height: auto;
+        margin: 12px auto;
+        border: 1px solid var(--color-line);
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .ds-content form.ds-pay-form,
+    .ds-content form.ds-settings-form {
+        max-width: none;
+    }
+
+    .ds-content form.ds-pay-form {
+        margin-top: 14px;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    .ds-content form.ds-pay-form button {
+        margin-top: 12px;
+    }
+
+    .ds-content form.ds-settings-form > .ds-field-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        align-items: start;
+    }
+
+    .ds-content form.ds-settings-form label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin: 0;
+        min-width: 0;
+    }
+
+    .ds-content form.ds-settings-form textarea {
+        height: auto;
+        min-height: 96px;
+        resize: vertical;
+    }
+
+    .ds-content .ds-row-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .ds-content td .ds-impersonate-form {
+        display: inline-flex;
+        margin: 0;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    .ds-content td .ds-impersonate-form button svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .ds-preview-banner {
+        position: sticky;
+        top: 0;
+        z-index: 25;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: var(--color-navy);
+        color: #fff;
+        padding: 10px 16px;
+    }
+
+    .ds-preview-banner strong {
+        display: block;
+        font-size: 13px;
+    }
+
+    .ds-preview-banner p {
+        margin: 2px 0 0;
+        font-size: 13px;
+    }
+
+    .ds-preview-banner-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .ds-preview-banner button,
+    .ds-preview-banner a.ds-btn {
+        min-height: 36px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--color-brand);
+        padding: 0 12px;
+        color: #fff;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+    }
+
+    .ds-main:has(.ds-preview-banner) .ds-header {
+        top: 56px;
+    }
+
+    .ds-account-stack {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ds-content .ds-account-stack form.ds-account-form {
+        max-width: none;
+        margin: 0;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    .ds-content form.ds-password-form {
+        max-width: 480px;
+    }
+
+    .ds-content form.ds-password-form > .ds-field-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ds-content form.ds-password-form input {
+        display: block;
+        width: 100%;
+        min-height: 42px;
+    }
+
+    .ds-security-note {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: 13px;
+    }
+
+    .ds-content .ds-card > .ds-form-actions {
+        margin-top: 14px;
+    }
+
+    .ds-field-span {
+        grid-column: 1 / -1;
+    }
+
+    .ds-content label.ds-check {
+        display: flex;
+        width: fit-content;
+        margin-top: 14px;
+    }
+
+    .ds-content label.ds-check input {
+        width: 16px;
+        height: 16px;
+    }
+
+    .ds-qr-preview {
+        display: grid;
+        min-height: 180px;
+        place-items: center;
+        margin-top: 16px;
+        border: 1px dashed var(--color-line);
+        border-radius: 14px;
+        background: var(--color-canvas);
+        padding: 16px;
+    }
+
+    .ds-qr-preview img {
+        width: min(100%, 220px);
+        height: auto;
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .ds-form-actions {
+        margin-top: 16px;
+    }
+
+    .ds-content .ds-review-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ds-review-grid dd {
+        overflow-wrap: anywhere;
+    }
+
+    .ds-review-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .ds-invoice {
+        display: grid;
+        gap: 18px;
+        padding: 22px;
+    }
+
+    .ds-invoice-top,
+    .ds-invoice-parties,
+    .ds-invoice-foot {
+        display: grid;
+        grid-template-columns: 1.4fr .8fr;
+        gap: 16px;
+        align-items: start;
+    }
+
+    .ds-invoice-brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    .ds-content .ds-invoice img,
+    .ds-print .ds-invoice img {
+        width: 72px;
+        height: 64px;
+        max-width: 72px;
+        margin: 0;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 10px;
+    }
+
+    .ds-invoice-company,
+    .ds-invoice-number strong,
+    .ds-invoice-parties strong,
+    .ds-invoice-foot strong,
+    .ds-invoice-total {
+        color: var(--color-navy);
+        font-weight: 750;
+    }
+
+    .ds-invoice-company {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .ds-invoice p {
+        margin: 0 0 4px;
+        color: var(--color-muted);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .ds-invoice-number {
+        justify-self: end;
+        text-align: right;
+    }
+
+    .ds-invoice-number strong {
+        display: block;
+        font-size: 16px;
+    }
+
+    .ds-invoice-parties,
+    .ds-invoice-foot {
+        border-top: 1px solid var(--color-line);
+        padding-top: 16px;
+    }
+
+    .ds-content .ds-invoice .ds-table-wrap {
+        border: 0;
+        border-radius: 12px;
+        background: var(--color-canvas);
+        box-shadow: none;
+    }
+
+    .ds-invoice td p {
+        margin-top: 4px;
+    }
+
+    .ds-invoice-total {
+        margin: 0;
+        text-align: right;
+        font-size: 18px;
+    }
+
+    .ds-print {
+        margin: 0;
+        background: #f5f8fc;
+        padding: 24px;
+    }
+
+    .ds-print .ds-invoice {
+        max-width: 880px;
+        margin: 16px auto;
+        border: 1px solid #e3edf7;
+        border-radius: 14px;
+        background: #fff;
+    }
+
+    .ds-print-bar {
+        max-width: 880px;
+        margin: 0 auto;
+    }
+
+    .ds-brand-layout {
+        display: grid;
+        grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    .ds-brand-logo {
+        display: grid;
+        place-items: center;
+        min-height: 180px;
+        border: 1px solid var(--color-line);
+        border-radius: 12px;
+        background: #fff;
+        padding: 16px;
+    }
+
+    .ds-content .ds-brand-logo img {
+        width: auto;
+        max-width: 220px;
+        height: auto;
+        max-height: 160px;
+        margin: 0;
+        object-fit: contain;
+    }
+
+    .ds-swatches {
+        display: grid;
+        gap: 10px;
+    }
+
+    .ds-swatch {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .ds-swatch > span {
+        width: 42px;
+        height: 42px;
+        flex: none;
+        border: 1px solid var(--color-line);
+        border-radius: 12px;
+    }
+
+    .ds-swatch p {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .ds-swatch strong {
+        color: var(--color-navy);
+        font-size: 14px;
+        font-weight: 750;
+        letter-spacing: 0.02em;
+    }
+
+    .ds-content .ds-brand-form {
+        max-width: none;
+        margin: 12px 0 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    .ds-content .ds-brand-form > .ds-swatches {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ds-brand-file {
+        display: none;
+    }
+
+    .ds-brand-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .ds-content .ds-brand-actions button {
+        min-height: 38px;
+    }
+
+    .ds-content .ds-brand-actions .ds-btn-secondary {
+        border: 1px solid var(--color-line);
+        background: #fff;
+        color: var(--color-navy);
+    }
+
+    .ds-swatch-picker {
+        position: relative;
+        width: 42px;
+        height: 42px;
+        flex: none;
+        margin: 0;
+    }
+
+    .ds-swatch-picker span {
+        display: block;
+        width: 42px;
+        height: 42px;
+        border: 1px solid var(--color-line);
+        border-radius: 12px;
+    }
+
+    .ds-content .ds-swatch-picker input[type="color"] {
+        position: absolute;
+        inset: 0;
+        width: 42px;
+        height: 42px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .ds-swatch-copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 4px;
+        margin: 0;
+    }
+
+    .ds-swatch-copy > span {
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .ds-content .ds-swatch-copy input {
+        width: 8.5rem;
+        min-height: 34px;
+        padding: 4px 8px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .ds-content a.ds-stat-link,
+    .ds-content a.ds-stat-link:hover {
+        color: inherit;
+        font-weight: inherit;
+        text-decoration: none;
+    }
+
+    .ds-stat-link {
+        display: block;
+        min-width: 0;
+    }
+
+    .ds-stat-link:hover .ds-stat {
+        border-color: var(--color-brand);
+    }
+
+    .ds-content form.ds-filter,
+    .ds-content form.ds-filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 12px;
+        max-width: none;
+    }
+
+    .ds-content form.ds-filter > label,
+    .ds-content form.ds-filter-form > label {
+        display: flex;
+        flex: 1 1 180px;
+        flex-direction: column;
+        gap: 6px;
+        max-width: 280px;
+        margin: 0;
+        min-width: 0;
+    }
+
+    .ds-content form.ds-filter input,
+    .ds-content form.ds-filter select,
+    .ds-content form.ds-filter-form input,
+    .ds-content form.ds-filter-form select {
+        width: 100%;
+        height: 40px;
+        min-height: 40px;
+        max-width: none;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .ds-content form.ds-filter .ds-filter-actions,
+    .ds-content form.ds-filter-form .ds-filter-actions {
+        display: flex;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .ds-content form.ds-filter .ds-filter-actions button,
+    .ds-content form.ds-filter .ds-filter-actions .ds-btn,
+    .ds-content form.ds-filter-form button,
+    .ds-content form.ds-filter-form .ds-btn {
+        height: 40px;
+        min-height: 40px;
+    }
+
+    .ds-content th.ds-money,
+    .ds-content td.ds-money {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .ds-person {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .ds-person strong {
+        font-weight: 700;
+    }
+
+    .ds-person small {
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .ds-content td.ds-empty-cell {
+        padding: 28px 16px;
+        color: var(--color-muted);
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .ds-content td.ds-empty-cell:has(> span) {
+        padding: 0;
+    }
+
+    .ds-content td.ds-empty-cell > span {
+        position: sticky;
+        left: 0;
+        display: block;
+        width: 100cqw;
+        box-sizing: border-box;
+        padding: 28px 16px;
+    }
+
+    .ds-content .ds-table-wide {
+        min-width: 980px;
+    }
+
+    .ds-content form.ds-settings-form fieldset {
+        margin: 0;
+        border: 1px solid var(--color-line);
+        border-radius: 12px;
+        padding: 12px 14px;
+    }
+
+    .ds-content form.ds-settings-form legend {
+        padding: 0 6px;
+        color: var(--color-navy);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .ds-content form.ds-settings-form .ds-check-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+    }
+
+    .ds-content form.ds-settings-form .ds-span-all {
+        grid-column: 1 / -1;
+    }
+
+    .ds-content form.ds-settings-form .ds-form-note {
+        margin: 0;
+        border: 1px solid #fde68a;
+        border-radius: 12px;
+        background: #fffbeb;
+        padding: 12px 14px;
+        color: #b45309;
+    }
+
+    .ds-content form.ds-settings-form .ds-form-note p,
+    .ds-content form.ds-settings-form .ds-form-note li {
+        color: #b45309;
+    }
+
+    .ds-content form.ds-settings-form .ds-form-note ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+    }
+
+    .ds-content form.ds-settings-form label.ds-check {
+        flex-direction: row;
+        align-items: center;
+        width: fit-content;
+        margin-top: 0;
+    }
+
+    .ds-content form.ds-settings-form label.ds-check input {
+        width: 16px;
+        height: 16px;
+        min-height: 16px;
+    }
+
+    @media (max-width: 1023px) {
+        .ds-content .ds-package-grid,
+        .ds-package-layout,
+        .ds-purchase-card,
+        .ds-content form.ds-settings-form > .ds-field-grid,
+        .ds-content .ds-review-grid,
+        .ds-review-actions,
+        .ds-invoice-top,
+        .ds-invoice-parties,
+        .ds-invoice-foot,
+        .ds-brand-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .ds-invoice-number {
+            justify-self: start;
+            text-align: left;
+        }
+    }
+
+
+@media (max-width: 639px) {
+    .ds-content .ds-page-title {
+        font-size: 22px;
+    }
+}
+
+/* Customer purchase + admin package form */
+
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase {
+    display: grid;
+    gap: 16px;
+    max-width: 1040px;
+    padding: 16px;
+}
+
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-customer-grid,
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-customer-pay {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-customer-section,
+:is(.wrapper, .pv-app) .ds-content .ds-info-panel {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-customer-section h2,
+:is(.wrapper, .pv-app) .ds-content .ds-info-panel h3 {
+    margin: 0;
+    color: var(--color-navy, #0f172a);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-customer-lookup {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: end;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-customer-lookup label {
+    margin: 0;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-customer-note {
+    margin: 0;
+    color: var(--text-secondary, #344054);
+    font-size: 13px;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-info-panel,
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-alert {
+    margin: 0;
+    border: 1px solid var(--color-line, #e2e8f0);
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 12px;
+}
+
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-alert p,
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-alert dl {
+    margin: 0;
+}
+
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-alert p {
+    margin-bottom: 8px;
+    font-weight: 650;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-info-panel dl,
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-alert dl,
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    margin: 0;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-info-panel dl div,
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-alert dl div,
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-meta div {
+    min-width: 0;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-info-panel dt,
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-alert dt,
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-meta dt {
+    color: var(--text-secondary, #344054);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-info-panel dd,
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-alert dd,
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-meta dd {
+    margin: 0;
+    color: var(--color-navy, #0f172a);
+    font-size: 14px;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-history {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-history .ds-purchase-card {
+    display: grid;
+    grid-template-columns: 128px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    border: 1px solid var(--color-line, #e2e8f0);
+    border-radius: 12px;
+    background: #fff;
+    padding: 12px;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-history .ds-purchase-card img,
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-history .ds-purchase-card .ds-package-media {
+    width: 128px;
+    height: 96px;
+    margin: 0;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #f8fafc;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-history .ds-package-media {
+    display: grid;
+    place-items: center;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-body {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-heading h2 {
+    margin: 6px 0 0;
+    color: var(--color-navy, #0f172a);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-price {
+    margin: 0;
+    color: var(--color-navy, #0f172a);
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-reason {
+    margin: 0;
+    color: #b42318;
+    font-size: 13px;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-purchase-history .ds-package-actions {
+    margin: 0;
+}
+
+:is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+}
+
+@media (max-width: 900px) {
+    :is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-customer-grid,
+    :is(.wrapper, .pv-app) .ds-content .ds-purchase-meta {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    :is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-customer-pay,
+    :is(.wrapper, .pv-app) .ds-content .ds-customer-lookup,
+    :is(.wrapper, .pv-app) .ds-content .ds-purchase-history .ds-purchase-card,
+    :is(.wrapper, .pv-app) .ds-content .ds-info-panel dl,
+    :is(.wrapper, .pv-app) .ds-content form.ds-customer-purchase .ds-alert dl {
+        grid-template-columns: 1fr;
+    }
+
+    :is(.wrapper, .pv-app) .ds-content .ds-purchase-history .ds-purchase-card img,
+    :is(.wrapper, .pv-app) .ds-content .ds-purchase-history .ds-purchase-card .ds-package-media {
+        width: 100%;
+        height: 140px;
+    }
+
+    :is(.wrapper, .pv-app) .ds-content .ds-purchase-heading {
+        flex-direction: column;
+    }
+
+    :is(.wrapper, .pv-app) .ds-content .ds-purchase-price {
+        white-space: normal;
+    }
+}
+
+
+/* Admin package create/edit form � nested card field grids */
+:is(.wrapper, .pv-app) .ds-content .ds-package-admin {
+    display: grid;
+    gap: 16px;
+    width: 100%;
+    min-width: 0;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form {
+    display: grid;
+    gap: 16px;
+    width: 100%;
+    max-width: none;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 18px;
+    width: 100%;
+    align-items: start;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    min-width: 0;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field > span,
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-image > span {
+    display: block;
+    color: #344054;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field input,
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field select,
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field textarea,
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-image input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid #d8e2ee;
+    border-radius: 10px;
+    background: #fff;
+    padding: 11px 12px;
+    min-height: 44px;
+    color: #0f172a;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field textarea {
+    min-height: 96px;
+    resize: vertical;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field input:focus,
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field select:focus,
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-field input[readonly] {
+    background: #f8fafc;
+    color: #475569;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-span-2 {
+    grid-column: 1 / -1;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-hint {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-image {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-image-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid #e8edf3;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-check input {
+    width: 16px;
+    height: 16px;
+    min-height: 16px;
+    margin: 0;
+    accent-color: #2563eb;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-readonly {
+    display: grid;
+    gap: 8px;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-readonly p {
+    margin: 0;
+    color: #334155;
+    font-size: 14px;
+}
+
+:is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+@media (min-width: 1100px) {
+    :is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    :is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    :is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-checks {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    :is(.wrapper, .pv-app) .ds-content .ds-package-form .ds-pkg-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

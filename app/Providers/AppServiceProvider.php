@@ -88,7 +88,7 @@ class AppServiceProvider extends ServiceProvider
             app(ProductionDatabaseCommandGuard::class)->handle($event);
         });
 
-        View::composer('partials.lux-bar', function ($view): void {
+        View::composer(['partials.lux-bar', 'layouts.panel.header'], function ($view): void {
             $view->with('supportNotices', self::supportNotices());
             $view->with('headerBalance', self::headerWithdrawableBalance());
         });

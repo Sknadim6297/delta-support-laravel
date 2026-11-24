@@ -1,0 +1,65 @@
+/* Panel v2 responsive shell */
+
+@media (max-width: 1100px) {
+    .pv-app .ds-page-head {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 960px) {
+    .pv-app {
+        grid-template-columns: 1fr;
+    }
+
+    .pv-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: min(280px, 86vw);
+        transform: translateX(-105%);
+        transition: transform 0.2s ease;
+        box-shadow: var(--pv-shadow-md);
+    }
+
+    .pv-app.is-mobile-open .pv-sidebar {
+        transform: translateX(0);
+    }
+
+    .pv-app.is-collapsed {
+        --pv-current-sidebar: var(--pv-sidebar-width);
+    }
+
+    .pv-app.is-collapsed .pv-sidebar-brand-copy,
+    .pv-app.is-collapsed .pv-nav-label,
+    .pv-app.is-collapsed .pv-nav-section-label,
+    .pv-app.is-collapsed .pv-nav-caret {
+        display: initial;
+    }
+
+    .pv-user-copy {
+        display: none;
+    }
+
+    .pv-body {
+        padding: 14px 12px 24px;
+    }
+
+    .pv-footer {
+        flex-direction: column;
+        padding-inline: 12px;
+    }
+}
+
+@media (max-width: 640px) {
+    .pv-balance {
+        display: none;
+    }
+
+    .pv-breadcrumb-path {
+        display: none;
+    }
+
+    .pv-header {
+        padding-inline: 10px;
+    }
+}

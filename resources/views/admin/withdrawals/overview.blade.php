@@ -13,10 +13,21 @@
         </x-slot:actions>
     </x-ui.page-header>
     <div class="ds-stat-grid">
-        <x-ui.stat label="Total requests" :value="$total" hint="All stored requests" />
+        <x-ui.stat icon="ri-file-list-3-line" label="Total requests" :value="$total" hint="All stored requests" />
         @foreach ($counts as $status => $count)
             <a class="ds-stat-link" href="{{ route('admin.withdrawals.index', ['status' => $status]) }}">
-                <x-ui.stat :label="\App\Support\WithdrawalStatus::label($status)" :value="$count" hint="Open this status" />
+                <x-ui.stat
+                    icon="ri-arrow-right-up-line"
+                    :tone="match ($status) {
+                        'completed', 'approved' => 'green',
+                        'pending_review', 'draft', 'processing' => 'amber',
+                        'rejected', 'cancelled', 'failed' => 'orange',
+                        default => 'teal',
+                    }"
+                    :label="\App\Support\WithdrawalStatus::label($status)"
+                    :value="$count"
+                    hint="Open this status"
+                />
             </a>
         @endforeach
     </div>

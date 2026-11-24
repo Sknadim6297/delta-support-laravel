@@ -2,7 +2,6 @@
 
 @section('title', 'Referral Network')
 @section('page-title', 'Referral Tree')
-@section('content-class', 'lh-native')
 
 @section('content')
     @include('shared.genealogy-workspace', [

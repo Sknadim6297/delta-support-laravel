@@ -597,7 +597,7 @@
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.wrapper .ds-content > main {
+:where(.wrapper .ds-content > main) {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     background: #fff;
@@ -605,29 +605,29 @@
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.wrapper .ds-content > main form {
+:where(.wrapper .ds-content > main form) {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 12px;
 }
 
-.wrapper .ds-content > main form > div {
+:where(.wrapper .ds-content > main form > div) {
     display: flex;
     flex-direction: column;
     gap: 6px;
     min-width: 160px;
 }
 
-.wrapper .ds-content > main label,
-.wrapper .ds-content > main form label {
+:where(.wrapper .ds-content > main label),
+:where(.wrapper .ds-content > main form label) {
     color: #64748b;
     font-size: 13px;
     font-weight: 600;
 }
 
-.wrapper .ds-content > main input,
-.wrapper .ds-content > main select {
+:where(.wrapper .ds-content > main input),
+:where(.wrapper .ds-content > main select) {
     min-height: 40px;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
@@ -636,14 +636,14 @@
     color: #0f172a;
 }
 
-.wrapper .ds-content > main table {
+:where(.wrapper .ds-content > main table) {
     width: max-content;
     min-width: 100%;
     border-collapse: collapse;
 }
 
-.wrapper .ds-content > main th,
-.wrapper .ds-content > main td {
+:where(.wrapper .ds-content > main th),
+:where(.wrapper .ds-content > main td) {
     border: 0;
     border-bottom: 1px solid #e2e8f0;
     padding: 12px 14px;
@@ -651,7 +651,7 @@
     vertical-align: middle;
 }
 
-.wrapper .ds-content > main thead th {
+:where(.wrapper .ds-content > main thead th) {
     background: #f8fafc;
     color: #64748b;
     font-size: 11px;
@@ -660,7 +660,7 @@
     text-transform: uppercase;
 }
 
-.wrapper .ds-content > main tbody tr:hover td {
+:where(.wrapper .ds-content > main tbody tr:hover td) {
     background: #f8fafc;
 }
 

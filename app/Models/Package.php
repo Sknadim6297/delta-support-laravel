@@ -51,6 +51,9 @@ class Package extends Model
         'income_source',
         'active_plan_version_id',
         'sort_order',
+        'validity_unlimited',
+        'validity_duration',
+        'validity_unit',
     ];
 
     protected $casts = [
@@ -62,6 +65,8 @@ class Package extends Model
         'purchase_available' => 'boolean',
         'sort_order' => 'integer',
         'active_plan_version_id' => 'integer',
+        'validity_unlimited' => 'boolean',
+        'validity_duration' => 'integer',
     ];
 
     protected static function booted(): void

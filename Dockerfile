@@ -2,10 +2,11 @@ FROM node:22-bookworm-slim AS assets
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY resources ./resources
+COPY public/site/css ./public/site/css
 COPY vite.config.js .
 RUN npm run build
 

@@ -11,6 +11,14 @@ return [
     'legacy_financial_actions' => filter_var(env('LEGACY_FINANCIAL_ACTIONS', false), FILTER_VALIDATE_BOOLEAN),
 
     /*
+    | Admin/Member panel shell theme. Server-only — never expose a public toggle.
+    | lux = legacy Lux shell (rollback). v2 = new panel design system.
+    */
+    'panel_theme' => in_array(strtolower((string) env('PANEL_THEME', 'lux')), ['v2', 'next'], true)
+        ? 'v2'
+        : 'lux',
+
+    /*
     | The only database financial:arm may accept. An empty value refuses every database.
     | Setting this name does not arm posting.
     */
@@ -332,6 +340,17 @@ return [
                 ],
             ],
         ],
+    ],
+
+    /*
+    | Rewards campaign media (private local disk under rewards/).
+    | Does not affect qualification or wallet posting.
+    */
+    'rewards' => [
+        'image_max_kb' => (int) env('DELTASUPPORT_REWARDS_IMAGE_MAX_KB', 2048),
+        'video_max_kb' => (int) env('DELTASUPPORT_REWARDS_VIDEO_MAX_KB', 204800), // 200 MB
+        'video_mimes' => ['mp4', 'webm'],
+        'video_mimetypes' => ['video/mp4', 'video/webm', 'application/mp4'],
     ],
 
     /*

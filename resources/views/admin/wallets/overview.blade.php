@@ -12,29 +12,33 @@
             <x-ui.button href="{{ route('admin.wallets.transactions') }}" variant="secondary">Transaction notes</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
-    @foreach($notices as $notice)
-        <x-ui.alert type="warning">{{ $notice }}</x-ui.alert>
-    @endforeach
-    @if ($localTest)
-        <x-ui.alert type="warning">Local test balances are included. Production payout generation remains disabled.</x-ui.alert>
+    @if (count($notices) || $localTest)
+        <div class="pv-alert-stack">
+            @foreach($notices as $notice)
+                <x-ui.alert type="warning">{{ $notice }}</x-ui.alert>
+            @endforeach
+            @if ($localTest)
+                <x-ui.alert type="warning">Local test balances are included. Production payout generation remains disabled.</x-ui.alert>
+            @endif
+        </div>
     @endif
     <div class="ds-stat-grid">
         <a class="ds-stat-link" href="{{ route('admin.wallets.show', ['wallet' => 'roi']) }}">
-            <x-ui.stat label="ROI Wallet" :value="\App\Support\MoneyDisplay::usdt($totals['roi'])" hint="Open member balances" />
+            <x-ui.stat icon="ri-line-chart-line" tone="teal" label="ROI Wallet" :value="\App\Support\MoneyDisplay::usdt($totals['roi'])" hint="Open member balances" />
         </a>
         <a class="ds-stat-link" href="{{ route('admin.wallets.show', ['wallet' => 'working']) }}">
-            <x-ui.stat label="Working Wallet" :value="\App\Support\MoneyDisplay::usdt($totals['working'])" hint="Open member balances" />
+            <x-ui.stat icon="ri-briefcase-line" tone="violet" label="Working Wallet" :value="\App\Support\MoneyDisplay::usdt($totals['working'])" hint="Open member balances" />
         </a>
         <a class="ds-stat-link" href="{{ route('admin.wallets.show', ['wallet' => 'activation']) }}">
-            <x-ui.stat label="Activation Wallet" :value="\App\Support\MoneyDisplay::usdt($totals['activation'])" hint="Open member balances" />
+            <x-ui.stat icon="ri-flashlight-line" tone="amber" label="Activation Wallet" :value="\App\Support\MoneyDisplay::usdt($totals['activation'])" hint="Open member balances" />
         </a>
-        <x-ui.stat label="Stored records" :value="$roiCount.' ROI'" :hint="$levelCount.' level income'" />
+        <x-ui.stat icon="ri-database-2-line" label="Stored records" :value="$roiCount.' ROI'" :hint="$levelCount.' level income'" />
     </div>
     <div class="ds-stat-grid">
-        <x-ui.stat label="Total balance" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['stored'])" hint="Stored wallet columns" />
-        <x-ui.stat label="Reserved balance" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['reserved'])" hint="Open withdrawal requests" />
-        <x-ui.stat label="Available balance" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['available'])" hint="Stored balance minus reservations" />
-        <x-ui.stat label="Paid withdrawals" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['paid'])" hint="Gross USDT already settled" />
+        <x-ui.stat icon="ri-wallet-3-line" label="Total balance" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['stored'])" hint="Stored wallet columns" />
+        <x-ui.stat icon="ri-lock-line" tone="amber" label="Reserved balance" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['reserved'])" hint="Open withdrawal requests" />
+        <x-ui.stat icon="ri-checkbox-circle-line" tone="green" label="Available balance" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['available'])" hint="Stored balance minus reservations" />
+        <x-ui.stat icon="ri-money-dollar-circle-line" tone="teal" label="Paid withdrawals" :value="\App\Support\MoneyDisplay::usdt($withdrawalBook['paid'])" hint="Gross USDT already settled" />
     </div>
     <form class="ds-filter" method="GET">
         <label>

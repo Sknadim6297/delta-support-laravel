@@ -1,0 +1,12 @@
+/*
+ * Delta Support Panel v2 — new Admin/Member shell design system.
+ * Loaded only when PANEL_THEME=v2. Never import Lux here.
+ */
+
+@import "./panel-v2/tokens.css";
+@import "./panel-v2/shell.css";
+@import "./panel-v2/navigation.css";
+@import "./panel-v2/grids.css";
+@import "./panel-v2/components.css";
+@import "./panel-v2/responsive.css";
+@import "./panel-v2/pilot.css";

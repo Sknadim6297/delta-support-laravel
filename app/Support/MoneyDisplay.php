@@ -24,23 +24,28 @@ class MoneyDisplay
     }
 
     /**
-     * Compact header-style balance: $56.5510
+     * Compact header-style balance with 2 decimals: $134.37
+     * Ledger/ROI storage stays 4dp; this is display-only.
      */
     public static function dollar(mixed $amount): string
     {
-        return '$'.self::amount($amount);
+        $normalized = self::amount($amount, 4);
+
+        return '$'.number_format((float) $normalized, 2, '.', '');
     }
 
-    public static function amount(mixed $amount): string
+    public static function amount(mixed $amount, int $decimals = 4): string
     {
+        $decimals = max(0, min(8, $decimals));
+
         if ($amount === null || $amount === '') {
-            return '0.0000';
+            return bcadd('0', '0', $decimals);
         }
 
         if (is_int($amount) || is_float($amount)) {
-            return number_format($amount, 4, '.', '');
+            return number_format($amount, $decimals, '.', '');
         }
 
-        return bcadd((string) $amount, '0', 4);
+        return bcadd((string) $amount, '0', $decimals);
     }
 }

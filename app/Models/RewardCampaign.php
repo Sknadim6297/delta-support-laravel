@@ -39,6 +39,7 @@ class RewardCampaign extends Model
         'starts_on',
         'ends_on',
         'status',
+        'promote_on_login',
         'stock_quantity',
         'terms',
         'admin_notes',
@@ -51,8 +52,34 @@ class RewardCampaign extends Model
         'starts_on' => 'date',
         'ends_on' => 'date',
         'stock_quantity' => 'integer',
+        'promote_on_login' => 'boolean',
         'published_at' => 'datetime',
     ];
+
+    /**
+     * Active campaign eligible for the member login promotional popup.
+     */
+    public function scopePromotableForLogin($query)
+    {
+        $today = now(config('deltasupport.report_timezone', 'Asia/Kolkata'))->toDateString();
+
+        return $query->where('status', self::ACTIVE)
+            ->where('promote_on_login', true)
+            ->whereDate('starts_on', '<=', $today)
+            ->whereDate('ends_on', '>=', $today)
+            ->orderByDesc('starts_on')
+            ->orderByDesc('id');
+    }
+
+    public function hasBanner(): bool
+    {
+        return filled($this->gift_image_path);
+    }
+
+    public function hasVideo(): bool
+    {
+        return filled($this->video_path);
+    }
 
     public function creator(): BelongsTo
     {

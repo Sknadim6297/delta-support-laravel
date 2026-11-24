@@ -109,10 +109,14 @@ class WithdrawalSettlementTest extends TestCase
         $this->withSession(['member_context_id' => $member->member_id])
             ->get(route('member.wallets.overview'))
             ->assertOk()
-            ->assertSeeText('Total balance USDT 60.0000')
-            ->assertSeeText('Reserved balance USDT 25.0000')
-            ->assertSeeText('Available balance USDT 35.0000')
-            ->assertSeeText('Paid withdrawals USDT 20.0000');
+            ->assertSeeText('Total balance')
+            ->assertSeeText('Reserved balance')
+            ->assertSeeText('Available balance')
+            ->assertSeeText('Paid withdrawals')
+            ->assertSeeText('USDT 60.0000')
+            ->assertSeeText('USDT 25.0000')
+            ->assertSeeText('USDT 35.0000')
+            ->assertSeeText('USDT 20.0000');
 
         $this->assertFalse(FinancialControl::current()->external_payouts_enabled);
         try {

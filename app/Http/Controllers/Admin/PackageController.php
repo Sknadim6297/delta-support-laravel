@@ -13,6 +13,7 @@ use App\Services\PackageAutoRoiControl;
 use App\Services\PackageIncomeDefinitionResolver;
 use App\Services\PackageIncomePolicy;
 use App\Services\PackagePlanAdministration;
+use App\Support\PackageValidityDisplay;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -352,7 +353,30 @@ class PackageController extends Controller
             'tour_children' => ['nullable', 'integer', 'min:0', 'max:50'],
             'food_coupon_amount' => ['nullable', 'regex:/^\d{1,12}(\.\d{1,4})?$/'],
             'food_coupon_currency' => ['nullable', 'string', 'max:16'],
+            'validity_unlimited' => ['nullable', 'boolean'],
+            'validity_duration' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'validity_unit' => ['nullable', Rule::in(array_keys(PackageValidityDisplay::UNITS))],
         ]);
+
+        $data['validity_unlimited'] = $request->boolean('validity_unlimited');
+        if ($data['validity_unlimited']) {
+            $data['validity_duration'] = null;
+            $data['validity_unit'] = null;
+        } else {
+            $rawDuration = $request->input('validity_duration');
+            $rawUnit = $request->input('validity_unit');
+            $hasDuration = $rawDuration !== null && $rawDuration !== '';
+            $hasUnit = is_string($rawUnit) && $rawUnit !== '';
+            if ($hasDuration xor $hasUnit) {
+                throw ValidationException::withMessages([
+                    'validity_duration' => 'Enter both validity duration and unit, or leave both blank, or choose Unlimited.',
+                ]);
+            }
+            if (! $hasDuration) {
+                $data['validity_duration'] = null;
+                $data['validity_unit'] = null;
+            }
+        }
 
         if ($packageType === Package::TYPE_TOUR) {
             if (filled($request->input('roi_daily')) || filled($request->input('roi_days'))) {

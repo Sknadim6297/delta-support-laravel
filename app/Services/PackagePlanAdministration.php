@@ -38,6 +38,7 @@ class PackagePlanAdministration
             $type = (string) ($catalog['package_type'] ?? Package::TYPE_TOUR);
             $wantsRoi = $this->typeWantsRoi($type);
             $this->assertRoiPlan($plan, $wantsRoi);
+            $this->assertValidityPlan($plan);
 
             $package = Package::query()->create([
                 'code' => $code,
@@ -61,11 +62,15 @@ class PackagePlanAdministration
                 'purchase_available' => (bool) ($catalog['purchase_available'] ?? true),
                 'income_source' => $this->defaultIncomeSource($code),
                 'sort_order' => (int) ($catalog['sort_order'] ?? 0),
+                'validity_unlimited' => (bool) ($plan['validity_unlimited'] ?? false),
+                'validity_duration' => (bool) ($plan['validity_unlimited'] ?? false) ? null : ($plan['validity_duration'] ?? null),
+                'validity_unit' => (bool) ($plan['validity_unlimited'] ?? false) ? null : ($plan['validity_unit'] ?? null),
             ]);
 
             $accrualAuthority = (string) $package->income_source === Package::INCOME_SOURCE_DATABASE
                 && (bool) ($plan['has_daily_roi'] ?? false);
             $version = $this->insertVersion($package, $plan, $admin, PackagePlanVersion::STATUS_PUBLISHED, $accrualAuthority);
+            $this->syncCatalogFlagsFromPlan($package, $version);
             $package->forceFill([
                 'active_plan_version_id' => $version->id,
             ])->save();
@@ -148,6 +153,7 @@ class PackagePlanAdministration
             $locked = Package::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
             $wantsRoi = $this->typeWantsRoi((string) $locked->package_type);
             $this->assertRoiPlan($plan, $wantsRoi);
+            $this->assertValidityPlan($plan);
 
             $hasApproved = PackagePurchase::query()
                 ->where('package_id', $locked->id)
@@ -541,6 +547,38 @@ class PackagePlanAdministration
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function assertValidityPlan(array $plan): void
+    {
+        if (! array_key_exists('validity_unlimited', $plan)
+            && ! array_key_exists('validity_duration', $plan)
+            && ! array_key_exists('validity_unit', $plan)) {
+            return;
+        }
+
+        if ((bool) ($plan['validity_unlimited'] ?? false)) {
+            return;
+        }
+
+        $duration = $plan['validity_duration'] ?? null;
+        $unit = $plan['validity_unit'] ?? null;
+        if (($duration === null || $duration === '') && ($unit === null || $unit === '')) {
+            return;
+        }
+        if ($duration === null || $duration === '' || (int) $duration < 1 || (int) $duration > 100000) {
+            throw ValidationException::withMessages([
+                'validity_duration' => 'Validity duration must be between 1 and 100000 when not Unlimited.',
+            ]);
+        }
+        if (! is_string($unit) || ! isset(\App\Support\PackageValidityDisplay::UNITS[$unit])) {
+            throw ValidationException::withMessages([
+                'validity_unit' => 'Choose Days, Months, or Years for package validity.',
+            ]);
+        }
+    }
+
     private function assertActiveRoiReady(Package $package): void
     {
         if (! $package->roi_eligible) {
@@ -615,10 +653,46 @@ class PackagePlanAdministration
             ? bcadd((string) $plan['food_coupon_amount'], '0', 4)
             : null;
         $version->food_coupon_currency = $plan['food_coupon_currency'] ?? null;
+        $this->fillValidity($version, $plan);
         $version->tour_description = $plan['tour_description'] ?? null;
         $version->label = $plan['label'] ?? null;
         $version->change_note = $plan['change_note'] ?? null;
         $version->accrual_authority = $accrualAuthority;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function fillValidity(PackagePlanVersion $version, array $plan): void
+    {
+        if (! array_key_exists('validity_unlimited', $plan)
+            && ! array_key_exists('validity_duration', $plan)
+            && ! array_key_exists('validity_unit', $plan)) {
+            return;
+        }
+
+        $unlimited = (bool) ($plan['validity_unlimited'] ?? false);
+        if ($unlimited) {
+            $version->validity_unlimited = true;
+            $version->validity_duration = null;
+            $version->validity_unit = null;
+
+            return;
+        }
+
+        $duration = $plan['validity_duration'] ?? null;
+        $unit = $plan['validity_unit'] ?? null;
+        if ($duration === null || $duration === '' || $unit === null || $unit === '') {
+            $version->validity_unlimited = false;
+            $version->validity_duration = null;
+            $version->validity_unit = null;
+
+            return;
+        }
+
+        $version->validity_unlimited = false;
+        $version->validity_duration = (int) $duration;
+        $version->validity_unit = (string) $unit;
     }
 
     private function supersedeOthers(Package $package, PackagePlanVersion $keep): void
@@ -647,6 +721,9 @@ class PackagePlanAdministration
         $package->forceFill([
             'roi_eligible' => $version->has_daily_roi,
             'level_commission_eligible' => $version->level_commission_eligible,
+            'validity_unlimited' => (bool) $version->validity_unlimited,
+            'validity_duration' => $version->validity_duration,
+            'validity_unit' => $version->validity_unit,
         ])->save();
     }
 

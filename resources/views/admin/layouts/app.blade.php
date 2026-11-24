@@ -8,14 +8,51 @@
     <link rel="icon" href="{{ \App\Support\BrandTokens::logoUrl() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    @if (\App\Support\PanelTheme::isV2())
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    @else
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    @endif
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    @vite(['resources/css/panel.css', 'resources/css/lux-shell.css', 'resources/css/lux-pages.css', 'resources/js/panel.js', 'resources/js/lux-shell.js'])
+    @if (\App\Support\PanelTheme::isV2())
+        @vite(['resources/css/panel.css', 'resources/css/panel-v2.css', 'resources/js/panel.js', 'resources/js/panel-v2.js'])
+    @else
+        @vite(['resources/css/panel.css', 'resources/css/lux-shell.css', 'resources/css/lux-pages.css', 'resources/js/panel.js', 'resources/js/lux-shell.js'])
+    @endif
     @include('partials.brand-tokens')
+    @stack('styles')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body data-lh-mode="light">
+<body @if (\App\Support\PanelTheme::isV2()) data-panel-theme="v2" @else data-lh-mode="light" data-panel-theme="lux" @endif>
+@if (\App\Support\PanelTheme::isV2())
+    <div class="pv-app" data-pv-shell>
+        <div class="pv-overlay" data-pv-overlay></div>
+        @include('layouts.panel.sidebar-admin')
+        <div class="pv-main">
+            @include('layouts.panel.header', [
+                'pvTitle' => trim($__env->yieldContent('page-title')) ?: 'Admin',
+                'pvHome' => route('dashboard'),
+                'pvName' => auth()->user()->name ?? 'Admin',
+                'pvMeta' => auth()->user()->email,
+                'pvProfile' => route('admin.settings.profile'),
+                'pvProfileLabel' => 'Admin Profile',
+                'pvPassword' => route('admin.change-password.index'),
+                'pvLogout' => route('admin.logout'),
+            ])
+            <div class="pv-body">
+                <div class="ds-content @yield('content-class')">
+                    @include('admin.partials.impersonation-banner')
+                    @if (session('success'))
+                        <x-ui.alert type="success">{{ session('success') }}</x-ui.alert>
+                    @endif
+                    @yield('content')
+                </div>
+            </div>
+            @include('layouts.panel.footer', ['pvAudience' => 'Administrator'])
+        </div>
+    </div>
+@else
     <main class="wrapper sb-default">
         @include('partials.lux-bar', [
             'luxTitle' => trim($__env->yieldContent('page-title')) ?: 'Admin',
@@ -60,6 +97,7 @@
             </div>
         </footer>
     </main>
+@endif
 
     <script>
         (function () {
