@@ -11,12 +11,10 @@ return [
     'legacy_financial_actions' => filter_var(env('LEGACY_FINANCIAL_ACTIONS', false), FILTER_VALIDATE_BOOLEAN),
 
     /*
-    | Admin/Member panel shell theme. Server-only — never expose a public toggle.
-    | lux = legacy Lux shell (rollback). v2 = new panel design system.
+    | Admin/Member panel shell theme. Panel V2 is the only supported shell.
+    | Legacy Lux rollback is via git tag t4-pre-legacy-removal (not a runtime toggle).
     */
-    'panel_theme' => in_array(strtolower((string) env('PANEL_THEME', 'lux')), ['v2', 'next'], true)
-        ? 'v2'
-        : 'lux',
+    'panel_theme' => 'v2',
 
     /*
     | The only database financial:arm may accept. An empty value refuses every database.

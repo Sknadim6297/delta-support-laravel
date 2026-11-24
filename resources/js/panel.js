@@ -96,11 +96,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    document.querySelectorAll('.wrapper [data-toggle-password]').forEach(function (button) {
+    document.querySelectorAll('.pv-app [data-toggle-password], .wrapper [data-toggle-password]').forEach(function (button) {
         button.remove();
     });
 
-    document.querySelectorAll('.wrapper input[type="password"]').forEach(function (input) {
+    document.querySelectorAll('.pv-app input[type="password"], .wrapper input[type="password"]').forEach(function (input) {
         if (input.closest('.ds-password') || input.hasAttribute('data-pin-digit')) {
             return;
         }
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (headerTitle && ['Admin', 'Member', 'Panel'].includes(headerTitle.textContent.trim())) {
             headerTitle.textContent = heading;
         }
-        const crumb = document.querySelector('.lh-breadcrumb ul li:last-child');
+        const crumb = document.querySelector('.pv-breadcrumb [data-pv-crumb-current], .lh-breadcrumb ul li:last-child');
         if (crumb && ['Admin', 'Member', 'Panel'].includes(crumb.textContent.trim())) {
             crumb.textContent = heading;
         }

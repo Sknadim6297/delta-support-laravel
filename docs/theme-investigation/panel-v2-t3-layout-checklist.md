@@ -1,6 +1,6 @@
 # Panel V2 — T3 Layout Migration Checklist
 
-Local-only. Lux rollback (`PANEL_THEME=lux`) preserved. Public site / Rewards popup / finance / auth / DB unchanged. **T4 not started.**
+Local-only. Public site / Rewards popup / finance / auth / DB unchanged. **T4 complete** — see `panel-v2-final-report.md`. Lux removed; rollback tag `t4-pre-legacy-removal`.
 
 ## Root cause (KPI cards stacking full-width)
 

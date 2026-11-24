@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-Es6wn9G4.css",
+    "file": "assets/app-dZge8Jj4.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -24,24 +24,6 @@
     "name": "rewards",
     "names": [
       "rewards.css"
-    ]
-  },
-  "resources/css/lux-pages.css": {
-    "file": "assets/lux-pages-CZLoIra6.css",
-    "src": "resources/css/lux-pages.css",
-    "isEntry": true,
-    "name": "lux-pages",
-    "names": [
-      "lux-pages.css"
-    ]
-  },
-  "resources/css/lux-shell.css": {
-    "file": "assets/lux-shell-DvuYHv42.css",
-    "src": "resources/css/lux-shell.css",
-    "isEntry": true,
-    "name": "lux-shell",
-    "names": [
-      "lux-shell.css"
     ]
   },
   "resources/css/panel-v2.css": {
@@ -86,12 +68,6 @@
     "src": "resources/js/app.js",
     "isEntry": true
   },
-  "resources/js/lux-shell.js": {
-    "file": "assets/lux-shell-BYXVsiIO.js",
-    "name": "lux-shell",
-    "src": "resources/js/lux-shell.js",
-    "isEntry": true
-  },
   "resources/js/panel-v2.js": {
     "file": "assets/panel-v2-C3L6-056.js",
     "name": "panel-v2",
@@ -99,7 +75,7 @@
     "isEntry": true
   },
   "resources/js/panel.js": {
-    "file": "assets/panel-Cu8PqnOA.js",
+    "file": "assets/panel-CC8RmISc.js",
     "name": "panel",
     "src": "resources/js/panel.js",
     "isEntry": true

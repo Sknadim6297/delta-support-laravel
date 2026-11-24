@@ -3,9 +3,9 @@
 namespace App\Support;
 
 /**
- * Server-controlled Admin/Member panel shell theme.
- * Values: lux (legacy rollback) | v2 (new panel design system).
- * Not user-toggleable; only env/config.
+ * Admin/Member panel shell theme.
+ * Panel V2 is the only supported shell after T4. Lux assets and switching were removed;
+ * rollback is via git tag t4-pre-legacy-removal.
  */
 final class PanelTheme
 {
@@ -15,18 +15,16 @@ final class PanelTheme
 
     public static function current(): string
     {
-        $value = strtolower((string) config('deltasupport.panel_theme', self::LUX));
-
-        return $value === self::V2 ? self::V2 : self::LUX;
+        return self::V2;
     }
 
     public static function isV2(): bool
     {
-        return self::current() === self::V2;
+        return true;
     }
 
     public static function isLux(): bool
     {
-        return ! self::isV2();
+        return false;
     }
 }
