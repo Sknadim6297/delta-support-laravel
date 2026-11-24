@@ -260,6 +260,27 @@
     transform: scale(1.05);
 }
 
+.ds-reward-popup-telegram {
+    margin: 16px 0 0;
+    color: var(--pv-muted, var(--color-muted, #64748b));
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.ds-reward-popup-telegram a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+    color: #229ed9;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.ds-reward-popup-telegram a:hover {
+    text-decoration: underline;
+}
+
 .ds-reward-popup-footer {
     flex: none;
     padding: 14px 20px 16px;

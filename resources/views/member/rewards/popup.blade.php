@@ -80,6 +80,13 @@
                     </button>
                 </div>
             @endif
+
+            <p class="ds-reward-popup-telegram">
+                For more information:
+                <a href="https://t.me/+K8GjL0B5dElkM2Rl" target="_blank" rel="noopener noreferrer">
+                    <i class="ri-telegram-line" aria-hidden="true"></i> Join Telegram
+                </a>
+            </p>
         </div>
 
         <div class="ds-reward-popup-footer">
