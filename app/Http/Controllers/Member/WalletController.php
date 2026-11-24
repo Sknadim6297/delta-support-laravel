@@ -168,10 +168,16 @@ class WalletController extends Controller
 
         return view('member.finance.eligibility', [
             'member' => $member,
-            'directCount' => $eligibility->directCount($member->member_id),
+            'directCount' => $summary['registered_direct_count'] ?? $eligibility->directCount($member->member_id),
             'qualifyingCount' => $summary['qualifying_direct_count'],
             'unlockedLevels' => $summary['unlocked_levels'],
+            'legacyUnlockedLevels' => $summary['legacy_unlocked_levels'] ?? $summary['unlocked_levels'],
+            'authorizedPreviewUnlockedLevels' => $summary['authorized_preview_unlocked_levels'] ?? null,
+            'qualificationPreview' => $summary['qualification_preview'] ?? null,
+            'incomeEligibleDirectCount' => $summary['income_eligible_direct_count'] ?? $summary['qualifying_direct_count'],
             'personallyActivated' => (bool) ($summary['personally_activated'] ?? false),
+            'ruleMode' => $summary['rule_mode'] ?? 'legacy',
+            'applicableNote' => $summary['applicable_note'] ?? '',
             'nextUnlock' => $summary['next_unlock'] ?? null,
             'status' => $eligibility->statusLabel($summary['unlocked_levels']),
             'rateChart' => $resolver->rateChart(),

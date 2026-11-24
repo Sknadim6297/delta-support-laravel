@@ -36,6 +36,8 @@ class LevelIncomeRuleAdministrationTest extends TestCase
         $proposed = LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->first();
         $this->assertNotNull($proposed);
         $this->assertSame(LevelIncomeRuleVersion::STATUS_DRAFT, $proposed->status);
+        $this->assertSame('approved_package_directs', $proposed->direct_qualification_basis);
+        $this->assertTrue($proposed->tour_only_qualifies_for_unlock);
 
         $resolver = app(LevelIncomeRuleResolver::class);
         $bands = $proposed->bands->map(fn ($b) => [
@@ -128,8 +130,9 @@ class LevelIncomeRuleAdministrationTest extends TestCase
         $this->assertSame(4, $resolver->unlockedLevels(0, true));
         $this->assertSame(0, $resolver->unlockedLevels(0, false));
 
-        // Display ladder may show authorized bands; live accrual remains purchase-scoped.
-        $this->assertSame(4, app(ReferralLevelEligibility::class)->levelsForCount(0));
+        // Display ladder requires activation context under authorized bands.
+        $this->assertSame(4, app(ReferralLevelEligibility::class)->levelsForCount(0, true));
+        $this->assertSame(0, app(ReferralLevelEligibility::class)->levelsForCount(0, false));
 
         $service->revokePostingAuthorization($authorized, $admin);
         $resolver->clearCache();

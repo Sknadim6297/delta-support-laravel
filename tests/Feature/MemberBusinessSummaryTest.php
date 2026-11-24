@@ -53,14 +53,47 @@ class MemberBusinessSummaryTest extends TestCase
             $root->member_id,
         ]);
 
+        // Tour Only 200 on root is included in BV; first-level still sums directs only (7+5=12).
         $this->assertSame('12.0000', $summaries[$root->member_id]['first_level_business']);
-        $this->assertSame('25.0000', $summaries[$root->member_id]['total_team_business']);
+        $this->assertSame('225.0000', $summaries[$root->member_id]['total_team_business']);
         $this->assertSame('11.0000', $summaries[$direct->member_id]['first_level_business']);
         $this->assertSame('18.0000', $summaries[$direct->member_id]['total_team_business']);
 
         $again = $business->businessForMembers([$root->member_id]);
-        $this->assertSame('25.0000', $again[$root->member_id]['total_team_business']);
+        $this->assertSame('225.0000', $again[$root->member_id]['total_team_business']);
         $this->assertSame([], $business->businessForMembers([]));
+    }
+
+    public function test_approved_tour_only_counts_toward_business_but_not_level_unlock(): void
+    {
+        $root = $this->member('STTOUR001', 'ST666666');
+        $direct = $this->member('STTOUR002', $root->member_id);
+        $tourOnly = $this->package('DST-TOUR-BV', Package::TYPE_TOUR);
+        $roi = $this->package('DST-ROI-BV', Package::TYPE_TOUR_ROI);
+
+        $this->purchase($direct, $tourOnly, PackagePurchase::APPROVED, '150.0000');
+        $this->purchase($root, $tourOnly, PackagePurchase::APPROVED, '50.0000');
+
+        $business = app(TeamBusinessCalculationService::class)->businessForMembers([$root->member_id]);
+        $this->assertSame('150.0000', $business[$root->member_id]['first_level_business']);
+        $this->assertSame('200.0000', $business[$root->member_id]['total_team_business']);
+
+        $eligibility = app(\App\Services\ReferralLevelEligibility::class);
+        $summary = $eligibility->forMember($root->member_id);
+        $this->assertSame(1, $summary['registered_direct_count']);
+        $this->assertSame(0, $summary['qualifying_direct_count'], 'Tour Only must not unlock levels');
+        $this->assertSame(0, $summary['unlocked_levels']);
+
+        $this->purchase($direct, $roi, PackagePurchase::APPROVED, '10.0000');
+        $this->purchase($root, $roi, PackagePurchase::APPROVED, '10.0000');
+        $after = $eligibility->forMember($root->member_id);
+        $this->assertSame(1, $after['qualifying_direct_count']);
+        $this->assertSame(4, $after['unlocked_levels']);
+        $this->assertTrue($after['personally_activated']);
+
+        $pending = $this->member('STTOUR003', $root->member_id);
+        $this->purchase($pending, $roi, PackagePurchase::PENDING, '99.0000');
+        $this->assertSame(1, $eligibility->qualifyingDirectCount($root->member_id));
     }
 
     public function test_member_dashboard_admin_report_and_directory_show_business_with_access_controls(): void

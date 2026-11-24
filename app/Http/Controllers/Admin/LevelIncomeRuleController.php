@@ -8,10 +8,12 @@ use App\Models\LevelIncomeRuleVersion;
 use App\Services\AssociateCommissionCalculator;
 use App\Services\AssociateCommissionStructure;
 use App\Services\CommissionPlan;
+use App\Services\LevelIncomeDirectQualification;
 use App\Services\LevelIncomeRuleAdministration;
 use App\Services\LevelIncomeRuleResolver;
 use App\Services\PackageIncomePolicy;
 use App\Services\ReferralLevelEligibility;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -84,7 +86,8 @@ class LevelIncomeRuleController extends Controller
             $unlockLadder[] = [
                 'directs' => $count === 5 ? '5 or more' : (string) $count,
                 'legacy' => $resolver->legacyLevelsForCount($count),
-                'live' => $eligibility->levelsForCount($count),
+                'live' => $eligibility->levelsForCount($count, true),
+                'live_inactive' => $eligibility->levelsForCount($count, false),
                 'draft_active' => $editing
                     ? $resolver->simulateUnlockedLevels(
                         $editing->bands->map(fn ($b) => [
@@ -128,6 +131,7 @@ class LevelIncomeRuleController extends Controller
             'liveUsesHardcoded' => $authorized === null,
             'maxLevels' => ReferralLevelEligibility::MAX_LEVELS,
             'legacyRates' => CommissionPlan::RATE_BY_LEVEL,
+            'qualificationBases' => LevelIncomeDirectQualification::labels(),
         ]);
     }
 
@@ -139,6 +143,8 @@ class LevelIncomeRuleController extends Controller
             'label' => ['required', 'string', 'max:160'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'change_note' => ['nullable', 'string', 'max:1000'],
+            'direct_qualification_basis' => ['required', 'string', Rule::in(LevelIncomeDirectQualification::BASES)],
+            'tour_only_qualifies_for_unlock' => ['nullable', 'boolean'],
             'bands' => ['required', 'array', 'min:1'],
             'bands.*.start_level' => ['required', 'integer', 'min:1', 'max:20'],
             'bands.*.end_level' => ['required', 'integer', 'min:1', 'max:20'],
@@ -169,6 +175,8 @@ class LevelIncomeRuleController extends Controller
             'label' => $data['label'],
             'notes' => $data['notes'] ?? null,
             'change_note' => $data['change_note'] ?? null,
+            'direct_qualification_basis' => $data['direct_qualification_basis'],
+            'tour_only_qualifies_for_unlock' => $request->boolean('tour_only_qualifies_for_unlock'),
             'bands' => $bands,
             'rates' => $data['rates'],
         ], $request->user(), $request->ip(), $existing);
@@ -267,7 +275,8 @@ class LevelIncomeRuleController extends Controller
         foreach ([0, 1, 2, 3, 4, 5] as $count) {
             $rules[] = [
                 'directs' => $count === 5 ? '5 or more' : (string) $count,
-                'levels' => $eligibility->levelsForCount($count),
+                'levels' => $eligibility->levelsForCount($count, true),
+                'levels_inactive' => $eligibility->levelsForCount($count, false),
                 'proposed_active' => $proposed
                     ? $resolver->simulateUnlockedLevels(
                         $proposed->bands->map(fn ($b) => [

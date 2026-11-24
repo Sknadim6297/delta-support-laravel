@@ -20,12 +20,22 @@ class LevelIncomeRuleVersion extends Model
 
     public const APPLICABILITY_EXISTING_PROSPECTIVE = 'existing_prospective';
 
+    public const QUAL_REGISTERED_DIRECTS = 'registered_directs';
+
+    public const QUAL_APPROVED_PACKAGE_DIRECTS = 'approved_package_directs';
+
+    public const QUAL_INCOME_ELIGIBLE_DIRECTS = 'income_eligible_directs';
+
+    public const QUAL_APPROVED_PACKAGE_PURCHASE_COUNT = 'approved_package_purchase_count';
+
     protected $fillable = [
         'version_code',
         'label',
         'status',
         'posting_authorized',
         'applicability',
+        'direct_qualification_basis',
+        'tour_only_qualifies_for_unlock',
         'effective_from',
         'notes',
         'change_note',
@@ -36,6 +46,7 @@ class LevelIncomeRuleVersion extends Model
 
     protected $casts = [
         'posting_authorized' => 'boolean',
+        'tour_only_qualifies_for_unlock' => 'boolean',
         'effective_from' => 'date',
         'published_at' => 'datetime',
     ];

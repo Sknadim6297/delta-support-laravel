@@ -193,7 +193,8 @@ class OperationsController extends Controller
         foreach ([0, 1, 2, 3, 4, 5] as $count) {
             $unlockRules[] = [
                 'directs' => $count === 5 ? '5 or more' : (string) $count,
-                'levels' => $eligibility->levelsForCount($count),
+                'levels' => $eligibility->levelsForCount($count, true),
+                'levels_inactive' => $eligibility->levelsForCount($count, false),
             ];
         }
 
@@ -221,7 +222,8 @@ class OperationsController extends Controller
         foreach ([0, 1, 2, 3, 4, 5] as $count) {
             $rules[] = [
                 'directs' => $count === 5 ? '5 or more' : (string) $count,
-                'levels' => $eligibility->levelsForCount($count),
+                'levels' => $eligibility->levelsForCount($count, true),
+                'levels_inactive' => $eligibility->levelsForCount($count, false),
             ];
         }
 
@@ -230,6 +232,10 @@ class OperationsController extends Controller
             'qualifyingTypes' => array_map(
                 fn (string $type): string => Package::TYPES[$type] ?? $type,
                 ReferralLevelEligibility::QUALIFYING_PACKAGE_TYPES
+            ),
+            'businessVolumeTypes' => array_map(
+                fn (string $type): string => Package::TYPES[$type] ?? $type,
+                \App\Services\PackageBusinessVolumeEligibility::BUSINESS_VOLUME_PACKAGE_TYPES
             ),
         ]);
     }

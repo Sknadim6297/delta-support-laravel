@@ -2,9 +2,7 @@
 
 namespace App\Services\Rewards;
 
-use App\Models\PackagePurchase;
-use App\Services\LocalTestMarker;
-use App\Services\ReferralLevelEligibility;
+use App\Services\PackageBusinessVolumeEligibility;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -16,24 +14,21 @@ use Illuminate\Support\Facades\DB;
  * legacy investments. This service does not. It sums stored package purchase
  * prices, because reward campaigns and member business summaries use package business.
  *
- * A purchase counts only when all of the following are true:
- * - status is approved and reviewed_at is set (the approval instant)
- * - denomination is USDT (historical USD is left out, not converted)
- * - the package type is one ReferralLevelEligibility already treats as qualifying,
- *   or the package code is one of the configured income packages and that package
- *   is level-commission eligible
- * - package code is not VERIFY-1
- * - the payment reference is not a local-test reference
- * - the buyer email is not a local-test email
- * - for campaign calculations, reviewed_at falls inside the campaign window in Asia/Kolkata
+ * Purchase eligibility is PackageBusinessVolumeEligibility (BV-only), not
+ * ReferralLevelEligibility income/unlock rules. Approved Tour Only packages
+ * are included in BV without enabling ROI or level commission.
  *
  * Each purchase row is summed once from its stored price_usd. Repeat purchases
- * each add their own snapshot. There is no package refund or reversal table,
- * so approved amounts are not reduced. Catalog prices are not read.
+ * each add their own snapshot. Catalog prices are not read.
  */
 class TeamBusinessCalculationService
 {
     private const SCALE = 4;
+
+    public function __construct(
+        private readonly PackageBusinessVolumeEligibility $volumeEligibility,
+    ) {
+    }
 
     /** @var array<string, list<string>>|null */
     private ?array $children = null;
@@ -237,40 +232,11 @@ class TeamBusinessCalculationService
             return [];
         }
 
-        $codes = array_keys(config('deltasupport.package_income.packages', []));
         $memberChunks = $memberIds === null ? [null] : array_chunk(array_values(array_unique($memberIds)), 500);
         $sums = [];
 
         foreach ($memberChunks as $memberChunk) {
-            $query = DB::table('package_purchases')
-                ->where('status', PackagePurchase::APPROVED)
-                ->whereNotNull('reviewed_at')
-                ->where('denomination', 'USDT')
-                ->where('package_code', '!=', 'VERIFY-1')
-                ->where(function ($reference): void {
-                    $reference->whereNull('payment_reference')
-                        ->orWhere('payment_reference', 'not like', LocalTestMarker::PAYMENT_PREFIX.'%');
-                })
-                ->whereNotExists(function ($members): void {
-                    $members->selectRaw('1')
-                        ->from('members')
-                        ->whereColumn('members.member_id', 'package_purchases.member_id')
-                        ->where('members.email', 'like', '%'.LocalTestMarker::EMAIL_DOMAIN);
-                })
-                ->where(function ($purchase) use ($codes): void {
-                    $purchase->whereIn('package_type', ReferralLevelEligibility::QUALIFYING_PACKAGE_TYPES);
-                    if ($codes !== []) {
-                        $purchase->orWhere(function ($named) use ($codes): void {
-                            $named->whereIn('package_code', $codes)
-                                ->whereExists(function ($package): void {
-                                    $package->selectRaw('1')
-                                        ->from('packages')
-                                        ->whereColumn('packages.id', 'package_purchases.package_id')
-                                        ->where('packages.level_commission_eligible', true);
-                                });
-                        });
-                    }
-                })
+            $query = $this->volumeEligibility->applyPurchaseConstraints(DB::table('package_purchases'))
                 ->groupBy('member_id')
                 ->selectRaw('member_id, SUM(price_usd) as business');
             if ($memberChunk !== null) {

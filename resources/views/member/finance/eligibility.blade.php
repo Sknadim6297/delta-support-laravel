@@ -21,10 +21,58 @@
 
     <x-ui.alert type="info">
         <p>{{ $status }}</p>
+        <p class="mb-0"><strong>Applicable rule:</strong> {{ $ruleMode ?? 'legacy' }}
+            @if (!empty($applicableNote))
+                — {{ $applicableNote }}
+            @endif
+        </p>
+        @if (($legacyUnlockedLevels ?? null) !== null && (int) $legacyUnlockedLevels !== (int) $unlockedLevels)
+            <p class="mb-0">Legacy ladder unlock: {{ (int) $legacyUnlockedLevels }} of 20 (for comparison only).</p>
+        @endif
+        @if (($authorizedPreviewUnlockedLevels ?? null) !== null && (string) ($ruleMode ?? '') !== 'authorized')
+            <p class="mb-0">Proposed-band preview (not posting-authorized): {{ (int) $authorizedPreviewUnlockedLevels }} of 20.</p>
+        @endif
         @if ($nextUnlock)
             <p>{{ $nextUnlock['message'] }}</p>
         @endif
+        <p class="mb-0">Live unlock uses income-eligible unique directs until Admin authorizes a new version. Tour Only Total Business remains separate from Level Income generation.</p>
     </x-ui.alert>
+
+    @if (!empty($qualificationPreview) && is_array($qualificationPreview))
+        <x-ui.card title="Qualification preview" lead="Read-only comparison from existing registrations and approved purchases. Does not change live posting.">
+            <div class="ds-stat-grid">
+                <x-ui.stat label="Registered directs" :value="(string) ($qualificationPreview['registered_direct_count'] ?? 0)" />
+                <x-ui.stat label="Approved purchasing directs" :value="(string) ($qualificationPreview['approved_package_direct_count'] ?? 0)" />
+                <x-ui.stat label="Approved package purchases" :value="(string) ($qualificationPreview['approved_direct_package_purchase_count'] ?? 0)" />
+                <x-ui.stat label="Tour Only purchasing directs" :value="(string) ($qualificationPreview['tour_only_purchasing_direct_count'] ?? 0)" />
+                <x-ui.stat label="Currently unlocked" :value="(string) ($qualificationPreview['currently_unlocked_levels'] ?? 0).' of 20'" hint="{{ $qualificationPreview['applicable_version'] ?? 'legacy' }}" />
+                <x-ui.stat label="Candidate expected" :value="(string) (($qualificationPreview['candidate_expected']['expected_unlocked_levels'] ?? 0)).' of 20'" hint="{{ $qualificationPreview['candidate_expected']['version_code'] ?? 'n/a' }}" />
+            </div>
+            <p class="ds-muted" style="margin:.75rem 0;">{{ $qualificationPreview['locked_reason'] ?? '' }}</p>
+            <x-ui.table>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mode</th>
+                            <th>Tour Only unlock</th>
+                            <th>Metric</th>
+                            <th>Expected levels</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (($qualificationPreview['expected_under_each_mode'] ?? []) as $modeRow)
+                        <tr>
+                            <td>{{ str_replace('_', ' ', (string) ($modeRow['basis'] ?? '')) }}</td>
+                            <td>{{ !empty($modeRow['tour_only_qualifies_for_unlock']) ? 'Yes' : 'No' }}</td>
+                            <td>{{ (int) ($modeRow['direct_metric'] ?? 0) }}</td>
+                            <td>{{ (int) ($modeRow['expected_unlocked_levels'] ?? 0) }} of 20</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </x-ui.table>
+        </x-ui.card>
+    @endif
 
     <x-ui.card title="Level-wise commission percentages" lead="Applicable runtime chart for Level Income (20 levels). Locked levels receive no credit.">
         <x-ui.table>

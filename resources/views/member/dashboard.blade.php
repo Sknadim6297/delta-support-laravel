@@ -92,11 +92,11 @@
     <div class="ds-dash-columns">
         <x-ui.card title="First Level Business">
             <p class="ds-stat-value">{{ \App\Support\MoneyDisplay::usdt($metrics['packageBusiness']['first_level_business']) }}</p>
-            <p>{{ bccomp($metrics['packageBusiness']['first_level_business'], '0.0000', 4) === 0 ? 'No eligible approved USDT package purchases from direct referrals yet.' : 'Eligible approved USDT package purchases by direct referrals.' }}</p>
+            <p>{{ bccomp($metrics['packageBusiness']['first_level_business'], '0.0000', 4) === 0 ? 'No eligible approved USDT package purchases from direct referrals yet.' : 'Approved USDT packages by directs (includes Tour Only). Not Level Income unlock.' }}</p>
         </x-ui.card>
         <x-ui.card title="Total Team Business">
             <p class="ds-stat-value">{{ \App\Support\MoneyDisplay::usdt($metrics['packageBusiness']['total_team_business']) }}</p>
-            <p>{{ bccomp($metrics['packageBusiness']['total_team_business'], '0.0000', 4) === 0 ? 'No eligible approved USDT package purchases are recorded for your team yet.' : 'Your eligible approved USDT package purchases plus your complete downline.' }}</p>
+            <p>{{ bccomp($metrics['packageBusiness']['total_team_business'], '0.0000', 4) === 0 ? 'No eligible approved USDT package purchases are recorded for your team yet.' : 'Self + downline approved USDT packages (includes Tour Only). Separate from ROI / Level Income.' }}</p>
         </x-ui.card>
     </div>
 

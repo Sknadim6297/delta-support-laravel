@@ -31,6 +31,8 @@ class LevelIncomeRuleAdministration
      *   label: string,
      *   notes?: ?string,
      *   change_note?: ?string,
+     *   direct_qualification_basis?: string,
+     *   tour_only_qualifies_for_unlock?: bool,
      *   bands: list<array{start_level:int,end_level:int,min_qualifying_directs:int,requires_personal_activation?:bool,sort_order?:int}>,
      *   rates: array<int, string|float|int>
      * }  $payload
@@ -39,6 +41,10 @@ class LevelIncomeRuleAdministration
     {
         $bands = array_values($payload['bands'] ?? []);
         $rates = $this->normalizeRates($payload['rates'] ?? []);
+        $basis = app(LevelIncomeDirectQualification::class)->normalizeBasis(
+            $payload['direct_qualification_basis'] ?? LevelIncomeDirectQualification::BASIS_INCOME_ELIGIBLE_DIRECTS
+        );
+        $tourOnlyUnlock = (bool) ($payload['tour_only_qualifies_for_unlock'] ?? false);
         $errors = array_merge(
             $this->validateBands($bands),
             $this->validateRates($rates)
@@ -47,7 +53,7 @@ class LevelIncomeRuleAdministration
             throw ValidationException::withMessages(['configuration' => $errors]);
         }
 
-        return DB::transaction(function () use ($payload, $admin, $ip, $existing, $bands, $rates): LevelIncomeRuleVersion {
+        return DB::transaction(function () use ($payload, $admin, $ip, $existing, $bands, $rates, $basis, $tourOnlyUnlock): LevelIncomeRuleVersion {
             if ($existing !== null) {
                 $version = LevelIncomeRuleVersion::query()->whereKey($existing->id)->lockForUpdate()->firstOrFail();
                 if (! $version->isDraft()) {
@@ -70,6 +76,8 @@ class LevelIncomeRuleAdministration
                     'status' => LevelIncomeRuleVersion::STATUS_DRAFT,
                     'posting_authorized' => false,
                     'applicability' => LevelIncomeRuleVersion::APPLICABILITY_UNSPECIFIED,
+                    'direct_qualification_basis' => $basis,
+                    'tour_only_qualifies_for_unlock' => $tourOnlyUnlock,
                     'effective_from' => null,
                     'notes' => $payload['notes'] ?? null,
                     'change_note' => $payload['change_note'] ?? null,
@@ -82,6 +90,8 @@ class LevelIncomeRuleAdministration
                 'label' => (string) $payload['label'],
                 'notes' => $payload['notes'] ?? $version->notes,
                 'change_note' => $payload['change_note'] ?? $version->change_note,
+                'direct_qualification_basis' => $basis,
+                'tour_only_qualifies_for_unlock' => $tourOnlyUnlock,
             ])->save();
 
             LevelIncomeUnlockBand::query()->where('level_income_rule_version_id', $version->id)->delete();
@@ -123,6 +133,9 @@ class LevelIncomeRuleAdministration
             'label' => $label ?: ('Draft from '.$source->label),
             'notes' => $source->notes,
             'change_note' => 'Cloned from '.$source->version_code,
+            'direct_qualification_basis' => $source->direct_qualification_basis
+                ?? LevelIncomeDirectQualification::BASIS_INCOME_ELIGIBLE_DIRECTS,
+            'tour_only_qualifies_for_unlock' => (bool) ($source->tour_only_qualifies_for_unlock ?? false),
             'bands' => $source->bands->map(fn (LevelIncomeUnlockBand $b): array => [
                 'sort_order' => $b->sort_order,
                 'start_level' => $b->start_level,
@@ -471,6 +484,10 @@ class LevelIncomeRuleAdministration
             default => 'Choose future_purchases_only (recommended default) or existing_prospective before publish/authorize.',
         };
 
+        $qualification = app(LevelIncomeDirectQualification::class);
+        $qualBasis = $qualification->normalizeBasis($candidate?->direct_qualification_basis ?? null);
+        $tourUnlock = (bool) ($candidate?->tour_only_qualifies_for_unlock ?? false);
+
         return [
             'candidate' => $candidate,
             'posting_authorized' => (bool) ($candidate?->posting_authorized),
@@ -488,6 +505,10 @@ class LevelIncomeRuleAdministration
             'existing_purchase_impact' => $existingImpact,
             'future_purchase_impact' => $futureImpact,
             'recommended_default_policy' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
+            'direct_qualification_basis' => $qualBasis,
+            'direct_qualification_basis_label' => LevelIncomeDirectQualification::labels()[$qualBasis] ?? $qualBasis,
+            'tour_only_qualifies_for_unlock' => $tourUnlock,
+            'qualification_note' => 'Unique-member bases and approved-package purchase-count are separate. Tour Only unlock flag does not enable ROI or Level Income generation from Tour Only packages. Live accrual ignores these settings until posting_authorized.',
         ];
     }
 
@@ -505,6 +526,9 @@ class LevelIncomeRuleAdministration
             'status' => $version->status,
             'posting_authorized' => $version->posting_authorized,
             'applicability' => $version->applicability,
+            'direct_qualification_basis' => $version->direct_qualification_basis
+                ?? LevelIncomeDirectQualification::BASIS_INCOME_ELIGIBLE_DIRECTS,
+            'tour_only_qualifies_for_unlock' => (bool) ($version->tour_only_qualifies_for_unlock ?? false),
             'effective_from' => optional($version->effective_from)?->toDateString(),
             'bands' => $version->bands->map(fn ($b) => [
                 'start_level' => $b->start_level,

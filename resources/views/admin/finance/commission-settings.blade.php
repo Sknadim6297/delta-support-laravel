@@ -102,6 +102,32 @@
                 </label>
 
                 @if ($tab === 'unlock')
+                    <h3 style="margin:0 0 .5rem;">Direct qualification basis</h3>
+                    <p class="ds-muted" style="margin:0 0 .75rem;">{{ $preview['qualification_note'] ?? 'Unique-member counting and package-purchase counting stay separate. Tour Only unlock does not enable ROI or Level Income generation.' }}</p>
+                    <div class="ds-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.75rem;margin-bottom:1rem;">
+                        <label>Qualification basis
+                            <select name="direct_qualification_basis" {{ $isDraft ? '' : 'disabled' }} required>
+                                @foreach (($qualificationBases ?? []) as $basisKey => $basisLabel)
+                                    <option value="{{ $basisKey }}" @selected(old('direct_qualification_basis', $editing->direct_qualification_basis ?? 'income_eligible_directs') === $basisKey)>{{ $basisLabel }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label style="display:flex;align-items:flex-end;gap:.5rem;">
+                            <input type="checkbox" name="tour_only_qualifies_for_unlock" value="1" @checked(old('tour_only_qualifies_for_unlock', $editing->tour_only_qualifies_for_unlock ?? false)) {{ $isDraft ? '' : 'disabled' }}>
+                            <span>Approved Tour Only packages qualify for level unlocking (not ROI/commission generation)</span>
+                        </label>
+                    </div>
+                    @if (! $isDraft)
+                        <input type="hidden" name="direct_qualification_basis" value="{{ $editing->direct_qualification_basis ?? 'income_eligible_directs' }}">
+                        @if ($editing->tour_only_qualifies_for_unlock ?? false)
+                            <input type="hidden" name="tour_only_qualifies_for_unlock" value="1">
+                        @endif
+                    @endif
+                    <div class="ds-stat-grid" style="margin-bottom:1rem;">
+                        <x-ui.stat label="Draft basis" :value="str_replace('_', ' ', (string) ($preview['direct_qualification_basis'] ?? 'income_eligible_directs'))" hint="{{ $preview['direct_qualification_basis_label'] ?? '' }}" />
+                        <x-ui.stat label="Tour Only unlock" :value="($preview['tour_only_qualifies_for_unlock'] ?? false) ? 'Included' : 'Excluded'" hint="Independent of ROI eligibility" />
+                    </div>
+
                     <h3 style="margin:0 0 .5rem;">Unlock bands (levels 1–20, no gaps/overlaps)</h3>
                     <x-ui.table>
                         <table>
@@ -192,7 +218,11 @@
                 @endif
 
                 @if ($tab === 'rates')
-                    {{-- Keep bands in form when editing rates tab --}}
+                    {{-- Keep bands + qualification in form when editing rates tab --}}
+                    <input type="hidden" name="direct_qualification_basis" value="{{ old('direct_qualification_basis', $editing->direct_qualification_basis ?? 'income_eligible_directs') }}">
+                    @if (old('tour_only_qualifies_for_unlock', $editing->tour_only_qualifies_for_unlock ?? false))
+                        <input type="hidden" name="tour_only_qualifies_for_unlock" value="1">
+                    @endif
                     @foreach ($bands as $i => $band)
                         <input type="hidden" name="bands[{{ $i }}][start_level]" value="{{ $band->start_level }}">
                         <input type="hidden" name="bands[{{ $i }}][end_level]" value="{{ $band->end_level }}">
