@@ -245,7 +245,10 @@ class LevelIncomeApplicabilityTest extends TestCase
             $this->assertArrayHasKey('effective_from', $e->errors());
         }
 
-        $published->forceFill(['effective_from' => '2026-11-15'])->save();
+        $published->forceFill([
+            'effective_from' => '2026-11-15',
+            'grandfather_existing_unlock' => false,
+        ])->save();
 
         try {
             $service->authorizePosting($published->fresh(), $admin, true, null, false);
@@ -308,9 +311,10 @@ class LevelIncomeApplicabilityTest extends TestCase
             'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
             'effective_from' => '2026-12-01',
         ]);
+        $published->forceFill(['grandfather_existing_unlock' => false])->save();
 
         try {
-            $service->authorizePosting($published, $admin, true);
+            $service->authorizePosting($published->fresh(), $admin, true);
             $this->fail('Expected emergency stop block');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('financial_controls', $e->errors());
@@ -346,7 +350,8 @@ class LevelIncomeApplicabilityTest extends TestCase
             'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
             'effective_from' => '2026-12-01',
         ]);
-        $authorized = $service->authorizePosting($second, $admin, true);
+        $second->forceFill(['grandfather_existing_unlock' => false])->save();
+        $authorized = $service->authorizePosting($second->fresh(), $admin, true);
         app(LevelIncomeRuleResolver::class)->clearCache();
 
         $this->assertTrue($authorized->posting_authorized);
@@ -366,9 +371,11 @@ class LevelIncomeApplicabilityTest extends TestCase
             'applicability' => $applicability,
             'effective_from' => $effectiveFrom,
         ]);
+        // Existing applicability tests isolate bands/rates; grandfathering is covered separately.
+        $published->forceFill(['grandfather_existing_unlock' => false])->save();
 
         $authorized = $service->authorizePosting(
-            $published,
+            $published->fresh(),
             $admin,
             true,
             null,

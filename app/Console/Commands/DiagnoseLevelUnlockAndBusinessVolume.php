@@ -2,38 +2,33 @@
 
 namespace App\Console\Commands;
 
-use App\Models\LevelIncomeRuleVersion;
 use App\Models\Member;
-use App\Models\Package;
 use App\Models\PackagePurchase;
-use App\Services\LevelIncomeDirectQualification;
-use App\Services\PackageBusinessVolumeEligibility;
-use App\Services\ReferralLevelEligibility;
+use App\Services\LevelIncomeUnlockImpactAnalyzer;
 use App\Services\Rewards\TeamBusinessCalculationService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Read-only diagnostic for level unlock + Tour Only business volume.
- * Does not mutate wallets, commissions, or purchases.
+ * Does not mutate wallets, commissions, purchases, or authorization.
  */
 class DiagnoseLevelUnlockAndBusinessVolume extends Command
 {
     protected $signature = 'deltasupport:diagnose-level-unlock-business
                             {--member= : Optional member_id focus}
-                            {--limit=50 : Max member rows in detail tables}
+                            {--limit=50 : Max member rows in sample tables}
+                            {--all : Analyze every registered member for impact summary}
                             {--json : Emit JSON}';
 
-    protected $description = 'Read-only report: level unlock gaps, qualification previews, and Tour Only business volume (no financial writes).';
+    protected $description = 'Read-only report: consistent unlock contexts, entitlement impact, Tour Only BV (no financial writes).';
 
     public function handle(
-        ReferralLevelEligibility $eligibility,
-        LevelIncomeDirectQualification $qualification,
+        LevelIncomeUnlockImpactAnalyzer $analyzer,
         TeamBusinessCalculationService $business,
-        PackageBusinessVolumeEligibility $volume,
     ): int {
         $memberFocus = trim((string) $this->option('member'));
-        $limit = max(1, min(500, (int) $this->option('limit')));
+        $limit = max(1, min(5000, (int) $this->option('limit')));
+        $analyzeAll = (bool) $this->option('all');
 
         $totalMembers = Member::query()->count();
         $withApproved = Member::query()
@@ -45,62 +40,62 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
             })
             ->count();
 
-        $tourOnlyQuery = $volume->applyPurchaseConstraints(DB::table('package_purchases'))
-            ->where('package_type', Package::TYPE_TOUR);
-        $tourOnlyCount = (clone $tourOnlyQuery)->count();
-        $tourOnlyAmount = bcadd((string) ((clone $tourOnlyQuery)->sum('price_usd') ?? '0'), '0', 4);
+        $tourAudit = $analyzer->tourOnlyBusinessVolumeAudit();
+        $proposed = $analyzer->proposedVersion();
+        $applicability = $analyzer->applicabilityProjection($proposed);
+        $policies = $analyzer->policyComparison();
 
-        $proposed = LevelIncomeRuleVersion::query()
-            ->with('bands')
-            ->where('version_code', 'proposed_activation_unlock_v1')
-            ->first();
-
-        $activatedNoUnlock = [];
-        $currentVsProposed = [];
-        $sampleIds = Member::query()
-            ->orderBy('id')
-            ->limit($limit)
-            ->pluck('member_id')
-            ->all();
+        if ($analyzeAll) {
+            $sampleIds = Member::query()->orderBy('id')->pluck('member_id')->all();
+        } else {
+            $sampleIds = Member::query()
+                ->orderBy('id')
+                ->limit($limit)
+                ->pluck('member_id')
+                ->all();
+        }
         if ($memberFocus !== '') {
             $sampleIds = array_values(array_unique(array_merge([$memberFocus], $sampleIds)));
         }
 
-        $summaries = $eligibility->summariesForMemberIds($sampleIds);
-        $biz = $business->businessForMembers($sampleIds);
+        $impact = $analyzer->analyzeMembers($sampleIds, $proposed);
+        $rowsById = [];
+        foreach ($impact['rows'] as $row) {
+            $rowsById[$row['member_id']] = $row;
+        }
 
-        foreach ($summaries as $memberId => $row) {
-            $preview = $qualification->memberPreview($memberId, $proposed);
-            $current = (int) $row['unlocked_levels'];
-            $expected = (int) ($preview['candidate_expected']['expected_unlocked_levels'] ?? $preview['currently_unlocked_levels']);
-            if ($current !== $expected) {
-                $currentVsProposed[] = [
-                    'member_id' => $memberId,
-                    'registered_directs' => $preview['registered_direct_count'],
-                    'approved_package_directs' => $preview['approved_package_direct_count'],
-                    'approved_purchase_count' => $preview['approved_direct_package_purchase_count'],
-                    'tour_only_directs' => $preview['tour_only_purchasing_direct_count'],
-                    'current_unlocked' => $current,
-                    'proposed_unlocked' => $expected,
-                    'config_version' => $preview['candidate_expected']['version_code']
-                        ?? $preview['applicable_version'],
-                    'locked_reason' => $preview['locked_reason'],
-                ];
+        // Consistency guard: every section must use the same live_unlocked_levels for a member.
+        $inconsistent = [];
+        foreach ($impact['rows'] as $row) {
+            $live = (int) $row['live_unlocked_levels'];
+            $fromLegacyContext = (int) $row['contexts'][LevelIncomeUnlockImpactAnalyzer::CONTEXT_LIVE_LEGACY]['unlocked_levels'];
+            if ($live !== $fromLegacyContext) {
+                $inconsistent[] = $row['member_id'];
             }
-            if ($row['personally_activated'] && $current === 0) {
-                $activatedNoUnlock[] = [
-                    'member_id' => $memberId,
-                    'registered_directs' => $row['registered_direct_count'],
-                    'qualifying_directs' => $row['qualifying_direct_count'],
-                    'unlocked_levels' => $row['unlocked_levels'],
-                    'legacy_unlocked_levels' => $row['legacy_unlocked_levels'],
-                    'proposed_unlocked' => $expected,
-                    'rule_mode' => $row['rule_mode'],
-                    'reason' => ((int) $row['qualifying_direct_count'] === 0)
-                        ? 'No income-qualifying directs under live legacy rules. Proposed bands may unlock if activated + authorized.'
-                        : 'Unexpected: has qualifying directs but 0 unlock — inspect authorized bands / activation flags.',
-                ];
-            }
+        }
+
+        $gains = array_values(array_filter($impact['rows'], fn (array $r): bool => $r['impact'] === LevelIncomeUnlockImpactAnalyzer::IMPACT_GAIN));
+        $losses = array_values(array_filter($impact['rows'], fn (array $r): bool => $r['impact'] === LevelIncomeUnlockImpactAnalyzer::IMPACT_LOSS));
+        $unchanged = array_values(array_filter($impact['rows'], fn (array $r): bool => $r['impact'] === LevelIncomeUnlockImpactAnalyzer::IMPACT_UNCHANGED));
+        $activatedZero = array_values(array_filter($impact['rows'], fn (array $r): bool => $r['activated_with_zero_live_unlock']));
+        $deltas = array_values(array_filter($impact['rows'], fn (array $r): bool => $r['impact'] !== LevelIncomeUnlockImpactAnalyzer::IMPACT_UNCHANGED));
+
+        $focus = null;
+        if ($memberFocus !== '' && isset($rowsById[$memberFocus])) {
+            $focusRow = $rowsById[$memberFocus];
+            $focusBiz = $business->businessForMembers([$memberFocus]);
+            $focus = [
+                'impact' => $focusRow,
+                'business' => $focusBiz[$memberFocus] ?? null,
+                'consistency_check' => [
+                    'live_unlocked_levels' => $focusRow['live_unlocked_levels'],
+                    'table_current_would_show' => $focusRow['live_unlocked_levels'],
+                    'activated_zero_table_unlocked_would_show' => $focusRow['live_unlocked_levels'],
+                    'same_value_across_tables' => true,
+                ],
+            ];
+        } elseif ($memberFocus !== '') {
+            $focus = ['error' => 'Member not found in sample/universe: '.$memberFocus];
         }
 
         $report = [
@@ -109,11 +104,13 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
             'totals' => [
                 'registered_members' => $totalMembers,
                 'members_with_approved_packages' => $withApproved,
-                'approved_tour_only_purchase_count' => $tourOnlyCount,
-                'approved_tour_only_business_usdt' => $tourOnlyAmount,
+                'approved_tour_only_purchase_count' => $tourAudit['purchase_count'],
+                'approved_tour_only_business_usdt' => $tourAudit['total_usdt'],
+                'tour_only_counted_once' => $tourAudit['counted_once'],
                 'sample_size' => count($sampleIds),
-                'sample_current_vs_proposed_delta' => count($currentVsProposed),
+                'analyzed_all' => $analyzeAll,
             ],
+            'impact_summary' => $impact['summary'],
             'proposed_version' => $proposed === null ? null : [
                 'version_code' => $proposed->version_code,
                 'status' => $proposed->status,
@@ -121,24 +118,32 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
                 'direct_qualification_basis' => $proposed->direct_qualification_basis,
                 'tour_only_qualifies_for_unlock' => (bool) $proposed->tour_only_qualifies_for_unlock,
             ],
+            'policy_comparison' => $policies,
+            'applicability_projection' => $applicability,
+            'tour_only_bv_audit' => $tourAudit,
+            'consistency' => [
+                'live_unlocked_single_source' => 'live_unlocked_levels from LevelIncomeUnlockImpactAnalyzer (legacy ladder)',
+                'members_with_internal_inconsistency' => $inconsistent,
+                'ok' => $inconsistent === [],
+            ],
+            'entitlement_warnings' => [
+                'losses_in_sample' => count($losses),
+                'authorize_blocked_while_losses_exist' => count($losses) > 0,
+                'note' => 'Do not authorize while entitlement reductions exist unless business explicitly accepts BD-Q losses.',
+            ],
+            'members_gaining_levels' => array_map(fn (array $r): array => $this->compactRow($r), $gains),
+            'members_losing_levels' => array_map(fn (array $r): array => $this->compactRow($r), $losses),
+            'members_unchanged_count' => count($unchanged),
+            'activated_with_zero_live_unlock' => array_map(fn (array $r): array => $this->compactRow($r), $activatedZero),
+            'current_vs_proposed_deltas' => array_map(fn (array $r): array => $this->compactRow($r), $deltas),
+            'member_focus' => $focus,
             'policy_notes' => [
-                'level_unlock_live' => 'Income-eligible unique directs; Tour Only excluded until posting-authorized version says otherwise.',
-                'qualification_bases' => LevelIncomeDirectQualification::labels(),
-                'registration_alone' => 'Does NOT unlock levels under live legacy rules.',
-                'tour_only_bv' => 'Counts toward Total/Team Business (BV) but does NOT generate ROI/Level Income.',
-                'tour_only_unlock' => 'Configurable per version via tour_only_qualifies_for_unlock; independent of ROI eligibility.',
-                'proposed_bands' => 'Activated + 0 directs→1-4 … 4+→1-20 — requires Admin publish + posting authorization; not auto-enabled.',
+                'live_legacy' => 'Income-eligible unique directs; personal activation ignored by unlock ladder.',
+                'proposed' => 'Bands require personal activation; qualification basis + Tour Only unlock flag apply only after posting_authorized.',
+                'st100026_class' => 'Live>0 and proposed=0 usually means missing proposed personal activation while legacy still counts income-eligible directs.',
+                'table_consistency' => 'Current/Unlocked columns in every table use the same live_unlocked_levels field.',
                 'no_backfill' => 'Diagnostics never authorize, backfill, or post Associate Commission.',
             ],
-            'activated_with_zero_unlock_sample' => $activatedNoUnlock,
-            'current_vs_proposed_sample' => array_slice($currentVsProposed, 0, $limit),
-            'member_focus' => $memberFocus !== '' && isset($summaries[$memberFocus])
-                ? [
-                    'eligibility' => $eligibility->forMember($memberFocus),
-                    'qualification_preview' => $qualification->memberPreview($memberFocus, $proposed),
-                    'business' => $biz[$memberFocus] ?? null,
-                ]
-                : null,
         ];
 
         if ($this->option('json')) {
@@ -151,55 +156,129 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
         $this->table(['Metric', 'Value'], [
             ['Registered members', (string) $totalMembers],
             ['Members with approved packages', (string) $withApproved],
-            ['Approved Tour Only purchases', (string) $tourOnlyCount],
-            ['Approved Tour Only BV (USDT)', $tourOnlyAmount],
-            ['Sample activated with 0 unlock', (string) count($activatedNoUnlock)],
-            ['Sample current≠proposed unlock', (string) count($currentVsProposed)],
+            ['Approved Tour Only purchases', (string) $tourAudit['purchase_count']],
+            ['Approved Tour Only BV (USDT)', $tourAudit['total_usdt']],
+            ['Tour Only counted once', $tourAudit['counted_once'] ? 'yes' : 'NO'],
+            ['Sample/universe size', (string) count($sampleIds)],
+            ['Gains / Losses / Unchanged', sprintf(
+                '%d / %d / %d',
+                $impact['summary']['gain'],
+                $impact['summary']['loss'],
+                $impact['summary']['unchanged']
+            )],
+            ['Activated with 0 live unlock', (string) $impact['summary']['activated_with_zero_live_unlock']],
+            ['Entitlement reductions', (string) $impact['summary']['entitlement_reductions']],
             ['Proposed version', $proposed?->version_code ?? 'missing'],
             ['Proposed basis', (string) ($proposed?->direct_qualification_basis ?? 'n/a')],
             ['Proposed Tour Only unlock', ($proposed?->tour_only_qualifies_for_unlock ?? false) ? 'yes' : 'no'],
             ['Proposed posting_authorized', ($proposed?->posting_authorized ?? false) ? 'YES' : 'no'],
+            ['Internal consistency OK', $report['consistency']['ok'] ? 'yes' : 'NO'],
         ]);
 
-        if ($currentVsProposed !== []) {
-            $this->warn('Current vs proposed unlock (sample deltas — not applied):');
+        if ($tourAudit['purchases'] !== []) {
+            $this->info('Tour Only BV purchases (each counted once):');
             $this->table(
-                ['Member', 'Reg', 'Appr dirs', 'Purchases', 'Tour dirs', 'Current', 'Proposed', 'Reason'],
-                array_map(fn (array $r): array => [
-                    $r['member_id'],
-                    (string) $r['registered_directs'],
-                    (string) $r['approved_package_directs'],
-                    (string) $r['approved_purchase_count'],
-                    (string) $r['tour_only_directs'],
-                    (string) $r['current_unlocked'],
-                    (string) $r['proposed_unlocked'],
-                    $r['locked_reason'],
-                ], array_slice($currentVsProposed, 0, 20))
+                ['Purchase ID', 'Member', 'Code', 'USDT', 'Reviewed'],
+                array_map(fn (array $p): array => [
+                    (string) $p['package_purchase_id'],
+                    $p['member_id'],
+                    $p['package_code'],
+                    $p['price_usd'],
+                    (string) $p['reviewed_at'],
+                ], $tourAudit['purchases'])
             );
         }
 
-        if ($activatedNoUnlock !== []) {
-            $this->warn('Activated members with 0 unlocked levels (sample):');
+        if ($losses !== []) {
+            $this->error('ENTITLEMENT REDUCTION RISK — members with live > proposed (not applied):');
             $this->table(
-                ['Member', 'Registered', 'Qualifying', 'Unlocked', 'Proposed', 'Reason'],
+                ['Member', 'Live', 'Proposed', 'Δ', 'Legacy act.', 'Proposed act.', 'Reason'],
                 array_map(fn (array $r): array => [
                     $r['member_id'],
-                    (string) $r['registered_directs'],
-                    (string) $r['qualifying_directs'],
-                    (string) $r['unlocked_levels'],
-                    (string) $r['proposed_unlocked'],
-                    $r['reason'],
-                ], array_slice($activatedNoUnlock, 0, 20))
+                    (string) $r['live_unlocked_levels'],
+                    (string) $r['proposed_unlocked_levels'],
+                    (string) $r['levels_delta'],
+                    $r['legacy_personally_activated'] ? 'yes' : 'no',
+                    $r['proposed_personally_activated'] ? 'yes' : 'no',
+                    $r['delta_reason'],
+                ], array_slice($losses, 0, 30))
             );
         }
 
-        if ($report['member_focus'] !== null) {
+        if ($gains !== []) {
+            $this->warn('Members gaining levels under proposed simulation (not applied):');
+            $this->table(
+                ['Member', 'Live', 'Proposed', 'Δ', 'Reason'],
+                array_map(fn (array $r): array => [
+                    $r['member_id'],
+                    (string) $r['live_unlocked_levels'],
+                    (string) $r['proposed_unlocked_levels'],
+                    (string) $r['levels_delta'],
+                    $r['delta_reason'],
+                ], array_slice($gains, 0, 30))
+            );
+        }
+
+        if ($activatedZero !== []) {
+            $this->warn('Activated (legacy income-eligible) with 0 live unlock — same Unlocked column source as above:');
+            $this->table(
+                ['Member', 'Live unlocked', 'Proposed', 'Income dirs', 'Reason'],
+                array_map(fn (array $r): array => [
+                    $r['member_id'],
+                    (string) $r['live_unlocked_levels'],
+                    (string) $r['proposed_unlocked_levels'],
+                    (string) $r['counts']['income_eligible_direct_count'],
+                    $r['live_reason'],
+                ], array_slice($activatedZero, 0, 30))
+            );
+        }
+
+        $this->info('Applicability projection (not authorized):');
+        $this->line('- future_purchases_only: '.$applicability['future_purchases_only']['effect_on_existing_43_style_members']);
+        $this->line('- existing_prospective: '.$applicability['existing_prospective']['effect_on_existing_43_style_members']);
+        $this->line(sprintf(
+            '- Approved purchases before/on-after assumed effective %s: %d / %d',
+            $applicability['assumed_effective_from'],
+            $applicability['future_purchases_only']['purchases_approved_before_effective'],
+            $applicability['future_purchases_only']['purchases_approved_on_or_after_effective']
+        ));
+
+        if ($focus !== null) {
             $this->info('Focus member '.$memberFocus.':');
-            $this->line(json_encode($report['member_focus'], JSON_PRETTY_PRINT));
+            $this->line(json_encode($focus, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
+
+        if (($report['entitlement_warnings']['authorize_blocked_while_losses_exist'] ?? false) === true) {
+            $this->error('Authorization readiness: NO-GO while entitlement reductions exist in the analyzed set.');
         }
 
         $this->comment('No wallets, commissions, or purchases were modified. Do not authorize from this command.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function compactRow(array $row): array
+    {
+        return [
+            'member_id' => $row['member_id'],
+            'registered_directs' => $row['counts']['registered_direct_count'],
+            'income_eligible_directs' => $row['counts']['income_eligible_direct_count'],
+            'approved_package_directs' => $row['counts']['approved_package_direct_count'],
+            'approved_purchase_count' => $row['counts']['approved_direct_package_purchase_count'],
+            'tour_only_directs' => $row['counts']['tour_only_purchasing_direct_count'],
+            'live_unlocked' => $row['live_unlocked_levels'],
+            'proposed_unlocked' => $row['proposed_unlocked_levels'],
+            'protected_unlocked' => $row['protected_unlocked_levels'] ?? $row['proposed_unlocked_levels'],
+            'impact' => $row['impact'],
+            'levels_delta' => $row['levels_delta'],
+            'legacy_personally_activated' => $row['legacy_personally_activated'],
+            'proposed_personally_activated' => $row['proposed_personally_activated'],
+            'delta_reason' => $row['delta_reason'],
+            'live_reason' => $row['live_reason'],
+        ];
     }
 }

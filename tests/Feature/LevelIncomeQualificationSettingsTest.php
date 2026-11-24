@@ -143,6 +143,7 @@ class LevelIncomeQualificationSettingsTest extends TestCase
             'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
             'effective_from' => '2026-01-01',
         ]);
+        $published->forceFill(['grandfather_existing_unlock' => false])->save();
         $this->assertFalse($published->posting_authorized);
         $this->assertSame(0, app(ReferralLevelEligibility::class)->forMember($sponsor->member_id)['unlocked_levels']);
 

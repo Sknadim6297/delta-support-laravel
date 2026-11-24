@@ -121,6 +121,7 @@ class LevelIncomeRuleAdministrationTest extends TestCase
         $published->forceFill([
             'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
             'effective_from' => now()->toDateString(),
+            'grandfather_existing_unlock' => false,
         ])->save();
 
         $authorized = $service->authorizePosting($published->fresh(), $admin, true);

@@ -122,7 +122,9 @@ class LevelIncomeDirectQualification
         $purchaseCountIncomeOnly = $this->approvedPurchaseCountByDirects($memberId, false, true);
         $activatedLegacy = $resolver->isPersonallyActivated($memberId);
 
-        $liveUnlocked = $resolver->unlockedLevels($incomeEligibleDirects, $activatedLegacy);
+        // Canonical live entitlement while unauthorized: legacy ladder ignores personal activation.
+        $liveUnlocked = $resolver->legacyLevelsForCount($incomeEligibleDirects);
+        $displayUnlocked = $resolver->unlockedLevels($incomeEligibleDirects, $activatedLegacy);
 
         $modeExpected = [];
         foreach (self::BASES as $basis) {
@@ -166,9 +168,21 @@ class LevelIncomeDirectQualification
         }
 
         $candidateExpected = null;
+        $proposedUnlocked = 0;
         if ($candidate !== null) {
+            $candidate->loadMissing('bands');
             $cCount = $this->countForVersion($memberId, $candidate);
             $cActivated = $this->isPersonallyActivatedForVersion($memberId, $candidate);
+            $proposedUnlocked = $resolver->simulateUnlockedLevels(
+                $candidate->bands->map(fn ($b): array => [
+                    'start_level' => (int) $b->start_level,
+                    'end_level' => (int) $b->end_level,
+                    'min_qualifying_directs' => (int) $b->min_qualifying_directs,
+                    'requires_personal_activation' => (bool) $b->requires_personal_activation,
+                ])->all(),
+                $cCount,
+                $cActivated
+            );
             $candidateExpected = [
                 'version_code' => $candidate->version_code,
                 'status' => $candidate->status,
@@ -177,29 +191,46 @@ class LevelIncomeDirectQualification
                 'tour_only_qualifies_for_unlock' => (bool) ($candidate->tour_only_qualifies_for_unlock ?? false),
                 'direct_metric' => $cCount,
                 'personally_activated' => $cActivated,
-                'expected_unlocked_levels' => $resolver->simulateUnlockedLevels(
-                    $candidate->bands->map(fn ($b): array => [
-                        'start_level' => (int) $b->start_level,
-                        'end_level' => (int) $b->end_level,
-                        'min_qualifying_directs' => (int) $b->min_qualifying_directs,
-                        'requires_personal_activation' => (bool) $b->requires_personal_activation,
-                    ])->all(),
-                    $cCount,
-                    $cActivated
-                ),
+                'expected_unlocked_levels' => $proposedUnlocked,
             ];
         }
 
         $reason = match (true) {
-            ! $activatedLegacy && $liveUnlocked === 0 => 'No income-eligible personal activation under live legacy rules.',
+            $liveUnlocked > 0 => sprintf(
+                'Live legacy entitlement: %d level(s) from %d income-eligible unique direct(s). Legacy ladder ignores personal activation.',
+                $liveUnlocked,
+                $incomeEligibleDirects
+            ),
+            ! $activatedLegacy && $liveUnlocked === 0 => 'No income-eligible personal activation under live legacy rules (activation is informational only for legacy unlock).',
             $incomeEligibleDirects === 0 && $liveUnlocked === 0 => 'Live legacy unlock needs ≥1 income-eligible qualifying direct (registration / Tour Only alone do not count).',
-            default => $liveUnlocked > 0
-                ? 'Live legacy unlock applied from income-eligible unique directs.'
-                : 'Locked under live legacy ladder.',
+            default => 'Locked under live legacy ladder.',
         };
+
+        $deltaReason = null;
+        if ($candidateExpected !== null) {
+            if ($liveUnlocked > 0 && $proposedUnlocked === 0 && ! ($candidateExpected['personally_activated'] ?? false)) {
+                $deltaReason = sprintf(
+                    'ENTITLEMENT REDUCTION RISK: live %d via legacy directs; proposed bands require personal activation (basis=%s, tour_only_unlock=%s) and member is not activated under that filter → proposed 0. Live unchanged until authorize.',
+                    $liveUnlocked,
+                    $candidateExpected['direct_qualification_basis'],
+                    ($candidateExpected['tour_only_qualifies_for_unlock'] ?? false) ? 'yes' : 'no'
+                );
+            } elseif ($liveUnlocked !== $proposedUnlocked) {
+                $deltaReason = sprintf(
+                    'Proposed simulation %d vs live legacy %d (proposed_activated=%s, proposed_metric=%d). Not applied.',
+                    $proposedUnlocked,
+                    $liveUnlocked,
+                    ($candidateExpected['personally_activated'] ?? false) ? 'yes' : 'no',
+                    (int) ($candidateExpected['direct_metric'] ?? 0)
+                );
+            } else {
+                $deltaReason = 'Proposed simulation matches live legacy entitlement.';
+            }
+        }
 
         return [
             'member_id' => $memberId,
+            'eligibility_context' => LevelIncomeUnlockImpactAnalyzer::CONTEXT_LIVE_LEGACY,
             'registered_direct_count' => $registered,
             'income_eligible_direct_count' => $incomeEligibleDirects,
             'approved_package_direct_count' => $approvedPackageDirects,
@@ -208,12 +239,15 @@ class LevelIncomeDirectQualification
             'approved_direct_package_purchase_count' => $purchaseCountInclTour,
             'income_eligible_direct_package_purchase_count' => $purchaseCountIncomeOnly,
             'currently_unlocked_levels' => $liveUnlocked,
+            'display_unlocked_levels' => $displayUnlocked,
             'live_rule_mode' => $authorized ? LevelIncomeRuleResolver::MODE_AUTHORIZED : LevelIncomeRuleResolver::MODE_LEGACY,
             'applicable_version' => $authorized?->version_code ?? 'legacy_hardcoded',
             'locked_reason' => $reason,
+            'proposed_delta_reason' => $deltaReason,
+            'entitlement_reduction' => $liveUnlocked > $proposedUnlocked,
             'candidate_expected' => $candidateExpected,
             'expected_under_each_mode' => $modeExpected,
-            'note' => 'Previews do not authorize posting. Total Business (Tour Only BV) remains separate from unlock.',
+            'note' => 'Previews do not authorize posting. currently_unlocked_levels is always live legacy entitlement. Accrual is purchase-scoped when authorized. Total Business (Tour Only BV) remains separate from unlock.',
         ];
     }
 

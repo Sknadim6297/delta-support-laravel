@@ -11,6 +11,7 @@ use App\Services\CommissionPlan;
 use App\Services\LevelIncomeDirectQualification;
 use App\Services\LevelIncomeRuleAdministration;
 use App\Services\LevelIncomeRuleResolver;
+use App\Services\LevelIncomeUnlockGrandfathering;
 use App\Services\PackageIncomePolicy;
 use App\Services\ReferralLevelEligibility;
 use Illuminate\Validation\Rule;
@@ -145,6 +146,7 @@ class LevelIncomeRuleController extends Controller
             'change_note' => ['nullable', 'string', 'max:1000'],
             'direct_qualification_basis' => ['required', 'string', Rule::in(LevelIncomeDirectQualification::BASES)],
             'tour_only_qualifies_for_unlock' => ['nullable', 'boolean'],
+            'grandfather_existing_unlock' => ['nullable', 'boolean'],
             'bands' => ['required', 'array', 'min:1'],
             'bands.*.start_level' => ['required', 'integer', 'min:1', 'max:20'],
             'bands.*.end_level' => ['required', 'integer', 'min:1', 'max:20'],
@@ -177,6 +179,7 @@ class LevelIncomeRuleController extends Controller
             'change_note' => $data['change_note'] ?? null,
             'direct_qualification_basis' => $data['direct_qualification_basis'],
             'tour_only_qualifies_for_unlock' => $request->boolean('tour_only_qualifies_for_unlock'),
+            'grandfather_existing_unlock' => $request->boolean('grandfather_existing_unlock'),
             'bands' => $bands,
             'rates' => $data['rates'],
         ], $request->user(), $request->ip(), $existing);
@@ -258,6 +261,42 @@ class LevelIncomeRuleController extends Controller
         return redirect()
             ->route('admin.finance.commission-settings', ['tab' => 'unlock', 'version' => $draft->id])
             ->with('status', 'Draft cloned. Edit and validate before publishing.');
+    }
+
+    public function captureGrandfatherBaseline(
+        Request $request,
+        LevelIncomeUnlockGrandfathering $grandfathering
+    ): RedirectResponse {
+        $data = $request->validate([
+            'version_id' => ['required', 'integer', 'exists:level_income_rule_versions,id'],
+            'transition_date' => ['required', 'date'],
+            'confirm_capture' => ['accepted'],
+        ]);
+
+        $version = LevelIncomeRuleVersion::query()->findOrFail((int) $data['version_id']);
+        if (! $version->grandfather_existing_unlock) {
+            $version->forceFill(['grandfather_existing_unlock' => true])->save();
+        }
+
+        $result = $grandfathering->captureBaseline(
+            $version->fresh(),
+            $request->user(),
+            $data['transition_date'],
+            $request->ip()
+        );
+
+        return redirect()
+            ->route('admin.finance.commission-settings', ['tab' => 'unlock', 'version' => $version->id])
+            ->with(
+                'status',
+                sprintf(
+                    'Grandfather baseline captured for %s on %s (%d members, %d with legacy unlock). Posting remains unauthorized.',
+                    $result['version_code'],
+                    $result['transition_date'],
+                    $result['captured'],
+                    $result['with_unlock']
+                )
+            );
     }
 
     public function levelUnlockRules(

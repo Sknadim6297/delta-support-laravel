@@ -326,6 +326,8 @@
             Route::post('/admin/finance/level-income-rules/authorize', 'authorizePosting')->name('admin.finance.level-income-rules.authorize');
             Route::post('/admin/finance/level-income-rules/revoke', 'revokePosting')->name('admin.finance.level-income-rules.revoke');
             Route::post('/admin/finance/level-income-rules/clone', 'cloneDraft')->name('admin.finance.level-income-rules.clone');
+            Route::post('/admin/finance/level-income-rules/grandfather-capture', 'captureGrandfatherBaseline')
+                ->name('admin.finance.level-income-rules.grandfather-capture');
         });
 
         Route::get('/admin/catalog-reports/{report}/export', [\App\Http\Controllers\Admin\CatalogReportController::class, 'export'])

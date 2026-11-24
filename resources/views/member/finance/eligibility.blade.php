@@ -26,11 +26,23 @@
                 — {{ $applicableNote }}
             @endif
         </p>
+        @if (!empty($eligibilityContext) && is_array($eligibilityContext))
+            <p class="mb-0"><strong>Eligibility context:</strong> {{ $eligibilityContext['kind'] ?? 'n/a' }}
+                @if (!empty($eligibilityContext['source_purchase_id']))
+                    (source purchase #{{ $eligibilityContext['source_purchase_id'] }}, business date {{ $eligibilityContext['business_date'] ?? 'n/a' }})
+                @endif
+                — {{ $eligibilityContext['note'] ?? '' }}
+            </p>
+        @endif
         @if (($legacyUnlockedLevels ?? null) !== null && (int) $legacyUnlockedLevels !== (int) $unlockedLevels)
             <p class="mb-0">Legacy ladder unlock: {{ (int) $legacyUnlockedLevels }} of 20 (for comparison only).</p>
         @endif
         @if (($authorizedPreviewUnlockedLevels ?? null) !== null && (string) ($ruleMode ?? '') !== 'authorized')
-            <p class="mb-0">Proposed-band preview (not posting-authorized): {{ (int) $authorizedPreviewUnlockedLevels }} of 20.</p>
+            <p class="mb-0">Proposed-band preview (not posting-authorized): {{ (int) $authorizedPreviewUnlockedLevels }} of 20.
+                @if (($protectedPreviewUnlockedLevels ?? null) !== null)
+                    Protected preview: {{ (int) $protectedPreviewUnlockedLevels }} of 20.
+                @endif
+            </p>
         @endif
         @if ($nextUnlock)
             <p>{{ $nextUnlock['message'] }}</p>
@@ -49,6 +61,9 @@
                 <x-ui.stat label="Candidate expected" :value="(string) (($qualificationPreview['candidate_expected']['expected_unlocked_levels'] ?? 0)).' of 20'" hint="{{ $qualificationPreview['candidate_expected']['version_code'] ?? 'n/a' }}" />
             </div>
             <p class="ds-muted" style="margin:.75rem 0;">{{ $qualificationPreview['locked_reason'] ?? '' }}</p>
+            @if (!empty($qualificationPreview['proposed_delta_reason']))
+                <p class="ds-muted" style="margin:.75rem 0;">{{ $qualificationPreview['proposed_delta_reason'] }}</p>
+            @endif
             <x-ui.table>
                 <table>
                     <thead>

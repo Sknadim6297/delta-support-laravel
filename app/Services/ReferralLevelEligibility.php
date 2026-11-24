@@ -63,16 +63,24 @@ class ReferralLevelEligibility
             $mode = LevelIncomeRuleResolver::MODE_AUTHORIZED;
         }
 
+        $grandfather = app(LevelIncomeUnlockGrandfathering::class);
+        $rawAuthorizedUnlock = null;
+        $protectedMeta = null;
+
         if ($mode === LevelIncomeRuleResolver::MODE_AUTHORIZED && $authorizedVersion !== null) {
             $count = $qualification->countForVersion($memberId, $authorizedVersion);
             $activated = $qualification->isPersonallyActivatedForVersion($memberId, $authorizedVersion);
-            $unlocked = $usePurchaseContext
+            $rawAuthorizedUnlock = $usePurchaseContext
                 ? $this->resolver->unlockedLevelsForPurchase($sourcePurchase, $businessDate, $count, $activated)
                 : $this->resolver->unlockedLevels($count, $activated);
+            $unlocked = $grandfather->apply($memberId, $authorizedVersion, $rawAuthorizedUnlock);
+            $protectedMeta = $grandfather->previewMember($memberId, $authorizedVersion, $rawAuthorizedUnlock);
             $note = 'Posting-authorized Admin bands and qualification settings apply (basis: '
                 .$qualification->normalizeBasis($authorizedVersion->direct_qualification_basis)
                 .'; tour_only_unlock='
                 .(($authorizedVersion->tour_only_qualifies_for_unlock ?? false) ? 'yes' : 'no')
+                .'; grandfather='
+                .(($authorizedVersion->grandfather_existing_unlock ?? false) ? 'yes' : 'no')
                 .').';
         } else {
             $count = $incomeEligibleCount;
@@ -84,6 +92,7 @@ class ReferralLevelEligibility
         }
 
         $authorizedPreview = null;
+        $protectedPreview = null;
         $qualificationPreview = null;
         if (\Illuminate\Support\Facades\Schema::hasTable('level_income_rule_versions')) {
             $previewVersion = \App\Models\LevelIncomeRuleVersion::query()
@@ -103,8 +112,40 @@ class ReferralLevelEligibility
                     $previewCount,
                     $previewActivated
                 );
+                $protectedPreview = $grandfather->previewMember($memberId, $previewVersion, $authorizedPreview);
                 $qualificationPreview = $qualification->memberPreview($memberId, $previewVersion);
             }
+        }
+
+        $contextKind = $usePurchaseContext
+            ? LevelIncomeUnlockImpactAnalyzer::CONTEXT_PURCHASE_ACCRUAL
+            : ($mode === LevelIncomeRuleResolver::MODE_AUTHORIZED
+                ? LevelIncomeUnlockImpactAnalyzer::CONTEXT_AUTHORIZED_DISPLAY
+                : LevelIncomeUnlockImpactAnalyzer::CONTEXT_LIVE_LEGACY);
+
+        $eligibilityContext = [
+            'kind' => $contextKind,
+            'rule_mode' => $mode,
+            'source_purchase_id' => $sourcePurchase?->id,
+            'source_purchase_member_id' => $sourcePurchase?->member_id,
+            'business_date' => $businessDate,
+            'legacy_ladder_ignores_personal_activation' => $mode === LevelIncomeRuleResolver::MODE_LEGACY,
+            'note' => $usePurchaseContext
+                ? 'Purchase-scoped accrual context — use this for financial:daily Level Income decisions.'
+                : ($mode === LevelIncomeRuleResolver::MODE_AUTHORIZED
+                    ? 'Display without source purchase. Accrual still depends on each source purchase approval date / business date under applicability.'
+                    : 'Live hard-coded legacy entitlement display (posting not authorized).'),
+        ];
+        if ($usePurchaseContext && $sourcePurchase !== null && $businessDate !== null) {
+            $posting = $this->resolver->postingContextFor($sourcePurchase, $businessDate);
+            $eligibilityContext['posting_context'] = [
+                'mode' => $posting['mode'],
+                'applicability' => $posting['applicability'],
+                'effective_from' => $posting['effective_from'],
+                'purchase_approval_date' => $posting['purchase_approval_date'],
+                'reason' => $posting['reason'],
+                'version_code' => $posting['version']?->version_code,
+            ];
         }
 
         return [
@@ -114,10 +155,15 @@ class ReferralLevelEligibility
             'unlocked_levels' => $unlocked,
             'legacy_unlocked_levels' => $legacyUnlocked,
             'authorized_preview_unlocked_levels' => $authorizedPreview,
+            'protected_preview_unlocked_levels' => $protectedPreview['protected'] ?? null,
+            'grandfather_preview' => $protectedPreview,
+            'raw_authorized_unlocked_levels' => $rawAuthorizedUnlock,
+            'grandfather_runtime' => $protectedMeta,
             'personally_activated' => $activated,
             'next_unlock' => $this->nextUnlockRequirement($count, $activated, $unlocked),
             'rule_mode' => $mode,
             'applicable_note' => $note,
+            'eligibility_context' => $eligibilityContext,
             'qualification_preview' => $qualificationPreview,
         ];
     }
@@ -220,11 +266,13 @@ class ReferralLevelEligibility
             if ($qualification !== null && $authorized !== null) {
                 $qualifying = $qualification->countForVersion($memberId, $authorized);
                 $activated = $qualification->isPersonallyActivatedForVersion($memberId, $authorized);
+                $raw = $this->resolver->unlockedLevels($qualifying, $activated);
+                $unlocked = app(LevelIncomeUnlockGrandfathering::class)->apply($memberId, $authorized, $raw);
             } else {
                 $qualifying = $incomeEligible;
                 $activated = isset($activatedLookup[$memberId]);
+                $unlocked = $this->resolver->unlockedLevels($qualifying, $activated);
             }
-            $unlocked = $this->resolver->unlockedLevels($qualifying, $activated);
             $summaries[$memberId] = [
                 'direct_count' => $registered,
                 'registered_direct_count' => $registered,

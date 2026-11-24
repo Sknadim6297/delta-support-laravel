@@ -116,17 +116,59 @@
                             <input type="checkbox" name="tour_only_qualifies_for_unlock" value="1" @checked(old('tour_only_qualifies_for_unlock', $editing->tour_only_qualifies_for_unlock ?? false)) {{ $isDraft ? '' : 'disabled' }}>
                             <span>Approved Tour Only packages qualify for level unlocking (not ROI/commission generation)</span>
                         </label>
+                        <label style="display:flex;align-items:flex-end;gap:.5rem;">
+                            <input type="checkbox" name="grandfather_existing_unlock" value="1" @checked(old('grandfather_existing_unlock', $editing->grandfather_existing_unlock ?? false)) {{ $isDraft ? '' : 'disabled' }}>
+                            <span>Grandfather existing legacy unlock (prevent migration-only reductions)</span>
+                        </label>
                     </div>
                     @if (! $isDraft)
                         <input type="hidden" name="direct_qualification_basis" value="{{ $editing->direct_qualification_basis ?? 'income_eligible_directs' }}">
                         @if ($editing->tour_only_qualifies_for_unlock ?? false)
                             <input type="hidden" name="tour_only_qualifies_for_unlock" value="1">
                         @endif
+                        @if ($editing->grandfather_existing_unlock ?? false)
+                            <input type="hidden" name="grandfather_existing_unlock" value="1">
+                        @endif
                     @endif
                     <div class="ds-stat-grid" style="margin-bottom:1rem;">
                         <x-ui.stat label="Draft basis" :value="str_replace('_', ' ', (string) ($preview['direct_qualification_basis'] ?? 'income_eligible_directs'))" hint="{{ $preview['direct_qualification_basis_label'] ?? '' }}" />
                         <x-ui.stat label="Tour Only unlock" :value="($preview['tour_only_qualifies_for_unlock'] ?? false) ? 'Included' : 'Excluded'" hint="Independent of ROI eligibility" />
+                        <x-ui.stat label="Grandfathering" :value="($preview['grandfather_existing_unlock'] ?? false) ? 'Enabled' : 'Off'" hint="{{ ($preview['grandfather_summary']['captured'] ?? false) ? 'Baseline captured' : 'Capture required before authorize' }}" />
                     </div>
+
+                    <h3 style="margin:1rem 0 .5rem;">Existing member level protection</h3>
+                    <p class="ds-muted" style="margin:0 0 .75rem;">{{ $preview['grandfather_note'] ?? 'protected = max(proposed, min(snapshot, current legacy)). Capture does not authorize posting or backfill history.' }}</p>
+                    <div class="ds-stat-grid" style="margin-bottom:1rem;">
+                        <x-ui.stat label="Transition date" :value="$preview['grandfather_summary']['transition_date'] ?? (optional($editing->grandfather_transition_date)?->toDateString() ?? 'Not captured')" />
+                        <x-ui.stat label="Snapshots" :value="(string) ($preview['grandfather_summary']['snapshot_count'] ?? 0)" hint="{{ (string) ($preview['grandfather_summary']['with_unlock_count'] ?? 0) }} with legacy unlock" />
+                        <x-ui.stat label="Captured at" :value="$preview['grandfather_summary']['captured_at'] ?? '—'" />
+                    </div>
+                    @if (!empty($preview['member_unlock_impact_sample']))
+                        <x-ui.table>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Member</th>
+                                        <th>Current (legacy)</th>
+                                        <th>Proposed</th>
+                                        <th>Protected</th>
+                                        <th>Impact</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach ($preview['member_unlock_impact_sample'] as $impactRow)
+                                    <tr>
+                                        <td>{{ $impactRow['member_id'] }}</td>
+                                        <td>{{ $impactRow['current_legacy'] }}</td>
+                                        <td>{{ $impactRow['proposed'] }}</td>
+                                        <td>{{ $impactRow['protected'] }}</td>
+                                        <td>{{ $impactRow['impact'] }}</td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </x-ui.table>
+                    @endif
 
                     <h3 style="margin:0 0 .5rem;">Unlock bands (levels 1–20, no gaps/overlaps)</h3>
                     <x-ui.table>
@@ -223,6 +265,9 @@
                     @if (old('tour_only_qualifies_for_unlock', $editing->tour_only_qualifies_for_unlock ?? false))
                         <input type="hidden" name="tour_only_qualifies_for_unlock" value="1">
                     @endif
+                    @if (old('grandfather_existing_unlock', $editing->grandfather_existing_unlock ?? false))
+                        <input type="hidden" name="grandfather_existing_unlock" value="1">
+                    @endif
                     @foreach ($bands as $i => $band)
                         <input type="hidden" name="bands[{{ $i }}][start_level]" value="{{ $band->start_level }}">
                         <input type="hidden" name="bands[{{ $i }}][end_level]" value="{{ $band->end_level }}">
@@ -247,6 +292,25 @@
                     <input type="hidden" name="version_id" value="{{ $editing->id }}">
                     <button type="submit" class="ds-btn ds-btn-secondary">Clone as new draft</button>
                 </form>
+            @endif
+
+            @if ($editing && ($editing->grandfather_existing_unlock ?? false) && ! ($editing->posting_authorized ?? false))
+                <x-ui.card title="Capture grandfather baseline" subtitle="Records each member's live legacy unlock at the transition date. Does not authorize posting, backfill income, or change wallets." style="margin-top:1rem;">
+                    <form method="POST" action="{{ route('admin.finance.level-income-rules.grandfather-capture') }}">
+                        @csrf
+                        <input type="hidden" name="version_id" value="{{ $editing->id }}">
+                        <div class="ds-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-bottom:.75rem;">
+                            <label>Transition date
+                                <input type="date" name="transition_date" value="{{ old('transition_date', optional($editing->grandfather_transition_date)?->toDateString() ?? now()->toDateString()) }}" required>
+                            </label>
+                        </div>
+                        <label style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.75rem;">
+                            <input type="checkbox" name="confirm_capture" value="1" required>
+                            <span>I confirm this captures legacy unlock levels only and does not authorize financial posting or recalculate history.</span>
+                        </label>
+                        <button type="submit" class="ds-btn ds-btn-secondary">Capture baseline</button>
+                    </form>
+                </x-ui.card>
             @endif
         @endif
 

@@ -36,6 +36,10 @@ class LevelIncomeRuleVersion extends Model
         'applicability',
         'direct_qualification_basis',
         'tour_only_qualifies_for_unlock',
+        'grandfather_existing_unlock',
+        'grandfather_transition_date',
+        'grandfather_captured_at',
+        'grandfather_captured_by',
         'effective_from',
         'notes',
         'change_note',
@@ -47,6 +51,9 @@ class LevelIncomeRuleVersion extends Model
     protected $casts = [
         'posting_authorized' => 'boolean',
         'tour_only_qualifies_for_unlock' => 'boolean',
+        'grandfather_existing_unlock' => 'boolean',
+        'grandfather_transition_date' => 'date',
+        'grandfather_captured_at' => 'datetime',
         'effective_from' => 'date',
         'published_at' => 'datetime',
     ];
@@ -61,9 +68,19 @@ class LevelIncomeRuleVersion extends Model
         return $this->hasMany(LevelIncomeCommissionRate::class)->orderBy('level');
     }
 
+    public function grandfatherSnapshots(): HasMany
+    {
+        return $this->hasMany(LevelIncomeUnlockGrandfatherSnapshot::class);
+    }
+
     public function audits(): HasMany
     {
         return $this->hasMany(LevelIncomeRuleAudit::class);
+    }
+
+    public function grandfatherCapturer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'grandfather_captured_by');
     }
 
     public function creator(): BelongsTo

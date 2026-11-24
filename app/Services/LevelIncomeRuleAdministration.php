@@ -45,6 +45,7 @@ class LevelIncomeRuleAdministration
             $payload['direct_qualification_basis'] ?? LevelIncomeDirectQualification::BASIS_INCOME_ELIGIBLE_DIRECTS
         );
         $tourOnlyUnlock = (bool) ($payload['tour_only_qualifies_for_unlock'] ?? false);
+        $grandfather = (bool) ($payload['grandfather_existing_unlock'] ?? false);
         $errors = array_merge(
             $this->validateBands($bands),
             $this->validateRates($rates)
@@ -53,7 +54,7 @@ class LevelIncomeRuleAdministration
             throw ValidationException::withMessages(['configuration' => $errors]);
         }
 
-        return DB::transaction(function () use ($payload, $admin, $ip, $existing, $bands, $rates, $basis, $tourOnlyUnlock): LevelIncomeRuleVersion {
+        return DB::transaction(function () use ($payload, $admin, $ip, $existing, $bands, $rates, $basis, $tourOnlyUnlock, $grandfather): LevelIncomeRuleVersion {
             if ($existing !== null) {
                 $version = LevelIncomeRuleVersion::query()->whereKey($existing->id)->lockForUpdate()->firstOrFail();
                 if (! $version->isDraft()) {
@@ -78,6 +79,7 @@ class LevelIncomeRuleAdministration
                     'applicability' => LevelIncomeRuleVersion::APPLICABILITY_UNSPECIFIED,
                     'direct_qualification_basis' => $basis,
                     'tour_only_qualifies_for_unlock' => $tourOnlyUnlock,
+                    'grandfather_existing_unlock' => $grandfather,
                     'effective_from' => null,
                     'notes' => $payload['notes'] ?? null,
                     'change_note' => $payload['change_note'] ?? null,
@@ -92,6 +94,7 @@ class LevelIncomeRuleAdministration
                 'change_note' => $payload['change_note'] ?? $version->change_note,
                 'direct_qualification_basis' => $basis,
                 'tour_only_qualifies_for_unlock' => $tourOnlyUnlock,
+                'grandfather_existing_unlock' => $grandfather,
             ])->save();
 
             LevelIncomeUnlockBand::query()->where('level_income_rule_version_id', $version->id)->delete();
@@ -136,6 +139,7 @@ class LevelIncomeRuleAdministration
             'direct_qualification_basis' => $source->direct_qualification_basis
                 ?? LevelIncomeDirectQualification::BASIS_INCOME_ELIGIBLE_DIRECTS,
             'tour_only_qualifies_for_unlock' => (bool) ($source->tour_only_qualifies_for_unlock ?? false),
+            'grandfather_existing_unlock' => (bool) ($source->grandfather_existing_unlock ?? false),
             'bands' => $source->bands->map(fn (LevelIncomeUnlockBand $b): array => [
                 'sort_order' => $b->sort_order,
                 'start_level' => $b->start_level,
@@ -269,6 +273,8 @@ class LevelIncomeRuleAdministration
                     'confirm_existing_prospective' => 'existing_prospective requires a separate confirmation after reviewing the impact preview. It applies new rules from the effective business date for all source purchases without historical backfill.',
                 ]);
             }
+
+            app(LevelIncomeUnlockGrandfathering::class)->assertReadyForAuthorization($locked);
 
             $before = $this->snapshot($locked);
 
@@ -487,6 +493,33 @@ class LevelIncomeRuleAdministration
         $qualification = app(LevelIncomeDirectQualification::class);
         $qualBasis = $qualification->normalizeBasis($candidate?->direct_qualification_basis ?? null);
         $tourUnlock = (bool) ($candidate?->tour_only_qualifies_for_unlock ?? false);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+        $grandfatherSummary = $grandfathering->versionSummary($candidate);
+
+        $memberImpactSample = [];
+        if ($candidate !== null) {
+            $sampleIds = \App\Models\Member::query()->orderBy('id')->limit(40)->pluck('member_id')->all();
+            $analyzer = app(LevelIncomeUnlockImpactAnalyzer::class);
+            foreach ($sampleIds as $memberId) {
+                $row = $analyzer->analyzeMember($memberId, $candidate);
+                if ($row['live_unlocked_levels'] === 0
+                    && $row['proposed_unlocked_levels'] === 0
+                    && $row['protected_unlocked_levels'] === 0) {
+                    continue;
+                }
+                $memberImpactSample[] = [
+                    'member_id' => $row['member_id'],
+                    'current_legacy' => $row['live_unlocked_levels'],
+                    'proposed' => $row['proposed_unlocked_levels'],
+                    'protected' => $row['protected_unlocked_levels'],
+                    'impact' => $row['impact'],
+                    'reason' => $row['delta_reason'],
+                ];
+                if (count($memberImpactSample) >= 15) {
+                    break;
+                }
+            }
+        }
 
         return [
             'candidate' => $candidate,
@@ -509,6 +542,11 @@ class LevelIncomeRuleAdministration
             'direct_qualification_basis_label' => LevelIncomeDirectQualification::labels()[$qualBasis] ?? $qualBasis,
             'tour_only_qualifies_for_unlock' => $tourUnlock,
             'qualification_note' => 'Unique-member bases and approved-package purchase-count are separate. Tour Only unlock flag does not enable ROI or Level Income generation from Tour Only packages. Live accrual ignores these settings until posting_authorized.',
+            'grandfather_existing_unlock' => (bool) ($candidate?->grandfather_existing_unlock ?? false),
+            'grandfather_summary' => $grandfatherSummary,
+            'grandfather_formula' => $grandfatherSummary['formula'] ?? null,
+            'member_unlock_impact_sample' => $memberImpactSample,
+            'grandfather_note' => 'protected = max(proposed, min(snapshot_legacy, current_legacy)). Capture baseline at transition date before authorize when enabled. Does not backfill history or bypass payment controls.',
         ];
     }
 
@@ -529,6 +567,9 @@ class LevelIncomeRuleAdministration
             'direct_qualification_basis' => $version->direct_qualification_basis
                 ?? LevelIncomeDirectQualification::BASIS_INCOME_ELIGIBLE_DIRECTS,
             'tour_only_qualifies_for_unlock' => (bool) ($version->tour_only_qualifies_for_unlock ?? false),
+            'grandfather_existing_unlock' => (bool) ($version->grandfather_existing_unlock ?? false),
+            'grandfather_transition_date' => optional($version->grandfather_transition_date)?->toDateString(),
+            'grandfather_captured_at' => optional($version->grandfather_captured_at)?->toIso8601String(),
             'effective_from' => optional($version->effective_from)?->toDateString(),
             'bands' => $version->bands->map(fn ($b) => [
                 'start_level' => $b->start_level,
