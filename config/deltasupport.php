@@ -17,6 +17,13 @@ return [
     'panel_theme' => 'v2',
 
     /*
+    | Temporarily hide Sub-Admin Management from the admin sidebar.
+    | Routes/backend remain available for Main Admin via direct URL when needed.
+    | Set DELTASUPPORT_SUB_ADMIN_NAV_VISIBLE=true to show the menu again.
+    */
+    'sub_admin_nav_visible' => filter_var(env('DELTASUPPORT_SUB_ADMIN_NAV_VISIBLE', false), FILTER_VALIDATE_BOOLEAN),
+
+    /*
     | The only database financial:arm may accept. An empty value refuses every database.
     | Setting this name does not arm posting.
     */

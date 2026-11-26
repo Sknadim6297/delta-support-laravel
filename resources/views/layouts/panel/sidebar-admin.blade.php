@@ -165,7 +165,7 @@
                 @endif
                 <x-navigation.panel-link :href="route('admin.settings.security')" :active="request()->routeIs('admin.settings.security', 'admin.change-password.*')">Security</x-navigation.panel-link>
                 <x-navigation.panel-link :href="route('admin.settings.profile')" :active="request()->routeIs('admin.settings.profile')">Admin Profile</x-navigation.panel-link>
-                @if ($can('sub_admins.manage'))
+                @if (config('deltasupport.sub_admin_nav_visible') && $can('sub_admins.manage'))
                     <x-navigation.panel-link :href="route('admin.sub-admins.index')" :active="request()->routeIs('admin.sub-admins.*')">Sub-Admin Management</x-navigation.panel-link>
                 @endif
             </x-navigation.panel-group>
