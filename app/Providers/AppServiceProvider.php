@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Models\Member;
 use App\Models\SupportNotification;
+use App\Models\User;
 use App\Models\WithdrawalSetting;
+use App\Services\AdminAccess;
 use App\Services\ProductionDatabaseCommandGuard;
 use App\Services\WithdrawalBalances;
 use App\Support\MemberContext;
@@ -12,6 +14,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
@@ -24,7 +27,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(AdminAccess::class);
     }
 
     /**
@@ -32,6 +35,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::define('admin-perm', function (?User $user, string $permission): bool {
+            return app(AdminAccess::class)->can($user, $permission);
+        });
+
         RateLimiter::for('admin-bootstrap', function (Request $request) {
             return Limit::perMinute(5)->by('admin-bootstrap:'.$request->ip());
         });
@@ -177,7 +184,12 @@ class AppServiceProvider extends ServiceProvider
             ];
         }
 
-        if (auth()->user()?->is_admin !== true) {
+        $adminUser = auth()->user();
+        if ($adminUser?->is_admin !== true) {
+            return null;
+        }
+
+        if (! app(AdminAccess::class)->can($adminUser, 'wallets')) {
             return null;
         }
 

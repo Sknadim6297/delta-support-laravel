@@ -56,7 +56,7 @@ class LevelIncomeRuleAdministration
             'combined_joining_unit_value' => max(0, min(100, (int) ($payload['combined_joining_unit_value'] ?? 1))),
             'combined_purchase_unit_value' => max(0, min(100, (int) ($payload['combined_purchase_unit_value'] ?? 1))),
         ];
-        if ($basis === LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASES
+        if ($basis === LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASE
             && ! $combined['combined_joining_enabled']
             && ! $combined['combined_purchase_enabled']) {
             throw ValidationException::withMessages([
@@ -533,11 +533,17 @@ class LevelIncomeRuleAdministration
                     && $row['protected_unlocked_levels'] === 0) {
                     continue;
                 }
+                $breakdown = is_array($row['qualification_breakdown'] ?? null) ? $row['qualification_breakdown'] : [];
                 $memberImpactSample[] = [
                     'member_id' => $row['member_id'],
                     'current_legacy' => $row['live_unlocked_levels'],
                     'proposed' => $row['proposed_unlocked_levels'],
                     'protected' => $row['protected_unlocked_levels'],
+                    'joining_count' => $breakdown['joining_raw'] ?? null,
+                    'joining_credits' => $breakdown['joining_weighted'] ?? null,
+                    'purchase_count' => $breakdown['purchase_raw'] ?? null,
+                    'purchase_credits' => $breakdown['purchase_weighted'] ?? null,
+                    'combined_credits' => $breakdown['total_metric'] ?? $row['counts']['combined_total_metric'] ?? null,
                     'impact' => $row['impact'],
                     'reason' => $row['delta_reason'],
                 ];

@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
+            'admin.permission' => \App\Http\Middleware\EnsureAdminPermission::class,
             'admin.password' => RequireAdminPasswordChange::class,
             'member.context' => EnsureMemberContext::class,
             'legacy.financial' => EnsureLegacyFinancialActionsEnabled::class,

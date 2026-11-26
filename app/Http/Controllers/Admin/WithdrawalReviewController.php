@@ -48,11 +48,15 @@ class WithdrawalReviewController extends Controller
         $withdrawalRequest->load(['statusEvents' => fn ($query) => $query->orderBy('id')]);
         $pending = $withdrawalRequest->status === WithdrawalStatus::PENDING_REVIEW;
 
+        $access = app(\App\Services\AdminAccess::class);
+        $actor = request()->user();
+
         return view('admin.withdrawals.show', [
             'withdrawal' => $withdrawalRequest,
-            'canApprove' => $pending && $workflow->reviewsOpen(),
-            'canReject' => $pending,
-            'canSettle' => $withdrawalRequest->status === WithdrawalStatus::APPROVED,
+            'canApprove' => $pending && $workflow->reviewsOpen() && $access->can($actor, 'withdrawals'),
+            'canReject' => $pending && $access->can($actor, 'withdrawals'),
+            'canSettle' => $withdrawalRequest->status === WithdrawalStatus::APPROVED
+                && $access->can($actor, 'withdrawals'),
         ]);
     }
 

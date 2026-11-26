@@ -27,11 +27,31 @@ class UserFactory extends Factory
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
+            'login_id' => null,
             'is_admin' => true,
+            'admin_role' => User::ADMIN_ROLE_MAIN,
+            'is_active' => true,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
+    }
+
+    public function subAdmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_admin' => true,
+            'admin_role' => User::ADMIN_ROLE_SUB,
+            'is_active' => true,
+            'login_id' => strtoupper(fake()->unique()->bothify('SUB###??')),
+        ]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => false,
+        ]);
     }
 
     /**

@@ -220,7 +220,212 @@ class CombinedLevelUnlockQualificationTest extends TestCase
             ->get(route('admin.finance.commission-settings', ['tab' => 'unlock']))
             ->assertOk()
             ->assertSeeText('Combined joining + purchase contributions')
-            ->assertSeeText('Double-credit policy');
+            ->assertSeeText('Double-credit policy')
+            ->assertSeeText('Personal (own) approved purchases');
+    }
+
+    public function test_canonical_basis_key_is_singular_with_plural_alias(): void
+    {
+        $q = app(LevelIncomeDirectQualification::class);
+        $this->assertSame('combined_joining_and_purchase', LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASE);
+        $this->assertSame('combined_joining_and_purchase', $q->normalizeBasis('combined_joining_and_purchase'));
+        $this->assertSame('combined_joining_and_purchase', $q->normalizeBasis('combined_joining_and_purchases'));
+    }
+
+    public function test_joining_only_without_purchase_contributes_metric(): void
+    {
+        $sponsor = $this->member('CMB060', 'ST666666');
+        $this->member('CMB060A', $sponsor->member_id);
+        $this->member('CMB060B', $sponsor->member_id);
+
+        $version = $this->combinedVersion([
+            'combined_purchase_enabled' => false,
+            'combined_joining_enabled' => true,
+        ]);
+
+        $breakdown = app(LevelIncomeDirectQualification::class)->breakdownForVersion($sponsor->member_id, $version);
+        $this->assertSame(2, $breakdown['joining_weighted']);
+        $this->assertSame(0, $breakdown['purchase_weighted']);
+        $this->assertSame(2, $breakdown['total_metric']);
+    }
+
+    public function test_personal_purchase_scope_counts_own_purchases_not_directs(): void
+    {
+        $sponsor = $this->member('CMB070', 'ST666666');
+        $this->purchase($sponsor, $this->roiPackage('CMB-SELF-1'), PackagePurchase::APPROVED, '100.0000');
+        $this->purchase($sponsor, $this->roiPackage('CMB-SELF-2'), PackagePurchase::APPROVED, '50.0000');
+        $direct = $this->member('CMB070A', $sponsor->member_id);
+        $this->purchase($direct, $this->roiPackage('CMB-DIR-1'), PackagePurchase::APPROVED, '80.0000');
+
+        $unique = $this->combinedVersion([
+            'combined_joining_enabled' => false,
+            'combined_purchase_scope' => LevelIncomeDirectQualification::BASIS_PERSONAL_APPROVED_PURCHASES,
+            'combined_repeat_purchase_mode' => LevelIncomeDirectQualification::REPEAT_UNIQUE_DIRECTS,
+        ]);
+        $each = $this->combinedVersion([
+            'combined_joining_enabled' => false,
+            'combined_purchase_scope' => LevelIncomeDirectQualification::BASIS_PERSONAL_APPROVED_PURCHASES,
+            'combined_repeat_purchase_mode' => LevelIncomeDirectQualification::REPEAT_EACH_PURCHASE,
+            'version_code' => 'combined_personal_each_'.Str::lower(Str::random(4)),
+        ]);
+
+        $q = app(LevelIncomeDirectQualification::class);
+        $this->assertSame(1, $q->countForVersion($sponsor->member_id, $unique));
+        $this->assertSame(2, $q->countForVersion($sponsor->member_id, $each));
+    }
+
+    public function test_pending_and_rejected_purchases_do_not_count(): void
+    {
+        $sponsor = $this->member('CMB080', 'ST666666');
+        $buyer = $this->member('CMB080A', $sponsor->member_id);
+        $this->purchase($buyer, $this->roiPackage('CMB-P1'), PackagePurchase::PENDING, '100.0000');
+        $this->purchase($buyer, $this->roiPackage('CMB-R1'), PackagePurchase::REJECTED, '100.0000');
+
+        $version = $this->combinedVersion([
+            'combined_joining_enabled' => false,
+            'combined_purchase_enabled' => true,
+        ]);
+
+        $breakdown = app(LevelIncomeDirectQualification::class)->breakdownForVersion($sponsor->member_id, $version);
+        $this->assertSame(0, $breakdown['purchase_raw']);
+        $this->assertSame(0, $breakdown['total_metric']);
+        // Joining-only still sees the registered direct when enabled.
+        $joinOnly = $this->combinedVersion([
+            'combined_purchase_enabled' => false,
+            'version_code' => 'combined_join_only_'.Str::lower(Str::random(4)),
+        ]);
+        $this->assertSame(1, app(LevelIncomeDirectQualification::class)->countForVersion($sponsor->member_id, $joinOnly));
+    }
+
+    public function test_tour_only_qualification_respects_unlock_flag(): void
+    {
+        $sponsor = $this->member('CMB090', 'ST666666');
+        $buyer = $this->member('CMB090A', $sponsor->member_id);
+        $tour = Package::query()->firstOrCreate(
+            ['code' => 'CMB-TOUR-1'],
+            [
+                'package_type' => Package::TYPE_TOUR,
+                'name' => 'Tour Only',
+                'price_usd' => '100.0000',
+                'denomination' => 'USDT',
+                'roi_eligible' => false,
+                'level_commission_eligible' => false,
+                'is_active' => true,
+                'sort_order' => 9,
+            ]
+        );
+        $this->purchase($buyer, $tour, PackagePurchase::APPROVED, '100.0000');
+
+        $include = $this->combinedVersion([
+            'combined_joining_enabled' => false,
+            'tour_only_qualifies_for_unlock' => true,
+            'combined_purchase_scope' => LevelIncomeDirectQualification::BASIS_APPROVED_PACKAGE_DIRECTS,
+        ]);
+        $exclude = $this->combinedVersion([
+            'combined_joining_enabled' => false,
+            'tour_only_qualifies_for_unlock' => false,
+            'combined_purchase_scope' => LevelIncomeDirectQualification::BASIS_APPROVED_PACKAGE_DIRECTS,
+            'version_code' => 'combined_tour_off_'.Str::lower(Str::random(4)),
+        ]);
+
+        $q = app(LevelIncomeDirectQualification::class);
+        $this->assertSame(1, $q->countForVersion($sponsor->member_id, $include));
+        $this->assertSame(0, $q->countForVersion($sponsor->member_id, $exclude));
+    }
+
+    public function test_combined_existing_prospective_and_twenty_level_cap(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(LevelIncomeRuleAdministration::class);
+
+        $sponsor = $this->member('CMB100', 'ST666666');
+        $this->purchase($sponsor, $this->roiPackage('CMB-ACT'), PackagePurchase::APPROVED, '100.0000');
+        for ($i = 1; $i <= 6; $i++) {
+            $this->member('CMB100D'.$i, $sponsor->member_id);
+        }
+
+        $draft = $service->cloneAsDraft(
+            LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $draft = $service->saveDraft([
+            'label' => $draft->label,
+            'direct_qualification_basis' => LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASE,
+            'tour_only_qualifies_for_unlock' => true,
+            'grandfather_existing_unlock' => false,
+            'combined_joining_enabled' => true,
+            'combined_purchase_enabled' => false,
+            'combined_purchase_scope' => LevelIncomeDirectQualification::BASIS_APPROVED_PACKAGE_DIRECTS,
+            'combined_repeat_purchase_mode' => LevelIncomeDirectQualification::REPEAT_UNIQUE_DIRECTS,
+            'combined_double_credit_policy' => LevelIncomeDirectQualification::DOUBLE_ALLOW_SUM,
+            'combined_joining_unit_value' => 1,
+            'combined_purchase_unit_value' => 1,
+            'bands' => [
+                [
+                    'start_level' => 1,
+                    'end_level' => 20,
+                    'min_qualifying_directs' => 5,
+                    'requires_personal_activation' => true,
+                ],
+            ],
+            'rates' => $draft->rates->mapWithKeys(fn ($r) => [(int) $r->level => (string) $r->percentage])->all(),
+        ], $admin, null, $draft);
+
+        $published = $service->publish($draft, $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            'effective_from' => '2026-11-01',
+        ]);
+        $authorized = $service->authorizePosting(
+            $published->fresh(),
+            $admin,
+            true,
+            null,
+            true
+        );
+        app(LevelIncomeRuleResolver::class)->clearCache();
+
+        $this->assertSame(LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE, $authorized->applicability);
+        $live = app(ReferralLevelEligibility::class)->forMember($sponsor->member_id);
+        $this->assertSame(LevelIncomeRuleResolver::MODE_AUTHORIZED, $live['rule_mode']);
+        $this->assertSame(6, $live['qualifying_direct_count']);
+        $this->assertSame(20, $live['unlocked_levels']);
+        $this->assertLessThanOrEqual(20, $live['unlocked_levels']);
+
+        $analysis = app(\App\Services\LevelIncomeUnlockImpactAnalyzer::class)
+            ->analyzeMember($sponsor->member_id, $authorized);
+        $this->assertCount(20, $analysis['level_lock_reasons']);
+        $this->assertSame('unlocked', $analysis['level_lock_reasons'][19]['status']);
+    }
+
+    public function test_impact_analyzer_exposes_combined_credits_and_lock_reasons(): void
+    {
+        $sponsor = $this->member('CMB110', 'ST666666');
+        $this->member('CMB110A', $sponsor->member_id);
+        $buyer = $this->member('CMB110B', $sponsor->member_id);
+        $this->purchase($buyer, $this->roiPackage('CMB-IMP'), PackagePurchase::APPROVED, '100.0000');
+
+        $candidate = LevelIncomeRuleVersion::query()
+            ->where('version_code', 'proposed_activation_unlock_v1')
+            ->firstOrFail();
+        $candidate->fill([
+            'direct_qualification_basis' => LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASE,
+            'combined_joining_enabled' => true,
+            'combined_purchase_enabled' => true,
+            'combined_purchase_scope' => LevelIncomeDirectQualification::BASIS_APPROVED_PACKAGE_DIRECTS,
+            'combined_repeat_purchase_mode' => LevelIncomeDirectQualification::REPEAT_UNIQUE_DIRECTS,
+            'combined_double_credit_policy' => LevelIncomeDirectQualification::DOUBLE_PREVENT_OVERLAP,
+            'combined_joining_unit_value' => 1,
+            'combined_purchase_unit_value' => 1,
+            'tour_only_qualifies_for_unlock' => true,
+        ])->save();
+
+        $row = app(\App\Services\LevelIncomeUnlockImpactAnalyzer::class)->analyzeMember($sponsor->member_id, $candidate->fresh('bands'));
+        $this->assertSame('combined', $row['qualification_breakdown']['mode']);
+        $this->assertSame(1, $row['counts']['joining_weighted']);
+        $this->assertSame(1, $row['counts']['purchase_weighted']);
+        $this->assertSame(2, $row['counts']['combined_total_metric']);
+        $this->assertNotEmpty($row['level_lock_reasons']);
+        $this->assertSame(20, count($row['level_lock_reasons']));
     }
 
     private function combinedVersion(array $overrides = []): LevelIncomeRuleVersion

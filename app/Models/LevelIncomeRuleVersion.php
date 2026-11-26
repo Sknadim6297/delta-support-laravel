@@ -28,7 +28,12 @@ class LevelIncomeRuleVersion extends Model
 
     public const QUAL_APPROVED_PACKAGE_PURCHASE_COUNT = 'approved_package_purchase_count';
 
-    public const QUAL_COMBINED_JOINING_AND_PURCHASES = 'combined_joining_and_purchases';
+    public const QUAL_COMBINED_JOINING_AND_PURCHASE = 'combined_joining_and_purchase';
+
+    /**
+     * @deprecated Use QUAL_COMBINED_JOINING_AND_PURCHASE (singular). Same stored value.
+     */
+    public const QUAL_COMBINED_JOINING_AND_PURCHASES = self::QUAL_COMBINED_JOINING_AND_PURCHASE;
 
     public const COMBINED_SCOPE_APPROVED_PACKAGE_DIRECTS = 'approved_package_directs';
 

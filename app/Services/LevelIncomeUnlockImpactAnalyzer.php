@@ -90,10 +90,13 @@ class LevelIncomeUnlockImpactAnalyzer
         $candidateActivated = false;
         $proposedUnlocked = 0;
         $candidateMeta = null;
+        $qualificationBreakdown = null;
         $protection = null;
         $protectedUnlocked = 0;
+        $levelLockReasons = [];
         if ($candidate !== null) {
-            $candidateMetric = $this->qualification->countForVersion($memberId, $candidate);
+            $qualificationBreakdown = $this->qualification->breakdownForVersion($memberId, $candidate);
+            $candidateMetric = (int) ($qualificationBreakdown['total_metric'] ?? 0);
             $candidateActivated = $this->qualification->isPersonallyActivatedForVersion($memberId, $candidate);
             $proposedUnlocked = $this->simulate($candidate, $candidateMetric, $candidateActivated);
             $candidateMeta = [
@@ -103,12 +106,26 @@ class LevelIncomeUnlockImpactAnalyzer
                 'direct_qualification_basis' => $this->qualification->normalizeBasis($candidate->direct_qualification_basis ?? null),
                 'tour_only_qualifies_for_unlock' => (bool) ($candidate->tour_only_qualifies_for_unlock ?? false),
                 'grandfather_existing_unlock' => (bool) ($candidate->grandfather_existing_unlock ?? false),
+                'combined_joining_enabled' => (bool) ($candidate->combined_joining_enabled ?? false),
+                'combined_purchase_enabled' => (bool) ($candidate->combined_purchase_enabled ?? false),
+                'combined_purchase_scope' => $candidate->combined_purchase_scope,
+                'combined_repeat_purchase_mode' => $candidate->combined_repeat_purchase_mode,
+                'combined_double_credit_policy' => $candidate->combined_double_credit_policy,
+                'combined_joining_unit_value' => (int) ($candidate->combined_joining_unit_value ?? 1),
+                'combined_purchase_unit_value' => (int) ($candidate->combined_purchase_unit_value ?? 1),
                 'direct_metric' => $candidateMetric,
                 'personally_activated' => $candidateActivated,
             ];
             $protection = app(LevelIncomeUnlockGrandfathering::class)
                 ->previewMember($memberId, $candidate, $proposedUnlocked);
             $protectedUnlocked = (int) $protection['protected'];
+            $levelLockReasons = $this->levelLockReasons(
+                $candidate,
+                $candidateMetric,
+                $candidateActivated,
+                $proposedUnlocked,
+                $qualificationBreakdown
+            );
         } else {
             $protectedUnlocked = $liveLegacyUnlocked;
         }
@@ -190,7 +207,14 @@ class LevelIncomeUnlockImpactAnalyzer
                 'approved_package_direct_count_excluding_tour_only' => $approvedPackageDirectsNoTour,
                 'approved_direct_package_purchase_count' => $purchaseCount,
                 'tour_only_purchasing_direct_count' => $tourOnlyDirects,
+                'joining_raw' => (int) ($qualificationBreakdown['joining_raw'] ?? 0),
+                'joining_weighted' => (int) ($qualificationBreakdown['joining_weighted'] ?? 0),
+                'purchase_raw' => (int) ($qualificationBreakdown['purchase_raw'] ?? 0),
+                'purchase_weighted' => (int) ($qualificationBreakdown['purchase_weighted'] ?? 0),
+                'combined_total_metric' => (int) ($qualificationBreakdown['total_metric'] ?? ($candidateMetric ?? 0)),
             ],
+            'qualification_breakdown' => $qualificationBreakdown,
+            'level_lock_reasons' => $levelLockReasons,
             // Canonical fields used by diagnostic tables — always identical for the same member.
             'live_unlocked_levels' => $liveLegacyUnlocked,
             'proposed_unlocked_levels' => $proposedUnlocked,
@@ -426,7 +450,129 @@ class LevelIncomeUnlockImpactAnalyzer
                 'live_default' => false,
                 'proposed_draft_default' => false,
             ],
+            [
+                'basis' => LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASE,
+                'client_fit' => 'Joining and approved purchases contribute independently with configurable weights, purchase scope (directs or personal), repeat mode, and double-credit policy. Unauthorized until BD formula approval.',
+                'unique_members' => 'depends_on_scope',
+                'live_default' => false,
+                'proposed_draft_default' => false,
+                'requires_business_approval' => true,
+            ],
         ];
+    }
+
+    /**
+     * Exact per-level lock/unlock reasons under a candidate version (max 20).
+     *
+     * @param  array<string, mixed>|null  $breakdown
+     * @return list<array<string, mixed>>
+     */
+    public function levelLockReasons(
+        LevelIncomeRuleVersion $version,
+        int $metric,
+        bool $activated,
+        int $unlockedLevels,
+        ?array $breakdown = null
+    ): array {
+        $version->loadMissing('bands');
+        $bands = $version->bands->map(fn ($b): array => [
+            'start_level' => (int) $b->start_level,
+            'end_level' => (int) $b->end_level,
+            'min_qualifying_directs' => (int) $b->min_qualifying_directs,
+            'requires_personal_activation' => (bool) $b->requires_personal_activation,
+        ])->all();
+
+        $reasons = [];
+        for ($level = 1; $level <= ReferralLevelEligibility::MAX_LEVELS; $level++) {
+            if ($level <= $unlockedLevels) {
+                $reasons[] = [
+                    'level' => $level,
+                    'status' => 'unlocked',
+                    'reason' => sprintf(
+                        'Unlocked: combined/proposed metric=%d, personally_activated=%s, unlocked_through=%d.',
+                        $metric,
+                        $activated ? 'yes' : 'no',
+                        $unlockedLevels
+                    ),
+                ];
+                continue;
+            }
+
+            $covering = array_values(array_filter(
+                $bands,
+                static fn (array $band): bool => $level >= (int) $band['start_level'] && $level <= (int) $band['end_level']
+            ));
+
+            if ($covering === []) {
+                $reasons[] = [
+                    'level' => $level,
+                    'status' => 'locked',
+                    'reason' => 'Locked: no unlock band covers this level in the candidate version.',
+                ];
+                continue;
+            }
+
+            $activationBlocked = true;
+            $metricShortfall = null;
+            foreach ($covering as $band) {
+                $needsActivation = ! empty($band['requires_personal_activation']);
+                if ($needsActivation && ! $activated) {
+                    continue;
+                }
+                $activationBlocked = false;
+                $needed = (int) $band['min_qualifying_directs'];
+                if ($metric < $needed) {
+                    $short = $needed - $metric;
+                    if ($metricShortfall === null || $short < $metricShortfall['short']) {
+                        $metricShortfall = [
+                            'needed' => $needed,
+                            'have' => $metric,
+                            'short' => $short,
+                        ];
+                    }
+                    continue;
+                }
+                // Qualifies somehow but overall unlockedLevels still below — should not happen.
+                $activationBlocked = false;
+                $metricShortfall = null;
+                break;
+            }
+
+            if ($activationBlocked) {
+                $reasons[] = [
+                    'level' => $level,
+                    'status' => 'locked',
+                    'reason' => 'Locked: personal activation required by covering band(s) and member is not personally activated under the candidate purchase filter.',
+                ];
+                continue;
+            }
+
+            if ($metricShortfall !== null) {
+                $join = (int) ($breakdown['joining_weighted'] ?? 0);
+                $purchase = (int) ($breakdown['purchase_weighted'] ?? 0);
+                $reasons[] = [
+                    'level' => $level,
+                    'status' => 'locked',
+                    'reason' => sprintf(
+                        'Locked: qualification metric shortfall (have %d, need %d). Joining credits=%d, purchase credits=%d, combined=%d.',
+                        $metricShortfall['have'],
+                        $metricShortfall['needed'],
+                        $join,
+                        $purchase,
+                        $metric
+                    ),
+                ];
+                continue;
+            }
+
+            $reasons[] = [
+                'level' => $level,
+                'status' => 'locked',
+                'reason' => 'Locked: outside simulated unlock ladder for this metric/activation.',
+            ];
+        }
+
+        return $reasons;
     }
 
     private function qualificationCount(string $memberId, string $basis, bool $tourOnly): int

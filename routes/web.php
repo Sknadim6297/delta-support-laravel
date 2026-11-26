@@ -50,6 +50,7 @@
     use App\Http\Controllers\Member\GenealogyController as MemberGenealogyController;
     use App\Http\Controllers\PublicMemberAuthController;
     use App\Http\Controllers\Admin\RootAdminBootstrapController;
+    use App\Http\Controllers\Admin\SubAdminController;
     use App\Models\Member;
     use App\Models\User;
 
@@ -194,7 +195,7 @@
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['auth', 'admin', 'admin.password', 'impersonation.block'])->group(function () {
+    Route::middleware(['auth', 'admin', 'admin.permission', 'admin.password', 'impersonation.block'])->group(function () {
 
         Route::get('/member-panel/{member_id}', [MemberController::class, 'memberPanel'])
             ->name('admin.member-panel');
@@ -289,6 +290,27 @@
 
         Route::get('/admin/settings/financial', [\App\Http\Controllers\Admin\FinancialControlController::class, 'edit'])->name('admin.settings.financial');
         Route::put('/admin/settings/financial', [\App\Http\Controllers\Admin\FinancialControlController::class, 'update'])->name('admin.settings.financial.update');
+
+        Route::get('/admin/access-denied', function () {
+            return view('admin.access-denied', [
+                'reason' => request('reason', session('access_denied_reason', 'page')),
+            ]);
+        })->name('admin.access-denied');
+
+        Route::controller(SubAdminController::class)->prefix('admin/sub-admins')->name('admin.sub-admins.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->middleware('throttle:20,1')->name('store');
+            Route::get('/{subAdmin}', 'show')->name('show');
+            Route::get('/{subAdmin}/edit', 'edit')->name('edit');
+            Route::put('/{subAdmin}', 'update')->middleware('throttle:20,1')->name('update');
+            Route::get('/{subAdmin}/permissions', 'permissions')->name('permissions');
+            Route::get('/{subAdmin}/password', 'resetPasswordForm')->name('password.edit');
+            Route::put('/{subAdmin}/password', 'resetPassword')->middleware('throttle:10,1')->name('password.update');
+            Route::post('/{subAdmin}/activate', 'activate')->middleware('throttle:20,1')->name('activate');
+            Route::post('/{subAdmin}/deactivate', 'deactivate')->middleware('throttle:20,1')->name('deactivate');
+            Route::delete('/{subAdmin}', 'destroy')->middleware('throttle:10,1')->name('destroy');
+        });
 
         Route::controller(MemberTransferAdminController::class)->prefix('admin/member-transfers')->name('admin.member-transfers.')->group(function () {
             Route::get('/', 'index')->name('index');

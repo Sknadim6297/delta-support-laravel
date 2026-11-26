@@ -57,7 +57,14 @@ class SuperAdminProvisioner
 
         try {
             return DB::transaction(function () use ($email, $password, $name, $verified): User {
-                if (User::query()->where('is_admin', true)->lockForUpdate()->exists()) {
+                if (User::query()
+                    ->where('is_admin', true)
+                    ->where(function ($query): void {
+                        $query->where('admin_role', User::ADMIN_ROLE_MAIN)
+                            ->orWhereNull('admin_role');
+                    })
+                    ->lockForUpdate()
+                    ->exists()) {
                     throw new RuntimeException('Refused. A Super Admin already exists. No password was changed.');
                 }
 
@@ -70,6 +77,8 @@ class SuperAdminProvisioner
                     'email' => $email,
                     'password' => $password,
                     'is_admin' => true,
+                    'admin_role' => User::ADMIN_ROLE_MAIN,
+                    'is_active' => true,
                     'must_change_password' => true,
                 ];
                 if ($verified) {

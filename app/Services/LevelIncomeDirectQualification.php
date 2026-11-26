@@ -23,12 +23,21 @@ class LevelIncomeDirectQualification
     public const BASIS_APPROVED_PACKAGE_PURCHASE_COUNT = 'approved_package_purchase_count';
 
     /** Combined mode: joining and purchases contribute independently per version policy. */
-    public const BASIS_COMBINED_JOINING_AND_PURCHASES = 'combined_joining_and_purchases';
+    public const BASIS_COMBINED_JOINING_AND_PURCHASE = 'combined_joining_and_purchase';
+
+    /**
+     * @deprecated Use BASIS_COMBINED_JOINING_AND_PURCHASE (singular). Same stored value.
+     */
+    public const BASIS_COMBINED_JOINING_AND_PURCHASES = self::BASIS_COMBINED_JOINING_AND_PURCHASE;
+
+    /** Purchase contribution counts the evaluated member's own approved purchases. */
+    public const BASIS_PERSONAL_APPROVED_PURCHASES = 'personal_approved_purchases';
 
     public const PURCHASE_SCOPES = [
         self::BASIS_APPROVED_PACKAGE_DIRECTS,
         self::BASIS_INCOME_ELIGIBLE_DIRECTS,
         self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT,
+        self::BASIS_PERSONAL_APPROVED_PURCHASES,
     ];
 
     public const REPEAT_UNIQUE_DIRECTS = 'unique_directs';
@@ -57,7 +66,7 @@ class LevelIncomeDirectQualification
         self::BASIS_APPROVED_PACKAGE_DIRECTS,
         self::BASIS_INCOME_ELIGIBLE_DIRECTS,
         self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT,
-        self::BASIS_COMBINED_JOINING_AND_PURCHASES,
+        self::BASIS_COMBINED_JOINING_AND_PURCHASE,
     ];
 
     public static function labels(): array
@@ -67,7 +76,7 @@ class LevelIncomeDirectQualification
             self::BASIS_APPROVED_PACKAGE_DIRECTS => 'Direct members with approved packages (unique)',
             self::BASIS_INCOME_ELIGIBLE_DIRECTS => 'Direct members with income-eligible approved packages (unique)',
             self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT => 'Approved direct package purchase count (not unique members)',
-            self::BASIS_COMBINED_JOINING_AND_PURCHASES => 'Combined: direct joining + package purchases (configurable)',
+            self::BASIS_COMBINED_JOINING_AND_PURCHASE => 'Combined: direct joining + package purchases (configurable)',
         ];
     }
 
@@ -77,6 +86,7 @@ class LevelIncomeDirectQualification
             self::BASIS_APPROVED_PACKAGE_DIRECTS => 'Unique directs with approved packages',
             self::BASIS_INCOME_ELIGIBLE_DIRECTS => 'Unique directs with income-eligible approved packages',
             self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT => 'Approved package purchase rows (see repeat mode)',
+            self::BASIS_PERSONAL_APPROVED_PURCHASES => 'Personal (own) approved purchases of the evaluated member',
         ];
     }
 
@@ -105,6 +115,10 @@ class LevelIncomeDirectQualification
     public function normalizeBasis(?string $basis): string
     {
         $basis = (string) $basis;
+        // Legacy plural key from earlier local drafts → canonical singular.
+        if ($basis === 'combined_joining_and_purchases') {
+            return self::BASIS_COMBINED_JOINING_AND_PURCHASE;
+        }
         if (! in_array($basis, self::BASES, true)) {
             return self::BASIS_INCOME_ELIGIBLE_DIRECTS;
         }
@@ -140,7 +154,7 @@ class LevelIncomeDirectQualification
         $basis = $this->normalizeBasis($version->direct_qualification_basis ?? null);
         $tourOnly = (bool) ($version->tour_only_qualifies_for_unlock ?? false);
 
-        if ($basis === self::BASIS_COMBINED_JOINING_AND_PURCHASES) {
+        if ($basis === self::BASIS_COMBINED_JOINING_AND_PURCHASE) {
             return $this->combinedBreakdown($memberId, $version, $tourOnly);
         }
 
@@ -183,8 +197,9 @@ class LevelIncomeDirectQualification
         $scope = $this->normalizePurchaseScope($version->combined_purchase_scope ?? null);
         // Personal activation follows package filter for the active purchase-related setting.
         $incomeEligibleOnly = $basis === self::BASIS_INCOME_ELIGIBLE_DIRECTS
-            || ($basis === self::BASIS_COMBINED_JOINING_AND_PURCHASES && $scope === self::BASIS_INCOME_ELIGIBLE_DIRECTS);
+            || ($basis === self::BASIS_COMBINED_JOINING_AND_PURCHASE && $scope === self::BASIS_INCOME_ELIGIBLE_DIRECTS);
 
+        // Personal activation is always about the evaluated member's own approved purchase.
         return Member::query()
             ->where('member_id', $memberId)
             ->whereExists(function ($query) use ($tourOnly, $incomeEligibleOnly): void {
@@ -237,17 +252,27 @@ class LevelIncomeDirectQualification
         $purchaseUnit = max(0, (int) ($version->combined_purchase_unit_value ?? 1));
 
         $registered = $this->eligibility()->directCount($memberId);
-        $purchasingUnique = $this->purchaseUniqueDirectCount($memberId, $scope, $tourOnly);
-        $purchaseRows = $this->approvedPurchaseCountByDirects(
-            $memberId,
-            $tourOnly,
-            $scope === self::BASIS_INCOME_ELIGIBLE_DIRECTS
-        );
+        $personalPurchaseRows = $this->personalApprovedPurchaseCount($memberId, $tourOnly, false);
+        $personalIncomeEligibleRows = $this->personalApprovedPurchaseCount($memberId, $tourOnly, true);
+
+        if ($scope === self::BASIS_PERSONAL_APPROVED_PURCHASES) {
+            $purchaseRows = $personalPurchaseRows;
+            $purchasingUnique = $purchaseRows > 0 ? 1 : 0;
+        } else {
+            $purchasingUnique = $this->purchaseUniqueDirectCount($memberId, $scope, $tourOnly);
+            $purchaseRows = $this->approvedPurchaseCountByDirects(
+                $memberId,
+                $tourOnly,
+                $scope === self::BASIS_INCOME_ELIGIBLE_DIRECTS
+            );
+        }
 
         // When scope is unique directs, repeat mode unique is natural; each_purchase uses row count.
         $purchaseRaw = 0;
         if ($purchaseEnabled) {
-            if ($scope === self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT || $repeat === self::REPEAT_EACH_PURCHASE) {
+            if ($scope === self::BASIS_PERSONAL_APPROVED_PURCHASES) {
+                $purchaseRaw = $repeat === self::REPEAT_EACH_PURCHASE ? $purchaseRows : $purchasingUnique;
+            } elseif ($scope === self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT || $repeat === self::REPEAT_EACH_PURCHASE) {
                 $purchaseRaw = $purchaseRows;
             } else {
                 $purchaseRaw = $purchasingUnique;
@@ -255,13 +280,18 @@ class LevelIncomeDirectQualification
         }
 
         $joiningRaw = $joiningEnabled ? $registered : 0;
-        // Overlap = directs who both registered under sponsor and have a qualifying purchase.
-        $overlapping = ($joiningEnabled && $purchaseEnabled)
+        // Overlap only applies when both sides count the same directs (not personal-purchase scope).
+        $overlapping = ($joiningEnabled && $purchaseEnabled && $scope !== self::BASIS_PERSONAL_APPROVED_PURCHASES)
             ? $purchasingUnique
             : 0;
 
         $joiningForPolicy = $joiningRaw;
-        if ($policy === self::DOUBLE_PREVENT_OVERLAP && $joiningEnabled && $purchaseEnabled) {
+        if (
+            $policy === self::DOUBLE_PREVENT_OVERLAP
+            && $joiningEnabled
+            && $purchaseEnabled
+            && $scope !== self::BASIS_PERSONAL_APPROVED_PURCHASES
+        ) {
             // Joining contributes only for directs without a counted purchase.
             $joiningForPolicy = max(0, $registered - $purchasingUnique);
         }
@@ -281,7 +311,7 @@ class LevelIncomeDirectQualification
 
         return [
             'mode' => 'combined',
-            'basis' => self::BASIS_COMBINED_JOINING_AND_PURCHASES,
+            'basis' => self::BASIS_COMBINED_JOINING_AND_PURCHASE,
             'tour_only_qualifies_for_unlock' => $tourOnly,
             'joining_enabled' => $joiningEnabled,
             'purchase_enabled' => $purchaseEnabled,
@@ -298,6 +328,8 @@ class LevelIncomeDirectQualification
             'registered_direct_count' => $registered,
             'purchasing_unique_direct_count' => $purchasingUnique,
             'approved_purchase_row_count' => $purchaseRows,
+            'personal_approved_purchase_count' => $personalPurchaseRows,
+            'personal_income_eligible_purchase_count' => $personalIncomeEligibleRows,
             'total_metric' => $total,
             'formula_note' => $this->combinedFormulaNote($joiningEnabled, $purchaseEnabled, $policy, $scope, $repeat, $joinUnit, $purchaseUnit),
             'requires_business_approval' => true,
@@ -374,6 +406,21 @@ class LevelIncomeDirectQualification
                     self::BASIS_APPROVED_PACKAGE_PURCHASE_COUNT => $tourFlag
                         ? $purchaseCountInclTour
                         : $this->approvedPurchaseCountByDirects($memberId, false, false),
+                    self::BASIS_COMBINED_JOINING_AND_PURCHASE => (int) $this->combinedBreakdown(
+                        $memberId,
+                        new LevelIncomeRuleVersion([
+                            'direct_qualification_basis' => self::BASIS_COMBINED_JOINING_AND_PURCHASE,
+                            'tour_only_qualifies_for_unlock' => $tourFlag,
+                            'combined_joining_enabled' => true,
+                            'combined_purchase_enabled' => true,
+                            'combined_purchase_scope' => self::BASIS_APPROVED_PACKAGE_DIRECTS,
+                            'combined_repeat_purchase_mode' => self::REPEAT_UNIQUE_DIRECTS,
+                            'combined_double_credit_policy' => self::DOUBLE_PREVENT_OVERLAP,
+                            'combined_joining_unit_value' => 1,
+                            'combined_purchase_unit_value' => 1,
+                        ]),
+                        $tourFlag
+                    )['total_metric'],
                     default => $tourFlag
                         ? $this->uniqueDirectsWithApprovedPackages($memberId, true, true)
                         : $incomeEligibleDirects,
@@ -541,6 +588,18 @@ class LevelIncomeDirectQualification
 
         $query = PackagePurchase::query()
             ->whereIn('member_id', $directIds)
+            ->where('status', PackagePurchase::APPROVED)
+            ->whereNotNull('reviewed_at');
+
+        $this->applyPackageTypeFilter($query, $includeTourOnly, $incomeEligibleOnly);
+
+        return (int) $query->count();
+    }
+
+    private function personalApprovedPurchaseCount(string $memberId, bool $includeTourOnly, bool $incomeEligibleOnly): int
+    {
+        $query = PackagePurchase::query()
+            ->where('member_id', $memberId)
             ->where('status', PackagePurchase::APPROVED)
             ->whereNotNull('reviewed_at');
 

@@ -191,10 +191,42 @@ class PublicMemberAuthController extends Controller
         }
 
         if ($memberId === MemberRegistrationService::ADMIN_SPONSOR_ID) {
-            $admin = User::query()->where('is_admin', true)->first();
+            $admin = User::query()
+                ->where('is_admin', true)
+                ->where(function ($query): void {
+                    $query->where('admin_role', User::ADMIN_ROLE_MAIN)
+                        ->orWhereNull('admin_role');
+                })
+                ->where(function ($query): void {
+                    if (Schema::hasColumn('users', 'is_active')) {
+                        $query->where('is_active', true);
+                    }
+                })
+                ->orderBy('id')
+                ->first();
 
             if ($admin && Hash::check($credentials['password'], $admin->password)) {
                 Auth::login($admin, $request->boolean('remember'));
+                $request->session()->regenerate();
+                $request->session()->forget('member_context_id');
+
+                return $this->adminHome($request);
+            }
+        }
+
+        // Sub-Admin (or Main Admin) Login ID on the shared admin/member login field.
+        if ($memberInput !== '' && ! str_contains($memberInput, '@') && Schema::hasColumn('users', 'login_id')) {
+            $byLoginId = User::query()
+                ->where('is_admin', true)
+                ->whereRaw('LOWER(login_id) = ?', [strtolower($memberInput)])
+                ->first();
+
+            if (
+                $byLoginId
+                && app(\App\Services\AdminAccess::class)->isActiveAdmin($byLoginId)
+                && Hash::check($credentials['password'], $byLoginId->password)
+            ) {
+                Auth::login($byLoginId, $request->boolean('remember'));
                 $request->session()->regenerate();
                 $request->session()->forget('member_context_id');
 
@@ -211,6 +243,17 @@ class PublicMemberAuthController extends Controller
                 $request->boolean('remember')
             )
         ) {
+            $authed = $request->user();
+            if (! app(\App\Services\AdminAccess::class)->isActiveAdmin($authed)) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()
+                    ->withErrors(['email' => 'This administrator account is inactive.'])
+                    ->onlyInput('email');
+            }
+
             $request->session()->regenerate();
             $request->session()->forget('member_context_id');
 
@@ -371,6 +414,12 @@ class PublicMemberAuthController extends Controller
     private function adminHome(Request $request): RedirectResponse
     {
         $user = $request->user();
+        $access = app(\App\Services\AdminAccess::class);
+
+        if ($user && Schema::hasColumn('users', 'last_login_at')) {
+            $user->forceFill(['last_login_at' => now()])->save();
+        }
+
         if ($user) {
             AdminActivityLog::query()->create([
                 'user_id' => $user->id,
@@ -378,7 +427,10 @@ class PublicMemberAuthController extends Controller
                 'subject' => 'admin',
                 'format' => null,
                 'scope' => 'admin',
-                'filters' => [],
+                'filters' => [
+                    'admin_role' => $user->admin_role,
+                    'login_id' => $user->login_id,
+                ],
                 'row_count' => 1,
             ]);
         }
@@ -387,7 +439,14 @@ class PublicMemberAuthController extends Controller
             return redirect()->route('admin.change-password.index');
         }
 
-        return redirect()->intended('/dashboard');
+        $home = $access->firstAuthorizedUrl($user) ?? route('admin.access-denied');
+
+        // Sub-Admins land on their first authorized page; do not honor an unauthorized intended URL.
+        if ($access->isSubAdmin($user)) {
+            return redirect()->to($home);
+        }
+
+        return redirect()->intended($home);
     }
 
     private function memberCanAuthenticate(Member $member): bool

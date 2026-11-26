@@ -117,6 +117,13 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
                 'posting_authorized' => (bool) $proposed->posting_authorized,
                 'direct_qualification_basis' => $proposed->direct_qualification_basis,
                 'tour_only_qualifies_for_unlock' => (bool) $proposed->tour_only_qualifies_for_unlock,
+                'combined_joining_enabled' => (bool) ($proposed->combined_joining_enabled ?? false),
+                'combined_purchase_enabled' => (bool) ($proposed->combined_purchase_enabled ?? false),
+                'combined_purchase_scope' => $proposed->combined_purchase_scope,
+                'combined_repeat_purchase_mode' => $proposed->combined_repeat_purchase_mode,
+                'combined_double_credit_policy' => $proposed->combined_double_credit_policy,
+                'combined_joining_unit_value' => (int) ($proposed->combined_joining_unit_value ?? 1),
+                'combined_purchase_unit_value' => (int) ($proposed->combined_purchase_unit_value ?? 1),
             ],
             'policy_comparison' => $policies,
             'applicability_projection' => $applicability,
@@ -245,6 +252,38 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
 
         if ($focus !== null) {
             $this->info('Focus member '.$memberFocus.':');
+            if (isset($focus['impact']) && is_array($focus['impact'])) {
+                $impactRow = $focus['impact'];
+                $breakdown = is_array($impactRow['qualification_breakdown'] ?? null)
+                    ? $impactRow['qualification_breakdown']
+                    : [];
+                $this->table(['Combined / qualification metric', 'Value'], [
+                    ['Mode', (string) ($breakdown['mode'] ?? 'n/a')],
+                    ['Basis', (string) ($breakdown['basis'] ?? ($impactRow['contexts'][LevelIncomeUnlockImpactAnalyzer::CONTEXT_PROPOSED_SIMULATION]['direct_metric_basis'] ?? 'n/a'))],
+                    ['Joining raw / weighted', sprintf('%s / %s', $breakdown['joining_raw'] ?? 0, $breakdown['joining_weighted'] ?? 0)],
+                    ['Purchase raw / weighted', sprintf('%s / %s', $breakdown['purchase_raw'] ?? 0, $breakdown['purchase_weighted'] ?? 0)],
+                    ['Combined total metric', (string) ($breakdown['total_metric'] ?? ($impactRow['counts']['combined_total_metric'] ?? 0))],
+                    ['Double-credit policy', (string) ($breakdown['double_credit_policy'] ?? 'n/a')],
+                    ['Purchase scope / repeat', sprintf('%s / %s', $breakdown['purchase_scope'] ?? 'n/a', $breakdown['repeat_purchase_mode'] ?? 'n/a')],
+                    ['Live / Proposed / Protected', sprintf(
+                        '%d / %d / %d',
+                        (int) $impactRow['live_unlocked_levels'],
+                        (int) $impactRow['proposed_unlocked_levels'],
+                        (int) ($impactRow['protected_unlocked_levels'] ?? 0)
+                    )],
+                    ['Formula note', (string) ($breakdown['formula_note'] ?? '')],
+                ]);
+
+                $lockRows = array_map(static fn (array $level): array => [
+                    (string) $level['level'],
+                    (string) $level['status'],
+                    (string) $level['reason'],
+                ], array_slice($impactRow['level_lock_reasons'] ?? [], 0, 20));
+                if ($lockRows !== []) {
+                    $this->info('Per-level lock reasons (proposed simulation, max 20):');
+                    $this->table(['Level', 'Status', 'Reason'], $lockRows);
+                }
+            }
             $this->line(json_encode($focus, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         }
 
@@ -263,6 +302,8 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
      */
     private function compactRow(array $row): array
     {
+        $breakdown = is_array($row['qualification_breakdown'] ?? null) ? $row['qualification_breakdown'] : [];
+
         return [
             'member_id' => $row['member_id'],
             'registered_directs' => $row['counts']['registered_direct_count'],
@@ -270,6 +311,14 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
             'approved_package_directs' => $row['counts']['approved_package_direct_count'],
             'approved_purchase_count' => $row['counts']['approved_direct_package_purchase_count'],
             'tour_only_directs' => $row['counts']['tour_only_purchasing_direct_count'],
+            'joining_raw' => $row['counts']['joining_raw'] ?? ($breakdown['joining_raw'] ?? null),
+            'joining_credits' => $row['counts']['joining_weighted'] ?? ($breakdown['joining_weighted'] ?? null),
+            'purchase_raw' => $row['counts']['purchase_raw'] ?? ($breakdown['purchase_raw'] ?? null),
+            'purchase_credits' => $row['counts']['purchase_weighted'] ?? ($breakdown['purchase_weighted'] ?? null),
+            'combined_credits' => $row['counts']['combined_total_metric'] ?? ($breakdown['total_metric'] ?? null),
+            'qualification_mode' => $breakdown['mode'] ?? null,
+            'purchase_scope' => $breakdown['purchase_scope'] ?? null,
+            'double_credit_policy' => $breakdown['double_credit_policy'] ?? null,
             'live_unlocked' => $row['live_unlocked_levels'],
             'proposed_unlocked' => $row['proposed_unlocked_levels'],
             'protected_unlocked' => $row['protected_unlocked_levels'] ?? $row['proposed_unlocked_levels'],
@@ -279,6 +328,16 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
             'proposed_personally_activated' => $row['proposed_personally_activated'],
             'delta_reason' => $row['delta_reason'],
             'live_reason' => $row['live_reason'],
+            'locked_levels' => array_values(array_map(
+                static fn (array $level): array => [
+                    'level' => $level['level'],
+                    'reason' => $level['reason'],
+                ],
+                array_filter(
+                    $row['level_lock_reasons'] ?? [],
+                    static fn (array $level): bool => ($level['status'] ?? '') === 'locked'
+                )
+            )),
         ];
     }
 }

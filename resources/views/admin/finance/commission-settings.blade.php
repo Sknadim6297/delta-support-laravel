@@ -202,6 +202,9 @@
                                 <thead>
                                     <tr>
                                         <th>Member</th>
+                                        <th>Joining</th>
+                                        <th>Purchase</th>
+                                        <th>Combined</th>
                                         <th>Current (legacy)</th>
                                         <th>Proposed</th>
                                         <th>Protected</th>
@@ -212,6 +215,9 @@
                                 @foreach ($preview['member_unlock_impact_sample'] as $impactRow)
                                     <tr>
                                         <td>{{ $impactRow['member_id'] }}</td>
+                                        <td>{{ $impactRow['joining_credits'] ?? $impactRow['joining_count'] ?? '—' }}</td>
+                                        <td>{{ $impactRow['purchase_credits'] ?? $impactRow['purchase_count'] ?? '—' }}</td>
+                                        <td>{{ $impactRow['combined_credits'] ?? '—' }}</td>
                                         <td>{{ $impactRow['current_legacy'] }}</td>
                                         <td>{{ $impactRow['proposed'] }}</td>
                                         <td>{{ $impactRow['protected'] }}</td>

@@ -72,7 +72,7 @@
                     </div>
                     <div>
                         <label for="admin-mobile">Mobile No <span>*</span></label>
-                        <input type="text" id="admin-mobile" name="mobile_no" placeholder="Enter Mobile No" value="{{ old('mobile_no') }}" required maxlength="10">
+                        <input type="text" id="admin-mobile" name="mobile_no" placeholder="Enter Mobile No" value="{{ old('mobile_no') }}" required maxlength="10" autocomplete="tel" inputmode="numeric">
                         <div class="validation-message" data-error-for="mobile_no" @unless($errors->has('mobile_no')) hidden @endunless>
                             @error('mobile_no'){{ $message }}@enderror
                         </div>

@@ -93,6 +93,7 @@
 
     @if($purchase->status === \App\Models\PackagePurchase::PENDING)
         <div class="ds-review-actions">
+            @can('admin-perm', 'payments')
             <x-ui.card title="Approve" subtitle="Approve only after the transaction is confirmed outside this application. This activates this purchase and does not credit ROI or commission.">
                 <form class="ds-pay-form" method="POST" action="{{ route('admin.payments.approve', $purchase) }}">
                     @csrf
@@ -107,6 +108,7 @@
                     <button type="submit">Reject payment</button>
                 </form>
             </x-ui.card>
+            @endcan
         </div>
     @endif
 </div>
