@@ -143,6 +143,14 @@ class LevelIncomeRuleResolver
         }
 
         if ($applicability === LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY) {
+            // Business-date gate matches existing_prospective: never apply authorized
+            // rules to accrual dates before effective_from (no backfill semantics).
+            if ($business < $effective) {
+                $base['reason'] = 'Business date is before effective date; legacy rules apply (future_purchases_only).';
+
+                return $base;
+            }
+
             $approval = $this->purchaseApprovalDate($purchase);
             if ($approval === null) {
                 $base['reason'] = 'Purchase has no approval timestamp; legacy rules apply.';
@@ -157,7 +165,7 @@ class LevelIncomeRuleResolver
 
             return array_merge($base, [
                 'mode' => self::MODE_AUTHORIZED,
-                'reason' => 'Purchase approved on/after effective date; authorized version applies (future_purchases_only).',
+                'reason' => 'Business date and purchase approval on/after effective date; authorized version applies (future_purchases_only).',
             ]);
         }
 

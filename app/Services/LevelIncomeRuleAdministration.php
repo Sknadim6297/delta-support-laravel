@@ -214,6 +214,23 @@ class LevelIncomeRuleAdministration
 
             $before = $this->snapshot($locked);
 
+            // Publishing supersedes other published rows. If any version is still
+            // posting-authorized, that would drop live accrual back to legacy without
+            // an explicit revoke — refuse and require revoke first.
+            $liveAuthorized = LevelIncomeRuleVersion::query()
+                ->where('posting_authorized', true)
+                ->where('id', '!=', $locked->id)
+                ->orderByDesc('id')
+                ->first();
+            if ($liveAuthorized !== null) {
+                throw ValidationException::withMessages([
+                    'posting_authorized' => sprintf(
+                        'Cannot publish while version %s is posting-authorized. Revoke posting authorization first, then publish. Publishing would supersede the live authorized version and silently return financial:daily Level Income to hard-coded legacy rules.',
+                        $liveAuthorized->version_code
+                    ),
+                ]);
+            }
+
             LevelIncomeRuleVersion::query()
                 ->where('status', LevelIncomeRuleVersion::STATUS_PUBLISHED)
                 ->where('id', '!=', $locked->id)

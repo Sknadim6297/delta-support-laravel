@@ -225,7 +225,7 @@ class LevelIncomeRuleController extends Controller
 
         return redirect()
             ->route('admin.finance.commission-settings', ['tab' => 'history', 'version' => $version->id])
-            ->with('status', 'Configuration published. Posting remains on legacy hard-coded rules until explicitly authorized.');
+            ->with('status', 'Configuration published. This version is not posting-authorized — financial:daily Level Income stays on hard-coded legacy until explicit authorize. Publish is refused while another version is still posting-authorized (revoke first).');
     }
 
     public function authorizePosting(Request $request, LevelIncomeRuleAdministration $admin): RedirectResponse

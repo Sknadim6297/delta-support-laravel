@@ -47,7 +47,7 @@ class FinancialCutoverConcurrencyTest extends TestCase
             }
             $this->assertFalse($published->fresh()->posting_authorized);
         } finally {
-            $dateLock->releaseAll([$held]);
+            $dateLock->releaseAll($held);
         }
 
         $authorized = $service->authorizePosting($published->fresh(), $admin, true, null, true);
@@ -76,7 +76,7 @@ class FinancialCutoverConcurrencyTest extends TestCase
                 $this->assertArrayHasKey('financial_lock', $e->errors());
             }
         } finally {
-            $dateLock->releaseAll([$held]);
+            $dateLock->releaseAll($held);
         }
 
         $result = app(LevelIncomeUnlockGrandfathering::class)
@@ -92,11 +92,43 @@ class FinancialCutoverConcurrencyTest extends TestCase
         $first = $dateLock->acquireForExecution('2026-12-01');
         try {
             $this->expectException(\RuntimeException::class);
-            $this->expectExceptionMessage('already running');
             $dateLock->acquireForExecution('2026-12-01');
         } finally {
-            $dateLock->releaseAll([$first]);
+            $dateLock->releaseAll($first);
         }
+    }
+
+    public function test_cross_date_financial_run_blocks_authorize_via_rule_guard(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-28 00:05:00', 'Asia/Kolkata'));
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(LevelIncomeRuleAdministration::class);
+        $dateLock = app(FinancialBusinessDateLock::class);
+
+        $draft = $service->cloneAsDraft(
+            LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $draft->forceFill(['grandfather_existing_unlock' => false])->save();
+        $published = $service->publish($draft, $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
+            'effective_from' => '2026-11-28',
+        ]);
+
+        // Historical / other-date financial run must still block authorize (global rule guard).
+        $held = $dateLock->acquireForExecution('2026-10-01');
+        try {
+            try {
+                $service->authorizePosting($published->fresh(), $admin, true);
+                $this->fail('Expected ValidationException while cross-date financial lock is held');
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('financial_lock', $e->errors());
+            }
+        } finally {
+            $dateLock->releaseAll($held);
+        }
+
+        Carbon::setTestNow();
     }
 
     public function test_expired_or_released_lock_allows_subsequent_authorize(): void
@@ -119,9 +151,9 @@ class FinancialCutoverConcurrencyTest extends TestCase
         $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-28');
 
         $held = $dateLock->acquireForExecution('2026-11-28');
-        $dateLock->releaseAll([$held]);
+        $dateLock->releaseAll($held);
         // Second release must not throw (safe unlock after expiry/release).
-        $dateLock->releaseAll([$held]);
+        $dateLock->releaseAll($held);
 
         $authorized = $service->authorizePosting($published->fresh(), $admin, true, null, true);
         $this->assertTrue($authorized->posting_authorized);
@@ -155,8 +187,8 @@ class FinancialCutoverConcurrencyTest extends TestCase
         }
 
         // Locks must have been released so financial execution can proceed.
-        $lock = $dateLock->acquireForExecution('2026-11-28');
-        $dateLock->releaseAll([$lock]);
+        $locks = $dateLock->acquireForExecution('2026-11-28');
+        $dateLock->releaseAll($locks);
         $this->assertTrue(true);
 
         Carbon::setTestNow();
@@ -181,7 +213,7 @@ class FinancialCutoverConcurrencyTest extends TestCase
         // Dry-run should not acquire the exclusive execution lock.
         $accrual->runControlled('2026-12-02', true);
         $held = $dateLock->acquireForExecution('2026-12-02');
-        $dateLock->releaseAll([$held]);
+        $dateLock->releaseAll($held);
         $this->assertTrue(true);
     }
 
@@ -189,6 +221,7 @@ class FinancialCutoverConcurrencyTest extends TestCase
     {
         $dateLock = app(FinancialBusinessDateLock::class);
         $this->assertSame('package-income-2026-11-28', $dateLock->key('2026-11-28'));
+        $this->assertSame(FinancialBusinessDateLock::RULE_GUARD_KEY, $dateLock->ruleGuardKey());
         $this->assertGreaterThanOrEqual(3600, $dateLock->ttlSeconds());
         // PHPUnit forces CACHE_STORE=array; production .env defaults to database (atomic locks).
         $this->assertTrue(in_array(config('cache.default'), ['database', 'redis', 'memcached', 'dynamodb', 'file', 'array'], true));

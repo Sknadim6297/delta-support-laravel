@@ -8,16 +8,20 @@ use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
- * Shared exclusive lock for one Asia/Kolkata business-date financial execution.
+ * Shared exclusive locks for financial execution and Level Income rule mutations.
  *
- * Key format matches legacy PackageIncomeAccrual locks: package-income-{YYYY-MM-DD}.
- * Used by financial plan+credit AND Level Income authorize/revoke/capture so rule
- * mutations cannot interleave with an active financial run for a conflicting date.
+ * Per-date key: package-income-{YYYY-MM-DD} (legacy-compatible).
+ * Global rule guard: level-income-posting-rules — serializes authorize/revoke/capture
+ * with ANY non-dry financial plan+credit so cross-date recovery cannot observe a
+ * mid-run authorization flip.
  *
- * Time-based schedule guards remain separate; this lock is the mutual-exclusion guarantee.
+ * Acquisition order (deadlock-safe): global rule guard first, then sorted date locks.
+ * Time-based schedule guards remain separate; these locks are the mutual-exclusion guarantee.
  */
 class FinancialBusinessDateLock
 {
+    public const RULE_GUARD_KEY = 'level-income-posting-rules';
+
     public function businessTimezone(): string
     {
         return (string) config('deltasupport.package_income.timezone', 'Asia/Kolkata');
@@ -33,29 +37,57 @@ class FinancialBusinessDateLock
         return 'package-income-'.$businessDate;
     }
 
+    public function ruleGuardKey(): string
+    {
+        return self::RULE_GUARD_KEY;
+    }
+
     public function make(string $businessDate): Lock
     {
         return Cache::lock($this->key($businessDate), $this->ttlSeconds());
     }
 
+    public function makeRuleGuard(): Lock
+    {
+        return Cache::lock($this->ruleGuardKey(), $this->ttlSeconds());
+    }
+
     /**
-     * Non-blocking acquire for financial execution. Caller must release in finally.
+     * Non-blocking acquire for financial execution: rule guard + business-date lock.
+     * Caller must releaseAll() in finally and refreshOwned() during long runs.
+     *
+     * @return list<Lock>
      *
      * @throws RuntimeException
      */
-    public function acquireForExecution(string $businessDate): Lock
+    public function acquireForExecution(string $businessDate): array
     {
-        $lock = $this->make($businessDate);
-        if (! $lock->get()) {
-            throw new RuntimeException('Package income for '.$businessDate.' is already running.');
+        $locks = [];
+        try {
+            $guard = $this->makeRuleGuard();
+            if (! $guard->get()) {
+                throw new RuntimeException(
+                    'Package income for '.$businessDate.' cannot start: Level Income rule mutation or another financial run holds '.$this->ruleGuardKey().'.'
+                );
+            }
+            $locks[] = $guard;
+
+            $dateLock = $this->make($businessDate);
+            if (! $dateLock->get()) {
+                throw new RuntimeException('Package income for '.$businessDate.' is already running.');
+            }
+            $locks[] = $dateLock;
+        } catch (\Throwable $e) {
+            $this->releaseAll($locks);
+            throw $e;
         }
 
-        return $lock;
+        return $locks;
     }
 
     /**
      * Acquire exclusive locks for rule mutation (authorize/revoke/capture).
-     * Dates are sorted to keep a stable global order and avoid multi-date deadlocks.
+     * Global rule guard first, then sorted business dates.
      *
      * @param  list<string>  $businessDates
      * @return list<Lock>
@@ -70,12 +102,20 @@ class FinancialBusinessDateLock
         ))));
         sort($dates);
 
-        if ($dates === []) {
-            return [];
-        }
-
         $locks = [];
         try {
+            $guard = $this->makeRuleGuard();
+            if (! $guard->get()) {
+                throw ValidationException::withMessages([
+                    'financial_lock' => sprintf(
+                        'Cannot %s while a financial run or another rule mutation is active (shared lock %s). Wait for that work to finish, then retry. Do not authorize after the effective date cycle has already succeeded.',
+                        $action,
+                        $this->ruleGuardKey()
+                    ),
+                ]);
+            }
+            $locks[] = $guard;
+
             foreach ($dates as $date) {
                 $lock = $this->make($date);
                 if (! $lock->get()) {
@@ -96,6 +136,33 @@ class FinancialBusinessDateLock
         }
 
         return $locks;
+    }
+
+    /**
+     * Extend ownership so TTL expiry cannot silently allow overlapping writers.
+     *
+     * @param  list<Lock>  $locks
+     *
+     * @throws RuntimeException
+     */
+    public function refreshOwned(array $locks): void
+    {
+        foreach ($locks as $lock) {
+            try {
+                $ok = $lock->refresh($this->ttlSeconds());
+            } catch (\Throwable $e) {
+                throw new RuntimeException(
+                    'Financial lock refresh is unsupported or failed ('.$e->getMessage().'). Aborting to avoid overlapping writes.',
+                    0,
+                    $e
+                );
+            }
+            if ($ok !== true) {
+                throw new RuntimeException(
+                    'Financial lock ownership was lost (TTL expiry or steal). Aborting to avoid overlapping wallet writes.'
+                );
+            }
+        }
     }
 
     /**

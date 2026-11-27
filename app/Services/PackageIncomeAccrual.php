@@ -290,12 +290,15 @@ class PackageIncomeAccrual
             ];
         }
 
-        // Hold the shared business-date lock across plan + credit so Level Income
-        // authorize/revoke/capture cannot change posting rules mid-run.
-        $lock = $this->businessDateLock->acquireForExecution($date->toDateString());
+        // Rule guard + business-date lock across plan + credit so Level Income
+        // authorize/revoke/capture cannot change posting rules mid-run (any date).
+        $locks = $this->businessDateLock->acquireForExecution($date->toDateString());
 
         try {
             $this->levelRules->clearCache();
+            // Freeze authorized snapshot for this process before planning.
+            $this->levelRules->authorizedVersion();
+            $this->businessDateLock->refreshOwned($locks);
             $plan = $this->plan($date, $constrain);
             if ($excludeTour) {
                 // Defense in depth for historical recovery only. Daily path may still post Tour when authorized.
@@ -310,28 +313,38 @@ class PackageIncomeAccrual
                 ));
             }
 
+            // Re-assert ownership after planning and before the first wallet write.
+            $this->businessDateLock->refreshOwned($locks);
+
             $creditRoi = $controls->enabled('roi_wallet_crediting_enabled');
             $creditLevel = $controls->enabled('level_wallet_crediting_enabled');
             $roi = 0;
             $commissions = 0;
             $postedRoiAmount = '0.0000';
             $postedCommissionAmount = '0.0000';
+            $chunk = max(1, (int) config('deltasupport.package_income.chunk_size', 100));
             if ($calculateRoi) {
-                foreach ($plan['roi'] as $row) {
-                    if ($this->creditRoi($row, $roiReason, $creditRoi, false)) {
-                        $roi++;
-                        if ($creditRoi) {
-                            $postedRoiAmount = bcadd($postedRoiAmount, (string) $row['amount'], 4);
+                foreach (array_chunk($plan['roi'], $chunk) as $rows) {
+                    $this->businessDateLock->refreshOwned($locks);
+                    foreach ($rows as $row) {
+                        if ($this->creditRoi($row, $roiReason, $creditRoi, false)) {
+                            $roi++;
+                            if ($creditRoi) {
+                                $postedRoiAmount = bcadd($postedRoiAmount, (string) $row['amount'], 4);
+                            }
                         }
                     }
                 }
             }
             if ($calculateLevel) {
-                foreach ($plan['commissions'] as $row) {
-                    if ($this->creditCommission($row, $commissionReason, $creditLevel, false)) {
-                        $commissions++;
-                        if ($creditLevel) {
-                            $postedCommissionAmount = bcadd($postedCommissionAmount, (string) $row['amount'], 4);
+                foreach (array_chunk($plan['commissions'], $chunk) as $rows) {
+                    $this->businessDateLock->refreshOwned($locks);
+                    foreach ($rows as $row) {
+                        if ($this->creditCommission($row, $commissionReason, $creditLevel, false)) {
+                            $commissions++;
+                            if ($creditLevel) {
+                                $postedCommissionAmount = bcadd($postedCommissionAmount, (string) $row['amount'], 4);
+                            }
                         }
                     }
                 }
@@ -348,7 +361,7 @@ class PackageIncomeAccrual
                 'commissions' => $plan['commissions'],
             ];
         } finally {
-            $this->businessDateLock->releaseAll([$lock]);
+            $this->businessDateLock->releaseAll($locks);
         }
     }
 
@@ -364,15 +377,20 @@ class PackageIncomeAccrual
             throw new RuntimeException('Package income generation is disabled. No wallet was credited.');
         }
 
-        $lock = $this->businessDateLock->acquireForExecution($businessDate);
+        $locks = $this->businessDateLock->acquireForExecution($businessDate);
 
         try {
             $this->levelRules->clearCache();
+            $this->levelRules->authorizedVersion();
+            $this->businessDateLock->refreshOwned($locks);
             $plan = $this->plan($this->date($businessDate));
+            // Re-assert ownership after planning and before the first wallet write.
+            $this->businessDateLock->refreshOwned($locks);
             $roi = 0;
             $commissions = 0;
             $chunk = max(1, (int) config('deltasupport.package_income.chunk_size', 100));
             foreach (array_chunk($plan['roi'], $chunk) as $rows) {
+                $this->businessDateLock->refreshOwned($locks);
                 foreach ($rows as $row) {
                     if ($this->creditRoi($row)) {
                         $roi++;
@@ -380,6 +398,7 @@ class PackageIncomeAccrual
                 }
             }
             foreach (array_chunk($plan['commissions'], $chunk) as $rows) {
+                $this->businessDateLock->refreshOwned($locks);
                 foreach ($rows as $row) {
                     if ($this->creditCommission($row)) {
                         $commissions++;
@@ -393,7 +412,7 @@ class PackageIncomeAccrual
                 'skipped' => $plan['skipped'],
             ];
         } finally {
-            $this->businessDateLock->releaseAll([$lock]);
+            $this->businessDateLock->releaseAll($locks);
         }
     }
 
@@ -407,24 +426,36 @@ class PackageIncomeAccrual
     public function accruePurchases(string $businessDate, array $purchaseIds): array
     {
         $purchaseIds = $this->assertLocalPurchases($purchaseIds);
-        $lock = $this->businessDateLock->acquireForExecution($businessDate);
+        $locks = $this->businessDateLock->acquireForExecution($businessDate);
 
         try {
             $this->levelRules->clearCache();
+            $this->levelRules->authorizedVersion();
+            $this->businessDateLock->refreshOwned($locks);
             $plan = $this->plan($this->date($businessDate), function ($query) use ($purchaseIds): void {
                 $query->whereIn('id', $purchaseIds);
             });
             $this->assertPlannedRows($plan, $purchaseIds);
+            // Re-assert ownership after planning and before the first wallet write.
+            $this->businessDateLock->refreshOwned($locks);
+
             $roi = 0;
             $commissions = 0;
-            foreach ($plan['roi'] as $row) {
-                if ($this->creditRoi($row, 'Local test package ROI accrual')) {
-                    $roi++;
+            $chunk = max(1, (int) config('deltasupport.package_income.chunk_size', 100));
+            foreach (array_chunk($plan['roi'], $chunk) as $rows) {
+                $this->businessDateLock->refreshOwned($locks);
+                foreach ($rows as $row) {
+                    if ($this->creditRoi($row, 'Local test package ROI accrual')) {
+                        $roi++;
+                    }
                 }
             }
-            foreach ($plan['commissions'] as $row) {
-                if ($this->creditCommission($row, 'Local test package level commission accrual')) {
-                    $commissions++;
+            foreach (array_chunk($plan['commissions'], $chunk) as $rows) {
+                $this->businessDateLock->refreshOwned($locks);
+                foreach ($rows as $row) {
+                    if ($this->creditCommission($row, 'Local test package level commission accrual')) {
+                        $commissions++;
+                    }
                 }
             }
 
@@ -434,7 +465,7 @@ class PackageIncomeAccrual
                 'skipped' => $plan['skipped'],
             ];
         } finally {
-            $this->businessDateLock->releaseAll([$lock]);
+            $this->businessDateLock->releaseAll($locks);
         }
     }
 

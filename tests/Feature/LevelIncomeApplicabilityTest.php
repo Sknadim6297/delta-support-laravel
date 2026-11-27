@@ -306,11 +306,22 @@ class LevelIncomeApplicabilityTest extends TestCase
         $this->assertTrue(app(FinancialControls::class)->emergencyStopped());
 
         $service = app(LevelIncomeRuleAdministration::class);
-        $clone = $service->cloneAsDraft(
-            LevelIncomeRuleVersion::query()->where('posting_authorized', true)->firstOrFail(),
-            $admin
-        );
-        $published = $service->publish($clone, $admin, [
+        $live = LevelIncomeRuleVersion::query()->where('posting_authorized', true)->firstOrFail();
+        $clone = $service->cloneAsDraft($live, $admin);
+
+        // Publish is refused while another version remains posting-authorized.
+        try {
+            $service->publish($clone, $admin, [
+                'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
+                'effective_from' => '2026-12-01',
+            ]);
+            $this->fail('Expected publish block while authorized version exists');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('posting_authorized', $e->errors());
+        }
+
+        $service->revokePostingAuthorization($live->fresh(), $admin);
+        $published = $service->publish($clone->fresh(), $admin, [
             'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
             'effective_from' => '2026-12-01',
         ]);
@@ -338,7 +349,7 @@ class LevelIncomeApplicabilityTest extends TestCase
             ->assertSeeText('Financial authorization');
     }
 
-    public function test_version_change_revokes_prior_authorization(): void
+    public function test_version_change_requires_revoke_before_publish_then_authorize(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $service = app(LevelIncomeRuleAdministration::class);
@@ -349,7 +360,23 @@ class LevelIncomeApplicabilityTest extends TestCase
         $this->assertTrue($first->fresh()->posting_authorized);
 
         $secondDraft = $service->cloneAsDraft($first, $admin);
-        $second = $service->publish($secondDraft, $admin, [
+        try {
+            $service->publish($secondDraft, $admin, [
+                'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
+                'effective_from' => '2026-12-01',
+            ]);
+            $this->fail('Expected publish to refuse while first version is posting-authorized');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('posting_authorized', $e->errors());
+        }
+        $this->assertTrue($first->fresh()->posting_authorized);
+        $this->assertSame($first->id, app(LevelIncomeRuleResolver::class)->authorizedVersion()?->id);
+
+        $service->revokePostingAuthorization($first->fresh(), $admin);
+        app(LevelIncomeRuleResolver::class)->clearCache();
+        $this->assertNull(app(LevelIncomeRuleResolver::class)->authorizedVersion());
+
+        $second = $service->publish($secondDraft->fresh(), $admin, [
             'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
             'effective_from' => '2026-12-01',
         ]);
@@ -360,6 +387,27 @@ class LevelIncomeApplicabilityTest extends TestCase
         $this->assertTrue($authorized->posting_authorized);
         $this->assertFalse($first->fresh()->posting_authorized);
         $this->assertSame($authorized->id, app(LevelIncomeRuleResolver::class)->authorizedVersion()?->id);
+    }
+
+    public function test_future_purchases_only_keeps_legacy_before_effective_business_date(): void
+    {
+        $version = $this->publishAndAuthorize(
+            LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
+            '2026-11-15'
+        );
+        $this->assertTrue($version->posting_authorized);
+
+        $buyer = $this->member('STAPP91', 'ST666666');
+        // Approved after effective_from, but accrual business date is still before effective.
+        $purchase = $this->purchase($buyer, $this->package(), '2026-11-20 06:00:00');
+
+        $resolver = app(LevelIncomeRuleResolver::class);
+        $this->assertFalse($resolver->usesAuthorizedConfiguration($purchase, '2026-11-14'));
+        $this->assertTrue($resolver->usesAuthorizedConfiguration($purchase, '2026-11-15'));
+        $this->assertSame(
+            'Business date is before effective date; legacy rules apply (future_purchases_only).',
+            $resolver->postingContextFor($purchase, '2026-11-14')['reason']
+        );
     }
 
     private function publishAndAuthorize(string $applicability, string $effectiveFrom, bool $confirmExistingProspective = false): LevelIncomeRuleVersion
