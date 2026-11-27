@@ -32,6 +32,12 @@ class LevelIncomeUnlockGrandfathering
 
     public const CAPTURE_MODE_PRE_CUTOVER_CURRENT = 'pre_cutover_current';
 
+    /** @var list<string> */
+    public const KNOWN_CAPTURE_MODES = [
+        self::CAPTURE_MODE_AS_OF_TRANSITION,
+        self::CAPTURE_MODE_PRE_CUTOVER_CURRENT,
+    ];
+
     public function __construct(
         private readonly LevelIncomeRuleResolver $resolver,
     ) {
@@ -40,6 +46,31 @@ class LevelIncomeUnlockGrandfathering
     private function eligibility(): ReferralLevelEligibility
     {
         return app(ReferralLevelEligibility::class);
+    }
+
+    public function businessTimezone(): string
+    {
+        return (string) config('deltasupport.package_income.timezone', 'Asia/Kolkata');
+    }
+
+    public function scheduleTime(): string
+    {
+        return (string) config('deltasupport.package_income.schedule_time', '00:10');
+    }
+
+    public function businessNow(): CarbonImmutable
+    {
+        return CarbonImmutable::now($this->businessTimezone());
+    }
+
+    public function businessToday(): string
+    {
+        return $this->businessNow()->toDateString();
+    }
+
+    public function isKnownCaptureMode(?string $mode): bool
+    {
+        return is_string($mode) && in_array($mode, self::KNOWN_CAPTURE_MODES, true);
     }
 
     public function isEnabled(?LevelIncomeRuleVersion $version): bool
@@ -177,14 +208,34 @@ class LevelIncomeUnlockGrandfathering
             ]);
         }
 
-        $transitionDate = CarbonImmutable::parse($transitionDate)->toDateString();
-        $today = CarbonImmutable::now()->toDateString();
+        $transitionDate = CarbonImmutable::parse($transitionDate, $this->businessTimezone())->toDateString();
+        $today = $this->businessToday();
+        $nowBiz = $this->businessNow();
         $captureMode = $transitionDate > $today
             ? self::CAPTURE_MODE_PRE_CUTOVER_CURRENT
             : self::CAPTURE_MODE_AS_OF_TRANSITION;
-        $captureNote = $captureMode === self::CAPTURE_MODE_PRE_CUTOVER_CURRENT
-            ? 'Pre-cutover freeze of current legacy eligibility for a future transition date. Not an exact future-date reconstruction. Recapture on/after the transition date before authorize when possible.'
-            : 'Legacy eligibility reconstructed as of end-of-day transition date (members and approved purchases on/before that date).';
+        if ($captureMode === self::CAPTURE_MODE_PRE_CUTOVER_CURRENT) {
+            $captureNote = sprintf(
+                'Pre-cutover freeze of current legacy eligibility (%s) for future transition %s. Not an exact future end-of-day snapshot. Recapture on the transition business date before schedule_time %s when possible.',
+                $this->businessTimezone(),
+                $transitionDate,
+                $this->scheduleTime()
+            );
+        } elseif ($transitionDate === $today) {
+            $captureNote = sprintf(
+                'Open business-day freeze as of capture instant (%s %s). Reconstructs members/approvals on/before this instant for transition %s — not a complete Asia/Kolkata end-of-day state. Authorize only before financial schedule_time %s on the effective date, after last succeeded business date is earlier than effective_from.',
+                $nowBiz->toDateTimeString(),
+                $this->businessTimezone(),
+                $transitionDate,
+                $this->scheduleTime()
+            );
+        } else {
+            $captureNote = sprintf(
+                'Legacy eligibility reconstructed as of end-of-day %s (%s). Members and approved purchases on/before that instant are included.',
+                $transitionDate,
+                $this->businessTimezone()
+            );
+        }
 
         $before = [
             'grandfather_captured_at' => optional($version->grandfather_captured_at)?->toIso8601String(),
@@ -234,9 +285,11 @@ class LevelIncomeUnlockGrandfathering
                     $memberId = (string) $member->member_id;
 
                     if ($asOf !== null) {
-                        // Member must exist as of transition date.
+                        // Member must exist as of transition business date (Asia/Kolkata).
                         if ($member->created_at !== null
-                            && CarbonImmutable::parse($member->created_at)->toDateString() > $asOf) {
+                            && CarbonImmutable::parse($member->created_at)
+                                ->timezone($this->businessTimezone())
+                                ->toDateString() > $asOf) {
                             continue;
                         }
                         $incomeEligible = $this->eligibility()->qualifyingDirectCountAsOf($memberId, $asOf);
@@ -326,8 +379,10 @@ class LevelIncomeUnlockGrandfathering
         $enabled = $this->isEnabled($version);
         $captured = $this->hasCapture($version);
         $transition = optional($version->grandfather_transition_date)?->toDateString();
-        $mode = (string) ($version->grandfather_capture_mode ?? '');
-        $today = CarbonImmutable::now()->toDateString();
+        $rawMode = $version->grandfather_capture_mode;
+        $mode = is_string($rawMode) ? trim($rawMode) : '';
+        $today = $this->businessToday();
+        $now = $this->businessNow();
 
         $reasons = [];
         $newMembers = 0;
@@ -346,6 +401,9 @@ class LevelIncomeUnlockGrandfathering
                 'changed_legacy_count' => 0,
                 'capture_mode' => $mode !== '' ? $mode : null,
                 'transition_date' => $transition,
+                'business_timezone' => $this->businessTimezone(),
+                'business_today' => $today,
+                'schedule_time' => $this->scheduleTime(),
                 'reasons' => $enabled && ! $captured
                     ? ['Grandfathering enabled but baseline not captured.']
                     : [],
@@ -353,9 +411,57 @@ class LevelIncomeUnlockGrandfathering
             ];
         }
 
+        // Fail closed: legacy/pre-patch baselines with NULL/empty/unknown mode are never fresh.
+        if (! $this->isKnownCaptureMode($mode !== '' ? $mode : null)) {
+            return [
+                'enabled' => true,
+                'captured' => true,
+                'is_fresh' => false,
+                'requires_recapture' => true,
+                'requires_pre_cutover_ack' => false,
+                'new_members_since_capture' => 0,
+                'changed_legacy_count' => 0,
+                'capture_mode' => $mode !== '' ? $mode : null,
+                'transition_date' => $transition,
+                'business_timezone' => $this->businessTimezone(),
+                'business_today' => $today,
+                'schedule_time' => $this->scheduleTime(),
+                'reasons' => [
+                    sprintf(
+                        'Capture mode is %s. Legacy or unrecognized baselines are not considered fresh. Recapture is required before authorization. Existing snapshot rows are preserved until an unauthorized recapture replaces them; acknowledgment cannot bypass this guard.',
+                        $mode === '' ? 'missing (NULL/empty)' : '"'.$mode.'" (unrecognized)'
+                    ),
+                ],
+                'post_authorize_cutover_policy' => $this->postAuthorizeCutoverPolicy(),
+            ];
+        }
+
         if ($mode === self::CAPTURE_MODE_PRE_CUTOVER_CURRENT && $today >= $transition) {
             $requiresRecapture = true;
-            $reasons[] = 'Pre-cutover current baseline is stale: transition date has arrived. Recapture as-of the transition date before authorizing.';
+            $reasons[] = sprintf(
+                'Pre-cutover current baseline is stale on business date %s (%s): transition %s has arrived. Recapture as-of the transition date before authorizing.',
+                $today,
+                $this->businessTimezone(),
+                $transition
+            );
+        }
+
+        // Same-day as-of after schedule_time, before that business date has succeeded → concurrency risk with financial:daily.
+        if ($mode === self::CAPTURE_MODE_AS_OF_TRANSITION
+            && $transition === $today
+            && $now->format('H:i') >= $this->scheduleTime()
+        ) {
+            $lastSucceeded = $this->lastSucceededBusinessDate();
+            if ($lastSucceeded === null || $lastSucceeded < $transition) {
+                $requiresRecapture = true;
+                $reasons[] = sprintf(
+                    'Open-day as-of baseline for %s is unsafe after schedule_time %s %s while that business date has not succeeded yet. Recapture/authorize only before %s on the effective date, or after the cycle for that date has completed.',
+                    $transition,
+                    $this->scheduleTime(),
+                    $this->businessTimezone(),
+                    $this->scheduleTime()
+                );
+            }
         }
 
         $capturedAt = $version->grandfather_captured_at;
@@ -443,6 +549,9 @@ class LevelIncomeUnlockGrandfathering
             'changed_legacy_count' => $changedLegacy,
             'capture_mode' => $mode !== '' ? $mode : null,
             'transition_date' => $transition,
+            'business_timezone' => $this->businessTimezone(),
+            'business_today' => $today,
+            'schedule_time' => $this->scheduleTime(),
             'reasons' => array_values(array_unique($reasons)),
             'post_authorize_cutover_policy' => $this->postAuthorizeCutoverPolicy(),
         ];
@@ -454,6 +563,13 @@ class LevelIncomeUnlockGrandfathering
     public function postAuthorizeCutoverPolicy(): array
     {
         return [
+            'business_timezone' => $this->businessTimezone(),
+            'schedule_time' => $this->scheduleTime(),
+            'cutover_boundary' => sprintf(
+                'Authorize only after last succeeded business date < effective_from, and before financial:daily at %s %s on effective_from. Capture modes NULL/empty/unknown always require recapture. Pre-cutover freezes are not end-of-day reconstructions.',
+                $this->scheduleTime(),
+                $this->businessTimezone()
+            ),
             'new_members_after_capture' => 'Use proposed Option B unlock only (no grandfather floor).',
             'legacy_eligibility_lost' => 'Protection shrinks via min(snapshot, current_legacy); never preserves unlock after legacy eligibility is lost.',
             'legacy_eligibility_gained' => 'Snapshot floor does not increase; proposed rules may grant higher unlock independently.',
@@ -537,6 +653,7 @@ class LevelIncomeUnlockGrandfathering
         }
 
         $this->assertEffectiveDateNotRetroactive($version);
+        $this->assertScheduleCutoverWindowSafe($version);
     }
 
     /**
@@ -559,6 +676,43 @@ class LevelIncomeUnlockGrandfathering
                 ),
             ]);
         }
+    }
+
+    /**
+     * Block authorization when today's scheduled financial cycle for effective_from may already be running.
+     *
+     * @throws ValidationException
+     */
+    public function assertScheduleCutoverWindowSafe(LevelIncomeRuleVersion $version): void
+    {
+        $effective = optional($version->effective_from)?->toDateString();
+        if ($effective === null) {
+            return;
+        }
+
+        $now = $this->businessNow();
+        if ($effective !== $now->toDateString()) {
+            return;
+        }
+
+        if ($now->format('H:i') < $this->scheduleTime()) {
+            return;
+        }
+
+        $lastSucceeded = $this->lastSucceededBusinessDate();
+        if ($lastSucceeded !== null && $lastSucceeded >= $effective) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'effective_from' => sprintf(
+                'Cannot authorize while business date %s has reached schedule_time %s %s and that date has not yet succeeded. This avoids concurrent rule changes during financial:daily. Authorize before %s on the effective date (after the previous business date has succeeded), or after the cycle for the effective date completes.',
+                $effective,
+                $this->scheduleTime(),
+                $this->businessTimezone(),
+                $this->scheduleTime()
+            ),
+        ]);
     }
 
     public function currentLegacyUnlock(string $memberId): int

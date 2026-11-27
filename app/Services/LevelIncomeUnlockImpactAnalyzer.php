@@ -37,16 +37,100 @@ class LevelIncomeUnlockImpactAnalyzer
     ) {
     }
 
-    public function proposedVersion(): ?LevelIncomeRuleVersion
+    /**
+     * Resolve the diagnostic/simulation candidate version.
+     *
+     * Default order:
+     * 1) Explicit version_code when provided
+     * 2) Latest published candidate with future_purchases_only / existing_prospective
+     * 3) Seeded Option B draft proposed_activation_unlock_v1
+     *
+     * @return array{version: ?LevelIncomeRuleVersion, selection: string, requested: ?string}
+     */
+    public function resolveCandidateVersion(?string $versionCode = null): array
     {
         if (! Schema::hasTable('level_income_rule_versions')) {
-            return null;
+            return ['version' => null, 'selection' => 'unavailable', 'requested' => $versionCode];
         }
 
-        return LevelIncomeRuleVersion::query()
+        if ($versionCode !== null && trim($versionCode) !== '') {
+            $explicit = LevelIncomeRuleVersion::query()
+                ->with('bands')
+                ->where('version_code', trim($versionCode))
+                ->first();
+
+            return [
+                'version' => $explicit,
+                'selection' => $explicit === null ? 'explicit_missing' : 'explicit_rule_version',
+                'requested' => trim($versionCode),
+            ];
+        }
+
+        $publishedCandidate = LevelIncomeRuleVersion::query()
+            ->with('bands')
+            ->where('status', LevelIncomeRuleVersion::STATUS_PUBLISHED)
+            ->whereIn('applicability', [
+                LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
+                LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            ])
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($publishedCandidate !== null) {
+            return [
+                'version' => $publishedCandidate,
+                'selection' => 'latest_published_candidate',
+                'requested' => null,
+            ];
+        }
+
+        $draftOptionB = LevelIncomeRuleVersion::query()
             ->with('bands')
             ->where('version_code', 'proposed_activation_unlock_v1')
             ->first();
+
+        return [
+            'version' => $draftOptionB,
+            'selection' => $draftOptionB === null ? 'none' : 'seeded_option_b_draft_fallback',
+            'requested' => null,
+        ];
+    }
+
+    public function proposedVersion(?string $versionCode = null): ?LevelIncomeRuleVersion
+    {
+        return $this->resolveCandidateVersion($versionCode)['version'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function versionSources(?LevelIncomeRuleVersion $candidate = null): array
+    {
+        $authorized = $this->resolver->authorizedVersion();
+        $grandfather = app(LevelIncomeUnlockGrandfathering::class);
+
+        return [
+            'published_candidate' => $candidate === null ? null : [
+                'version_code' => $candidate->version_code,
+                'status' => $candidate->status,
+                'applicability' => $candidate->applicability,
+                'effective_from' => optional($candidate->effective_from)?->toDateString(),
+                'posting_authorized' => (bool) $candidate->posting_authorized,
+                'grandfather_existing_unlock' => (bool) ($candidate->grandfather_existing_unlock ?? false),
+                'grandfather_summary' => $grandfather->versionSummary($candidate),
+            ],
+            'authorized_runtime' => $authorized === null ? null : [
+                'version_code' => $authorized->version_code,
+                'applicability' => $authorized->applicability,
+                'effective_from' => optional($authorized->effective_from)?->toDateString(),
+                'posting_authorized' => true,
+            ],
+            'hardcoded_legacy' => [
+                'source' => 'ReferralLevelEligibility / CommissionPlan legacy ladder',
+                'note' => 'Used when no posting-authorized version applies for the purchase/business date.',
+            ],
+        ];
     }
 
     /**

@@ -187,12 +187,12 @@ class ReferralLevelEligibility
     }
 
     /**
-     * Income-eligible unique directs as of end-of-day $asOfDate (inclusive).
-     * Directs must exist by that date; qualifying purchases must be approved by that date.
+     * Income-eligible unique directs as of end-of-day $asOfDate (inclusive) in the
+     * package-income business timezone (Asia/Kolkata).
      */
     public function qualifyingDirectCountAsOf(string $memberId, string $asOfDate): int
     {
-        $asOfEnd = \Carbon\CarbonImmutable::parse($asOfDate)->endOfDay();
+        $asOfEnd = $this->businessAsOfEnd($asOfDate);
 
         return Member::query()
             ->where('sponsor_id', $memberId)
@@ -206,7 +206,7 @@ class ReferralLevelEligibility
 
     public function directCountAsOf(string $memberId, string $asOfDate): int
     {
-        $asOfEnd = \Carbon\CarbonImmutable::parse($asOfDate)->endOfDay();
+        $asOfEnd = $this->businessAsOfEnd($asOfDate);
 
         return Member::query()
             ->where('sponsor_id', $memberId)
@@ -217,7 +217,7 @@ class ReferralLevelEligibility
 
     public function isPersonallyActivatedAsOf(string $memberId, string $asOfDate): bool
     {
-        $asOfEnd = \Carbon\CarbonImmutable::parse($asOfDate)->endOfDay();
+        $asOfEnd = $this->businessAsOfEnd($asOfDate);
 
         return Member::query()
             ->where('member_id', $memberId)
@@ -225,6 +225,16 @@ class ReferralLevelEligibility
                 $this->qualifyingPurchaseConstraintAsOf($query, $asOfEnd);
             })
             ->exists();
+    }
+
+    public function businessTimezone(): string
+    {
+        return (string) config('deltasupport.package_income.timezone', 'Asia/Kolkata');
+    }
+
+    public function businessAsOfEnd(string $asOfDate): \Carbon\CarbonImmutable
+    {
+        return \Carbon\CarbonImmutable::parse($asOfDate, $this->businessTimezone())->endOfDay();
     }
 
     /**

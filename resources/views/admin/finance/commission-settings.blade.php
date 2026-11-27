@@ -196,7 +196,11 @@
                         <x-ui.stat label="Capture mode" :value="$preview['grandfather_summary']['capture_mode'] ?? '—'" hint="{{ $preview['grandfather_summary']['capture_note'] ?? '' }}" />
                         <x-ui.stat label="Snapshots" :value="(string) ($preview['grandfather_summary']['snapshot_count'] ?? 0)" hint="{{ (string) ($preview['grandfather_summary']['with_unlock_count'] ?? 0) }} with legacy unlock" />
                         <x-ui.stat label="Captured at" :value="$preview['grandfather_summary']['captured_at'] ?? '—'" />
-                        <x-ui.stat label="Baseline fresh" :value="!empty($preview['grandfather_summary']['freshness']['is_fresh']) ? 'Yes' : (($preview['grandfather_summary']['captured'] ?? false) ? 'Review' : 'N/A')" hint="{{ !empty($preview['grandfather_summary']['freshness']['requires_recapture']) ? 'Recapture required' : (!empty($preview['grandfather_summary']['freshness']['requires_pre_cutover_ack']) ? 'Ack or recapture' : '') }}" />
+                        <x-ui.stat
+                            label="Baseline fresh"
+                            :value="!empty($preview['grandfather_summary']['freshness']['is_fresh']) ? 'Yes' : (!empty($preview['grandfather_summary']['freshness']['requires_recapture']) ? 'No — recapture required' : (($preview['grandfather_summary']['captured'] ?? false) ? 'Review' : 'N/A'))"
+                            hint="{{ ($preview['grandfather_summary']['freshness']['capture_mode'] ?? null) === null && ($preview['grandfather_summary']['captured'] ?? false) ? 'Capture mode missing (NULL) — fail closed' : (!empty($preview['grandfather_summary']['freshness']['requires_recapture']) ? 'Recapture required' : (!empty($preview['grandfather_summary']['freshness']['requires_pre_cutover_ack']) ? 'Ack or recapture' : ($preview['grandfather_summary']['freshness']['business_timezone'] ?? ''))) }}"
+                        />
                     </div>
                     @if (!empty($preview['member_unlock_impact_sample']))
                         <x-ui.table>

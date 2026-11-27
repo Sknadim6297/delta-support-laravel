@@ -13,6 +13,7 @@ use App\Services\LevelIncomeRuleAdministration;
 use App\Services\LevelIncomeRuleResolver;
 use App\Services\LevelIncomeUnlockGrandfathering;
 use App\Services\ReferralLevelEligibility;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -511,6 +512,8 @@ class CombinedLevelUnlockQualificationTest extends TestCase
             ->where('package_code', '!=', 'CMB-B-ACT')
             ->delete();
 
+        // Safe cutover window: before financial schedule_time 00:10 Asia/Kolkata on effective date.
+        Carbon::setTestNow(Carbon::parse('2026-11-27 00:05:00', 'Asia/Kolkata'));
         $published = $service->publish($draft->fresh(), $admin, [
             'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
             'effective_from' => '2026-11-27',
@@ -519,6 +522,7 @@ class CombinedLevelUnlockQualificationTest extends TestCase
         app(LevelIncomeUnlockGrandfathering::class)->captureBaseline($published->fresh(), $admin, '2026-11-27');
         $service->authorizePosting($published->fresh(), $admin, true, null, true);
         app(LevelIncomeRuleResolver::class)->clearCache();
+        Carbon::setTestNow();
 
         $before = $eligibility->forMember($member->member_id);
         $this->assertSame(LevelIncomeRuleResolver::MODE_AUTHORIZED, $before['rule_mode']);

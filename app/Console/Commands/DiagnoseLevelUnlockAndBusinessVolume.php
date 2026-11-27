@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Member;
 use App\Models\PackagePurchase;
+use App\Services\LevelIncomeRuleResolver;
 use App\Services\LevelIncomeUnlockImpactAnalyzer;
 use App\Services\Rewards\TeamBusinessCalculationService;
 use Illuminate\Console\Command;
@@ -18,6 +19,7 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
                             {--member= : Optional member_id focus}
                             {--limit=50 : Max member rows in sample tables}
                             {--all : Analyze every registered member for impact summary}
+                            {--rule-version= : Explicit level_income_rule_versions.version_code}
                             {--json : Emit JSON}';
 
     protected $description = 'Read-only report: consistent unlock contexts, entitlement impact, Tour Only BV (no financial writes).';
@@ -25,10 +27,12 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
     public function handle(
         LevelIncomeUnlockImpactAnalyzer $analyzer,
         TeamBusinessCalculationService $business,
+        LevelIncomeRuleResolver $resolver,
     ): int {
         $memberFocus = trim((string) $this->option('member'));
         $limit = max(1, min(5000, (int) $this->option('limit')));
         $analyzeAll = (bool) $this->option('all');
+        $ruleVersionOption = trim((string) $this->option('rule-version'));
 
         $totalMembers = Member::query()->count();
         $withApproved = Member::query()
@@ -41,7 +45,14 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
             ->count();
 
         $tourAudit = $analyzer->tourOnlyBusinessVolumeAudit();
-        $proposed = $analyzer->proposedVersion();
+        $resolved = $analyzer->resolveCandidateVersion($ruleVersionOption !== '' ? $ruleVersionOption : null);
+        $proposed = $resolved['version'];
+        if ($ruleVersionOption !== '' && $proposed === null) {
+            $this->error('Rule version not found: '.$ruleVersionOption);
+
+            return self::FAILURE;
+        }
+        $versionSources = $analyzer->versionSources($proposed);
         $applicability = $analyzer->applicabilityProjection($proposed);
         $policies = $analyzer->policyComparison();
 
@@ -111,9 +122,21 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
                 'analyzed_all' => $analyzeAll,
             ],
             'impact_summary' => $impact['summary'],
+            'candidate_selection' => [
+                'selection' => $resolved['selection'],
+                'requested_rule_version' => $resolved['requested'],
+                'default_order' => [
+                    'explicit --rule-version',
+                    'latest published future_purchases_only/existing_prospective',
+                    'seeded proposed_activation_unlock_v1 draft fallback',
+                ],
+            ],
+            'version_sources' => $versionSources,
             'proposed_version' => $proposed === null ? null : [
                 'version_code' => $proposed->version_code,
                 'status' => $proposed->status,
+                'applicability' => $proposed->applicability,
+                'effective_from' => optional($proposed->effective_from)?->toDateString(),
                 'posting_authorized' => (bool) $proposed->posting_authorized,
                 'direct_qualification_basis' => $proposed->direct_qualification_basis,
                 'tour_only_qualifies_for_unlock' => (bool) $proposed->tour_only_qualifies_for_unlock,
@@ -124,7 +147,10 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
                 'combined_double_credit_policy' => $proposed->combined_double_credit_policy,
                 'combined_joining_unit_value' => (int) ($proposed->combined_joining_unit_value ?? 1),
                 'combined_purchase_unit_value' => (int) ($proposed->combined_purchase_unit_value ?? 1),
+                'grandfather_existing_unlock' => (bool) ($proposed->grandfather_existing_unlock ?? false),
+                'grandfather_freshness' => $versionSources['published_candidate']['grandfather_summary']['freshness'] ?? null,
             ],
+            'authorized_runtime_version' => $resolver->authorizedVersion()?->version_code,
             'policy_comparison' => $policies,
             'applicability_projection' => $applicability,
             'tour_only_bv_audit' => $tourAudit,
@@ -175,10 +201,15 @@ class DiagnoseLevelUnlockAndBusinessVolume extends Command
             )],
             ['Activated with 0 live unlock', (string) $impact['summary']['activated_with_zero_live_unlock']],
             ['Entitlement reductions', (string) $impact['summary']['entitlement_reductions']],
-            ['Proposed version', $proposed?->version_code ?? 'missing'],
-            ['Proposed basis', (string) ($proposed?->direct_qualification_basis ?? 'n/a')],
-            ['Proposed Tour Only unlock', ($proposed?->tour_only_qualifies_for_unlock ?? false) ? 'yes' : 'no'],
-            ['Proposed posting_authorized', ($proposed?->posting_authorized ?? false) ? 'YES' : 'no'],
+            ['Candidate selection', (string) $resolved['selection']],
+            ['Published candidate', $proposed?->version_code ?? 'missing'],
+            ['Candidate applicability', (string) ($proposed?->applicability ?? 'n/a')],
+            ['Candidate effective_from', optional($proposed?->effective_from)?->toDateString() ?? 'n/a'],
+            ['Candidate posting_authorized', ($proposed?->posting_authorized ?? false) ? 'YES' : 'no'],
+            ['Authorized runtime version', $resolver->authorizedVersion()?->version_code ?? 'none (hard-coded legacy)'],
+            ['Candidate basis', (string) ($proposed?->direct_qualification_basis ?? 'n/a')],
+            ['Candidate Tour Only unlock', ($proposed?->tour_only_qualifies_for_unlock ?? false) ? 'yes' : 'no'],
+            ['Grandfather fresh', ! empty($report['proposed_version']['grandfather_freshness']['is_fresh']) ? 'yes' : 'no/review'],
             ['Internal consistency OK', $report['consistency']['ok'] ? 'yes' : 'NO'],
         ]);
 

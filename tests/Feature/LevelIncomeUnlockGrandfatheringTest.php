@@ -250,7 +250,7 @@ class LevelIncomeUnlockGrandfatheringTest extends TestCase
         $version->refresh();
         $this->assertSame(LevelIncomeUnlockGrandfathering::CAPTURE_MODE_PRE_CUTOVER_CURRENT, $result['capture_mode']);
         $this->assertSame(LevelIncomeUnlockGrandfathering::CAPTURE_MODE_PRE_CUTOVER_CURRENT, $version->grandfather_capture_mode);
-        $this->assertStringContainsString('Not an exact future-date', $result['capture_note']);
+        $this->assertStringContainsString('Not an exact future end-of-day snapshot', $result['capture_note']);
 
         $snap = LevelIncomeUnlockGrandfatherSnapshot::query()
             ->where('level_income_rule_version_id', $version->id)
@@ -418,7 +418,8 @@ class LevelIncomeUnlockGrandfatheringTest extends TestCase
         ]);
         $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-28');
 
-        Carbon::setTestNow('2026-11-28 06:00:00');
+        // After midnight Asia/Kolkata but before schedule_time 00:10 — safe authorize window.
+        Carbon::setTestNow(Carbon::parse('2026-11-28 00:05:00', 'Asia/Kolkata'));
         $freshness = $grandfathering->assessBaselineFreshness($published->fresh());
         $this->assertTrue($freshness['requires_recapture']);
 
@@ -436,6 +437,91 @@ class LevelIncomeUnlockGrandfatheringTest extends TestCase
         );
         $authorized = $service->authorizePosting($published->fresh(), $admin, true, null, true);
         $this->assertTrue($authorized->posting_authorized);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_null_empty_and_unknown_capture_modes_fail_closed_and_block_authorize(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-27 10:00:00', 'Asia/Kolkata'));
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(LevelIncomeRuleAdministration::class);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+
+        $draft = $service->cloneAsDraft(
+            LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $draft->forceFill(['grandfather_existing_unlock' => true])->save();
+        $published = $service->publish($draft, $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            'effective_from' => '2026-11-28',
+        ]);
+        $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-28');
+
+        foreach ([null, '', 'legacy_unknown_mode'] as $badMode) {
+            \Illuminate\Support\Facades\DB::table('level_income_rule_versions')
+                ->where('id', $published->id)
+                ->update([
+                    'grandfather_capture_mode' => $badMode,
+                    'grandfather_capture_note' => null,
+                    'updated_at' => now(),
+                ]);
+
+            $freshness = $grandfathering->assessBaselineFreshness($published->fresh());
+            $this->assertFalse($freshness['is_fresh'], 'mode='.json_encode($badMode));
+            $this->assertTrue($freshness['requires_recapture'], 'mode='.json_encode($badMode));
+            $this->assertFalse($freshness['requires_pre_cutover_ack']);
+            $this->assertNotEmpty($freshness['reasons']);
+
+            try {
+                $service->authorizePosting($published->fresh(), $admin, true, null, true, true);
+                $this->fail('Expected authorize block for capture mode '.json_encode($badMode));
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('grandfather', $e->errors());
+            }
+        }
+
+        // Valid recapture restores freshness without rewriting financial history.
+        Carbon::setTestNow(Carbon::parse('2026-11-28 00:05:00', 'Asia/Kolkata'));
+        $result = $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-28');
+        $this->assertSame(LevelIncomeUnlockGrandfathering::CAPTURE_MODE_AS_OF_TRANSITION, $result['capture_mode']);
+        $fresh = $grandfathering->assessBaselineFreshness($published->fresh());
+        $this->assertTrue($fresh['is_fresh']);
+        $this->assertFalse($fresh['requires_recapture']);
+        $authorized = $service->authorizePosting($published->fresh(), $admin, true, null, true);
+        $this->assertTrue($authorized->posting_authorized);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_schedule_cutover_window_blocks_authorize_after_0010_without_succeeded_effective_date(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-28 00:15:00', 'Asia/Kolkata'));
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(LevelIncomeRuleAdministration::class);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+
+        $draft = $service->cloneAsDraft(
+            LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $draft->forceFill(['grandfather_existing_unlock' => true])->save();
+        $published = $service->publish($draft, $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            'effective_from' => '2026-11-28',
+        ]);
+        $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-28');
+
+        try {
+            $service->authorizePosting($published->fresh(), $admin, true, null, true);
+            $this->fail('Expected schedule cutover window validation');
+        } catch (ValidationException $e) {
+            $this->assertTrue(
+                isset($e->errors()['effective_from']) || isset($e->errors()['grandfather']),
+                json_encode($e->errors())
+            );
+        }
 
         Carbon::setTestNow();
     }

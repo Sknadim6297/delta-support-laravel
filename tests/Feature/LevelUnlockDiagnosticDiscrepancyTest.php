@@ -230,6 +230,10 @@ class LevelUnlockDiagnosticDiscrepancyTest extends TestCase
         $this->assertIsArray($payload);
         $this->assertTrue($payload['read_only']);
         $this->assertTrue($payload['consistency']['ok']);
+        $this->assertSame('seeded_option_b_draft_fallback', $payload['candidate_selection']['selection']);
+        $this->assertSame('proposed_activation_unlock_v1', $payload['proposed_version']['version_code']);
+        $this->assertArrayHasKey('version_sources', $payload);
+        $this->assertArrayHasKey('hardcoded_legacy', $payload['version_sources']);
 
         $focusLive = $payload['member_focus']['impact']['live_unlocked_levels'];
         $this->assertSame(4, $focusLive);
@@ -252,6 +256,44 @@ class LevelUnlockDiagnosticDiscrepancyTest extends TestCase
         if ($loss !== null) {
             $this->assertSame($focusLive, $loss['live_unlocked']);
         }
+    }
+
+    public function test_diagnostic_defaults_to_latest_published_candidate_not_superseded_seed(): void
+    {
+        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        $service = app(\App\Services\LevelIncomeRuleAdministration::class);
+        $draft = $service->cloneAsDraft(
+            \App\Models\LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $published = $service->publish($draft, $admin, [
+            'applicability' => \App\Models\LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            'effective_from' => '2026-11-28',
+        ]);
+
+        Artisan::call('deltasupport:diagnose-level-unlock-business', [
+            '--limit' => 5,
+            '--json' => true,
+        ]);
+        $payload = json_decode(Artisan::output(), true);
+        $this->assertSame('latest_published_candidate', $payload['candidate_selection']['selection']);
+        $this->assertSame($published->version_code, $payload['proposed_version']['version_code']);
+        $this->assertSame('existing_prospective', $payload['proposed_version']['applicability']);
+        $this->assertSame('2026-11-28', $payload['proposed_version']['effective_from']);
+        $this->assertFalse($payload['proposed_version']['posting_authorized']);
+    }
+
+    public function test_diagnostic_explicit_rule_version_option(): void
+    {
+        Artisan::call('deltasupport:diagnose-level-unlock-business', [
+            '--rule-version' => 'proposed_activation_unlock_v1',
+            '--limit' => 5,
+            '--json' => true,
+        ]);
+        $payload = json_decode(Artisan::output(), true);
+        $this->assertSame('explicit_rule_version', $payload['candidate_selection']['selection']);
+        $this->assertSame('proposed_activation_unlock_v1', $payload['proposed_version']['version_code']);
+        $this->assertSame('proposed_activation_unlock_v1', $payload['candidate_selection']['requested_rule_version']);
     }
 
     private function member(string $memberId, string $sponsorId): Member
