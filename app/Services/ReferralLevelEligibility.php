@@ -190,9 +190,12 @@ class ReferralLevelEligibility
      * Income-eligible unique directs as of end-of-day $asOfDate (inclusive) in the
      * package-income business timezone (Asia/Kolkata).
      */
-    public function qualifyingDirectCountAsOf(string $memberId, string $asOfDate): int
-    {
-        $asOfEnd = $this->businessAsOfEnd($asOfDate);
+    public function qualifyingDirectCountAsOf(
+        string $memberId,
+        string $asOfDate,
+        ?\Carbon\CarbonImmutable $asOfInstant = null
+    ): int {
+        $asOfEnd = $asOfInstant ?? $this->businessAsOfEnd($asOfDate);
 
         return Member::query()
             ->where('sponsor_id', $memberId)
@@ -204,9 +207,12 @@ class ReferralLevelEligibility
             ->count();
     }
 
-    public function directCountAsOf(string $memberId, string $asOfDate): int
-    {
-        $asOfEnd = $this->businessAsOfEnd($asOfDate);
+    public function directCountAsOf(
+        string $memberId,
+        string $asOfDate,
+        ?\Carbon\CarbonImmutable $asOfInstant = null
+    ): int {
+        $asOfEnd = $asOfInstant ?? $this->businessAsOfEnd($asOfDate);
 
         return Member::query()
             ->where('sponsor_id', $memberId)
@@ -215,9 +221,12 @@ class ReferralLevelEligibility
             ->count();
     }
 
-    public function isPersonallyActivatedAsOf(string $memberId, string $asOfDate): bool
-    {
-        $asOfEnd = $this->businessAsOfEnd($asOfDate);
+    public function isPersonallyActivatedAsOf(
+        string $memberId,
+        string $asOfDate,
+        ?\Carbon\CarbonImmutable $asOfInstant = null
+    ): bool {
+        $asOfEnd = $asOfInstant ?? $this->businessAsOfEnd($asOfDate);
 
         return Member::query()
             ->where('member_id', $memberId)
@@ -234,7 +243,15 @@ class ReferralLevelEligibility
 
     public function businessAsOfEnd(string $asOfDate): \Carbon\CarbonImmutable
     {
-        return \Carbon\CarbonImmutable::parse($asOfDate, $this->businessTimezone())->endOfDay();
+        $tz = $this->businessTimezone();
+        $day = \Carbon\CarbonImmutable::parse($asOfDate, $tz)->toDateString();
+        $today = \Carbon\CarbonImmutable::now($tz)->toDateString();
+        if ($day === $today) {
+            // Open business day: never project through future end-of-day.
+            return \Carbon\CarbonImmutable::now($tz);
+        }
+
+        return \Carbon\CarbonImmutable::parse($asOfDate, $tz)->endOfDay();
     }
 
     /**

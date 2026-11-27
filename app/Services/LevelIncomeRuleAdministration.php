@@ -263,86 +263,133 @@ class LevelIncomeRuleAdministration
             ]);
         }
 
-        return DB::transaction(function () use (
-            $version,
-            $admin,
-            $ip,
-            $confirmExistingProspective,
-            $confirmPreCutoverBaseline
-        ): LevelIncomeRuleVersion {
-            $locked = LevelIncomeRuleVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
-            $locked->load(['bands', 'rates']);
+        $dateLock = app(FinancialBusinessDateLock::class);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+        // Acquire shared financial locks BEFORE the DB transaction to avoid nested-lock deadlocks.
+        $locks = $dateLock->acquireForRuleMutation(
+            $this->ruleMutationBusinessDates($version, $grandfathering),
+            'authorize Level Income posting rules'
+        );
 
-            if (! $locked->isPublished()) {
-                throw ValidationException::withMessages(['status' => 'Only published versions can be authorized for posting.']);
-            }
-            if (! in_array($locked->applicability, [
-                LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
-                LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
-            ], true)) {
-                throw ValidationException::withMessages([
-                    'applicability' => 'Choose future_purchases_only or existing_prospective before authorizing posting.',
-                ]);
-            }
-            if ($locked->effective_from === null) {
-                throw ValidationException::withMessages([
-                    'effective_from' => 'Set an effective date before authorizing posting.',
-                ]);
-            }
+        try {
+            return DB::transaction(function () use (
+                $version,
+                $admin,
+                $ip,
+                $confirmExistingProspective,
+                $confirmPreCutoverBaseline,
+                $grandfathering
+            ): LevelIncomeRuleVersion {
+                $locked = LevelIncomeRuleVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
+                $locked->load(['bands', 'rates']);
 
-            $configErrors = array_merge(
-                $this->validateBands($locked->bands->map(fn ($b) => $b->toArray())->all()),
-                $this->validateRates(
-                    $locked->rates->mapWithKeys(fn ($r) => [(int) $r->level => (string) $r->percentage])->all()
-                )
-            );
-            if ($configErrors !== []) {
-                throw ValidationException::withMessages(['configuration' => $configErrors]);
-            }
+                if (! $locked->isPublished()) {
+                    throw ValidationException::withMessages(['status' => 'Only published versions can be authorized for posting.']);
+                }
+                if (! in_array($locked->applicability, [
+                    LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
+                    LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+                ], true)) {
+                    throw ValidationException::withMessages([
+                        'applicability' => 'Choose future_purchases_only or existing_prospective before authorizing posting.',
+                    ]);
+                }
+                if ($locked->effective_from === null) {
+                    throw ValidationException::withMessages([
+                        'effective_from' => 'Set an effective date before authorizing posting.',
+                    ]);
+                }
 
-            if ($locked->applicability === LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE
-                && ! $confirmExistingProspective) {
-                throw ValidationException::withMessages([
-                    'confirm_existing_prospective' => 'existing_prospective requires a separate confirmation after reviewing the impact preview. It applies new rules from the effective business date for all source purchases without historical backfill.',
-                ]);
-            }
+                $configErrors = array_merge(
+                    $this->validateBands($locked->bands->map(fn ($b) => $b->toArray())->all()),
+                    $this->validateRates(
+                        $locked->rates->mapWithKeys(fn ($r) => [(int) $r->level => (string) $r->percentage])->all()
+                    )
+                );
+                if ($configErrors !== []) {
+                    throw ValidationException::withMessages(['configuration' => $configErrors]);
+                }
 
-            app(LevelIncomeUnlockGrandfathering::class)->assertReadyForAuthorization(
-                $locked,
-                $confirmPreCutoverBaseline
-            );
+                if ($locked->applicability === LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE
+                    && ! $confirmExistingProspective) {
+                    throw ValidationException::withMessages([
+                        'confirm_existing_prospective' => 'existing_prospective requires a separate confirmation after reviewing the impact preview. It applies new rules from the effective business date for all source purchases without historical backfill.',
+                    ]);
+                }
 
-            $before = $this->snapshot($locked);
+                // Re-check cutover guards inside the protected boundary.
+                $grandfathering->assertReadyForAuthorization(
+                    $locked,
+                    $confirmPreCutoverBaseline
+                );
 
-            LevelIncomeRuleVersion::query()
-                ->where('posting_authorized', true)
-                ->where('id', '!=', $locked->id)
-                ->update(['posting_authorized' => false]);
+                $before = $this->snapshot($locked);
 
-            $locked->forceFill(['posting_authorized' => true])->save();
-            $this->resolver->clearCache();
+                LevelIncomeRuleVersion::query()
+                    ->where('posting_authorized', true)
+                    ->where('id', '!=', $locked->id)
+                    ->update(['posting_authorized' => false]);
 
-            $fresh = $locked->fresh(['bands', 'rates']);
-            $this->audit($fresh, 'posting_authorized', $admin, $before, $this->snapshot($fresh), $ip);
-            $this->activity($admin, 'level_income_posting_authorized', $fresh->version_code);
+                $locked->forceFill(['posting_authorized' => true])->save();
+                $this->resolver->clearCache();
 
-            return $fresh;
-        });
+                $fresh = $locked->fresh(['bands', 'rates']);
+                $this->audit($fresh, 'posting_authorized', $admin, $before, $this->snapshot($fresh), $ip);
+                $this->activity($admin, 'level_income_posting_authorized', $fresh->version_code);
+
+                return $fresh;
+            });
+        } finally {
+            $dateLock->releaseAll($locks);
+        }
     }
 
     public function revokePostingAuthorization(LevelIncomeRuleVersion $version, User $admin, ?string $ip = null): LevelIncomeRuleVersion
     {
-        return DB::transaction(function () use ($version, $admin, $ip): LevelIncomeRuleVersion {
-            $locked = LevelIncomeRuleVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
-            $before = $this->snapshot($locked);
-            $locked->forceFill(['posting_authorized' => false])->save();
-            $this->resolver->clearCache();
-            $fresh = $locked->fresh(['bands', 'rates']);
-            $this->audit($fresh, 'posting_authorization_revoked', $admin, $before, $this->snapshot($fresh), $ip);
-            $this->activity($admin, 'level_income_posting_revoked', $fresh->version_code);
+        $dateLock = app(FinancialBusinessDateLock::class);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+        $locks = $dateLock->acquireForRuleMutation(
+            $this->ruleMutationBusinessDates($version, $grandfathering),
+            'revoke Level Income posting authorization'
+        );
 
-            return $fresh;
-        });
+        try {
+            return DB::transaction(function () use ($version, $admin, $ip): LevelIncomeRuleVersion {
+                $locked = LevelIncomeRuleVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
+                $before = $this->snapshot($locked);
+                $locked->forceFill(['posting_authorized' => false])->save();
+                $this->resolver->clearCache();
+                $fresh = $locked->fresh(['bands', 'rates']);
+                $this->audit($fresh, 'posting_authorization_revoked', $admin, $before, $this->snapshot($fresh), $ip);
+                $this->activity($admin, 'level_income_posting_revoked', $fresh->version_code);
+
+                return $fresh;
+            });
+        } finally {
+            $dateLock->releaseAll($locks);
+        }
+    }
+
+    /**
+     * Business dates that must be idle before Level Income rule mutation.
+     *
+     * @return list<string>
+     */
+    private function ruleMutationBusinessDates(
+        LevelIncomeRuleVersion $version,
+        LevelIncomeUnlockGrandfathering $grandfathering
+    ): array {
+        $dates = [$grandfathering->businessToday()];
+        $effective = optional($version->effective_from)?->toDateString();
+        if ($effective !== null) {
+            $dates[] = $effective;
+        }
+        $transition = optional($version->grandfather_transition_date)?->toDateString();
+        if ($transition !== null) {
+            $dates[] = $transition;
+        }
+
+        return $dates;
     }
 
     /**

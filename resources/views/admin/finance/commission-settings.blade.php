@@ -526,6 +526,7 @@
                             <p>Current policy: <strong>{{ $editing->applicability }}</strong> / effective <strong>{{ optional($editing->effective_from)?->toDateString() ?? 'no date' }}</strong>.</p>
                             <p class="ds-muted">{{ $preview['existing_purchase_impact'] ?? '' }}</p>
                             <p class="ds-muted">{{ $preview['future_purchase_impact'] ?? '' }}</p>
+                            <p class="ds-muted">{{ $preview['grandfather_summary']['freshness']['post_authorize_cutover_policy']['cutover_boundary'] ?? 'Authorize only after the previous business date succeeded and before financial:daily on the effective date. Do not authorize after the effective date cycle has started or succeeded. Shared package-income locks block authorize/capture during an active financial run.' }}</p>
                             <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_impact_preview" value="1" required> I reviewed the applicability impact preview above (existing vs future purchases).</label>
                             @if ($editing->applicability === 'existing_prospective')
                                 <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_existing_prospective" value="1" required> I confirm existing_prospective: new rules apply from the effective business date for all source purchases with no historical backfill. Grandfather transition date must match effective_from.</label>

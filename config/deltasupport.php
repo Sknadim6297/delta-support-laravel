@@ -64,6 +64,12 @@ return [
         'vip_commission_days' => $vipCommissionDays,
         'chunk_size' => 100,
         'schedule_time' => env('PACKAGE_INCOME_SCHEDULE_TIME', '00:10'),
+        /*
+        | Shared Cache lock TTL for package-income-{businessDate}.
+        | Covers plan + credit so Level Income authorize/revoke/capture cannot interleave.
+        | Default 3600s because long financial cycles can exceed the legacy 120s lock.
+        */
+        'business_date_lock_ttl_seconds' => (int) env('PACKAGE_INCOME_BUSINESS_DATE_LOCK_TTL', 3600),
         'activation_required_packages' => ['DST-TOUR-003'],
         /*
         | Separate from package_income_activations.activation_business_date.

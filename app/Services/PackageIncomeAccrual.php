@@ -9,7 +9,6 @@ use App\Models\PackagePurchase;
 use App\Models\PackageRoiAccrual;
 use App\Support\WalletLedgerDirection;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -24,6 +23,7 @@ class PackageIncomeAccrual
         private readonly PackageAutoRoiControl $autoRoi,
         private readonly MemberPaymentControlService $paymentControls,
         private readonly LevelIncomeRuleResolver $levelRules,
+        private readonly FinancialBusinessDateLock $businessDateLock,
     ) {
     }
 
@@ -255,30 +255,29 @@ class PackageIncomeAccrual
             throw new RuntimeException('ROI and level calculation are disabled. No wallet was credited.');
         }
 
-        $plan = $this->plan($date, $constrain);
-        if ($excludeTour) {
-            // Defense in depth for historical recovery only. Daily path may still post Tour when authorized.
-            $tourCode = PackageIncomeActivationGate::TOUR_CODE;
-            $plan['roi'] = array_values(array_filter(
-                $plan['roi'],
-                fn (array $row): bool => ($row['package_code'] ?? '') !== $tourCode
-            ));
-            $plan['commissions'] = array_values(array_filter(
-                $plan['commissions'],
-                fn (array $row): bool => ($row['package_code'] ?? '') !== $tourCode
-            ));
-        }
-
-        $roiAmount = '0.0000';
-        foreach ($plan['roi'] as $row) {
-            $roiAmount = bcadd($roiAmount, (string) $row['amount'], 4);
-        }
-        $commissionAmount = '0.0000';
-        foreach ($plan['commissions'] as $row) {
-            $commissionAmount = bcadd($commissionAmount, (string) $row['amount'], 4);
-        }
-
         if ($dryRun) {
+            $plan = $this->plan($date, $constrain);
+            if ($excludeTour) {
+                $tourCode = PackageIncomeActivationGate::TOUR_CODE;
+                $plan['roi'] = array_values(array_filter(
+                    $plan['roi'],
+                    fn (array $row): bool => ($row['package_code'] ?? '') !== $tourCode
+                ));
+                $plan['commissions'] = array_values(array_filter(
+                    $plan['commissions'],
+                    fn (array $row): bool => ($row['package_code'] ?? '') !== $tourCode
+                ));
+            }
+
+            $roiAmount = '0.0000';
+            foreach ($plan['roi'] as $row) {
+                $roiAmount = bcadd($roiAmount, (string) $row['amount'], 4);
+            }
+            $commissionAmount = '0.0000';
+            foreach ($plan['commissions'] as $row) {
+                $commissionAmount = bcadd($commissionAmount, (string) $row['amount'], 4);
+            }
+
             return [
                 'dry_run' => true,
                 'roi_records' => $calculateRoi ? count($plan['roi']) : 0,
@@ -291,12 +290,26 @@ class PackageIncomeAccrual
             ];
         }
 
-        $lock = Cache::lock('package-income-'.$date->toDateString(), 120);
-        if (! $lock->get()) {
-            throw new RuntimeException('Package income for '.$date->toDateString().' is already running.');
-        }
+        // Hold the shared business-date lock across plan + credit so Level Income
+        // authorize/revoke/capture cannot change posting rules mid-run.
+        $lock = $this->businessDateLock->acquireForExecution($date->toDateString());
 
         try {
+            $this->levelRules->clearCache();
+            $plan = $this->plan($date, $constrain);
+            if ($excludeTour) {
+                // Defense in depth for historical recovery only. Daily path may still post Tour when authorized.
+                $tourCode = PackageIncomeActivationGate::TOUR_CODE;
+                $plan['roi'] = array_values(array_filter(
+                    $plan['roi'],
+                    fn (array $row): bool => ($row['package_code'] ?? '') !== $tourCode
+                ));
+                $plan['commissions'] = array_values(array_filter(
+                    $plan['commissions'],
+                    fn (array $row): bool => ($row['package_code'] ?? '') !== $tourCode
+                ));
+            }
+
             $creditRoi = $controls->enabled('roi_wallet_crediting_enabled');
             $creditLevel = $controls->enabled('level_wallet_crediting_enabled');
             $roi = 0;
@@ -335,7 +348,7 @@ class PackageIncomeAccrual
                 'commissions' => $plan['commissions'],
             ];
         } finally {
-            $lock->release();
+            $this->businessDateLock->releaseAll([$lock]);
         }
     }
 
@@ -351,12 +364,10 @@ class PackageIncomeAccrual
             throw new RuntimeException('Package income generation is disabled. No wallet was credited.');
         }
 
-        $lock = Cache::lock('package-income-'.$businessDate, 120);
-        if (! $lock->get()) {
-            throw new RuntimeException('Package income for '.$businessDate.' is already running.');
-        }
+        $lock = $this->businessDateLock->acquireForExecution($businessDate);
 
         try {
+            $this->levelRules->clearCache();
             $plan = $this->plan($this->date($businessDate));
             $roi = 0;
             $commissions = 0;
@@ -376,13 +387,13 @@ class PackageIncomeAccrual
                 }
             }
 
-        return [
-            'credited_roi' => $roi,
-            'credited_commissions' => $commissions,
-            'skipped' => $plan['skipped'],
-        ];
+            return [
+                'credited_roi' => $roi,
+                'credited_commissions' => $commissions,
+                'skipped' => $plan['skipped'],
+            ];
         } finally {
-            $lock->release();
+            $this->businessDateLock->releaseAll([$lock]);
         }
     }
 
@@ -396,12 +407,10 @@ class PackageIncomeAccrual
     public function accruePurchases(string $businessDate, array $purchaseIds): array
     {
         $purchaseIds = $this->assertLocalPurchases($purchaseIds);
-        $lock = Cache::lock('package-income-'.$businessDate, 120);
-        if (! $lock->get()) {
-            throw new RuntimeException('Package income for '.$businessDate.' is already running.');
-        }
+        $lock = $this->businessDateLock->acquireForExecution($businessDate);
 
         try {
+            $this->levelRules->clearCache();
             $plan = $this->plan($this->date($businessDate), function ($query) use ($purchaseIds): void {
                 $query->whereIn('id', $purchaseIds);
             });
@@ -425,7 +434,7 @@ class PackageIncomeAccrual
                 'skipped' => $plan['skipped'],
             ];
         } finally {
-            $lock->release();
+            $this->businessDateLock->releaseAll([$lock]);
         }
     }
 

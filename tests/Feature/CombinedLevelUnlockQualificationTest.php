@@ -431,6 +431,10 @@ class CombinedLevelUnlockQualificationTest extends TestCase
 
     public function test_option_b_personal_formula_matrix_and_automatic_unlock(): void
     {
+        // Freeze before creating members so open-day as-of capture includes them
+        // (wall-clock created_at after a frozen 00:05 instant would look like post-capture drift).
+        Carbon::setTestNow(Carbon::parse('2026-11-27 00:05:00', 'Asia/Kolkata'));
+
         $admin = User::factory()->create(['is_admin' => true]);
         $service = app(LevelIncomeRuleAdministration::class);
         $eligibility = app(ReferralLevelEligibility::class);
@@ -513,7 +517,6 @@ class CombinedLevelUnlockQualificationTest extends TestCase
             ->delete();
 
         // Safe cutover window: before financial schedule_time 00:10 Asia/Kolkata on effective date.
-        Carbon::setTestNow(Carbon::parse('2026-11-27 00:05:00', 'Asia/Kolkata'));
         $published = $service->publish($draft->fresh(), $admin, [
             'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
             'effective_from' => '2026-11-27',

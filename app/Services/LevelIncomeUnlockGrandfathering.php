@@ -214,16 +214,23 @@ class LevelIncomeUnlockGrandfathering
         $captureMode = $transitionDate > $today
             ? self::CAPTURE_MODE_PRE_CUTOVER_CURRENT
             : self::CAPTURE_MODE_AS_OF_TRANSITION;
+        // Open-day as-of uses the capture instant (not end-of-day) so future same-day
+        // eligibility cannot be treated as already included.
+        $asOfInstant = $captureMode === self::CAPTURE_MODE_AS_OF_TRANSITION
+            ? ($transitionDate === $today
+                ? $nowBiz
+                : $this->eligibility()->businessAsOfEnd($transitionDate))
+            : null;
         if ($captureMode === self::CAPTURE_MODE_PRE_CUTOVER_CURRENT) {
             $captureNote = sprintf(
-                'Pre-cutover freeze of current legacy eligibility (%s) for future transition %s. Not an exact future end-of-day snapshot. Recapture on the transition business date before schedule_time %s when possible.',
+                'Pre-cutover freeze of current legacy eligibility (%s) for future transition %s. Not an exact future end-of-day snapshot. Recapture on the transition business date before schedule_time %s when possible. Do not authorize after the effective date financial cycle has started or succeeded.',
                 $this->businessTimezone(),
                 $transitionDate,
                 $this->scheduleTime()
             );
         } elseif ($transitionDate === $today) {
             $captureNote = sprintf(
-                'Open business-day freeze as of capture instant (%s %s). Reconstructs members/approvals on/before this instant for transition %s — not a complete Asia/Kolkata end-of-day state. Authorize only before financial schedule_time %s on the effective date, after last succeeded business date is earlier than effective_from.',
+                'Open business-day freeze as of capture instant (%s %s). Reconstructs members/approvals on/before this instant for transition %s — not a complete Asia/Kolkata end-of-day state. Authorize only before financial schedule_time %s on the effective date, after the previous business date succeeded. Do not authorize after the effective date cycle has started or succeeded.',
                 $nowBiz->toDateTimeString(),
                 $this->businessTimezone(),
                 $transitionDate,
@@ -245,15 +252,23 @@ class LevelIncomeUnlockGrandfathering
                 ->count(),
         ];
 
-        return DB::transaction(function () use (
-            $version,
-            $admin,
-            $transitionDate,
-            $ip,
-            $before,
-            $captureMode,
-            $captureNote
-        ): array {
+        $dateLock = app(FinancialBusinessDateLock::class);
+        $locks = $dateLock->acquireForRuleMutation(
+            [$today, $transitionDate],
+            'capture grandfather baseline'
+        );
+
+        try {
+            return DB::transaction(function () use (
+                $version,
+                $admin,
+                $transitionDate,
+                $ip,
+                $before,
+                $captureMode,
+                $captureNote,
+                $asOfInstant
+            ): array {
             $locked = LevelIncomeRuleVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
             if ($locked->posting_authorized) {
                 throw ValidationException::withMessages([
@@ -277,6 +292,7 @@ class LevelIncomeUnlockGrandfathering
                 $transitionDate,
                 $now,
                 $asOf,
+                $asOfInstant,
                 &$captured,
                 &$withUnlock,
                 &$buffer
@@ -285,16 +301,15 @@ class LevelIncomeUnlockGrandfathering
                     $memberId = (string) $member->member_id;
 
                     if ($asOf !== null) {
-                        // Member must exist as of transition business date (Asia/Kolkata).
+                        // Member must exist as of the capture as-of instant (Asia/Kolkata).
                         if ($member->created_at !== null
                             && CarbonImmutable::parse($member->created_at)
-                                ->timezone($this->businessTimezone())
-                                ->toDateString() > $asOf) {
+                                ->greaterThan($asOfInstant)) {
                             continue;
                         }
-                        $incomeEligible = $this->eligibility()->qualifyingDirectCountAsOf($memberId, $asOf);
-                        $registered = $this->eligibility()->directCountAsOf($memberId, $asOf);
-                        $activated = $this->eligibility()->isPersonallyActivatedAsOf($memberId, $asOf);
+                        $incomeEligible = $this->eligibility()->qualifyingDirectCountAsOf($memberId, $asOf, $asOfInstant);
+                        $registered = $this->eligibility()->directCountAsOf($memberId, $asOf, $asOfInstant);
+                        $activated = $this->eligibility()->isPersonallyActivatedAsOf($memberId, $asOf, $asOfInstant);
                     } else {
                         $incomeEligible = $this->eligibility()->qualifyingDirectCount($memberId);
                         $registered = $this->eligibility()->directCount($memberId);
@@ -366,7 +381,10 @@ class LevelIncomeUnlockGrandfathering
                 'capture_mode' => $captureMode,
                 'capture_note' => $captureNote,
             ];
-        });
+            });
+        } finally {
+            $dateLock->releaseAll($locks);
+        }
     }
 
     /**
@@ -455,7 +473,7 @@ class LevelIncomeUnlockGrandfathering
             if ($lastSucceeded === null || $lastSucceeded < $transition) {
                 $requiresRecapture = true;
                 $reasons[] = sprintf(
-                    'Open-day as-of baseline for %s is unsafe after schedule_time %s %s while that business date has not succeeded yet. Recapture/authorize only before %s on the effective date, or after the cycle for that date has completed.',
+                    'Open-day as-of baseline for %s is unsafe after schedule_time %s %s. Recapture/authorize only before %s on the effective date after the previous business date succeeded. Do not authorize after the effective date cycle has started or succeeded.',
                     $transition,
                     $this->scheduleTime(),
                     $this->businessTimezone(),
@@ -490,11 +508,18 @@ class LevelIncomeUnlockGrandfathering
             }
 
             $snapshotLevels = (int) $snapMemberIds->get($memberId);
-            $recomputed = $mode === self::CAPTURE_MODE_AS_OF_TRANSITION
-                ? $this->resolver->legacyLevelsForCount(
-                    $this->eligibility()->qualifyingDirectCountAsOf($memberId, $transition)
-                )
-                : $this->currentLegacyUnlock($memberId);
+            if ($mode === self::CAPTURE_MODE_AS_OF_TRANSITION) {
+                $asOfInstant = $transition < $today
+                    ? $this->eligibility()->businessAsOfEnd($transition)
+                    : ($capturedAt !== null
+                        ? CarbonImmutable::parse($capturedAt)->timezone($this->businessTimezone())
+                        : $this->businessNow());
+                $recomputed = $this->resolver->legacyLevelsForCount(
+                    $this->eligibility()->qualifyingDirectCountAsOf($memberId, $transition, $asOfInstant)
+                );
+            } else {
+                $recomputed = $this->currentLegacyUnlock($memberId);
+            }
 
             if ($recomputed !== $snapshotLevels) {
                 $changedLegacy++;
@@ -566,7 +591,7 @@ class LevelIncomeUnlockGrandfathering
             'business_timezone' => $this->businessTimezone(),
             'schedule_time' => $this->scheduleTime(),
             'cutover_boundary' => sprintf(
-                'Authorize only after last succeeded business date < effective_from, and before financial:daily at %s %s on effective_from. Capture modes NULL/empty/unknown always require recapture. Pre-cutover freezes are not end-of-day reconstructions.',
+                'Authorize only after last succeeded business date < effective_from, and before financial:daily at %s %s on effective_from. Do not authorize after the effective date cycle has started or succeeded. Shared package-income-{date} locks prevent authorize/capture during an active financial run. Capture modes NULL/empty/unknown always require recapture. Pre-cutover freezes are not end-of-day reconstructions.',
                 $this->scheduleTime(),
                 $this->businessTimezone()
             ),
@@ -699,17 +724,12 @@ class LevelIncomeUnlockGrandfathering
             return;
         }
 
-        $lastSucceeded = $this->lastSucceededBusinessDate();
-        if ($lastSucceeded !== null && $lastSucceeded >= $effective) {
-            return;
-        }
-
         throw ValidationException::withMessages([
             'effective_from' => sprintf(
-                'Cannot authorize while business date %s has reached schedule_time %s %s and that date has not yet succeeded. This avoids concurrent rule changes during financial:daily. Authorize before %s on the effective date (after the previous business date has succeeded), or after the cycle for the effective date completes.',
-                $effective,
+                'Cannot authorize after schedule_time %s %s on effective date %s. Authorize only after the previous business date has succeeded and before %s on the effective date. Do not authorize after the effective date financial cycle has started or succeeded — that date would already have run under prior rules and this system does not backfill.',
                 $this->scheduleTime(),
                 $this->businessTimezone(),
+                $effective,
                 $this->scheduleTime()
             ),
         ]);

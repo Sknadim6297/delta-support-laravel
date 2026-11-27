@@ -55,7 +55,7 @@ This patch:
 | Schedule time | `config('deltasupport.package_income.schedule_time')` → **00:10** |
 | Business date B | Calendar date in Asia/Kolkata |
 | financial:daily | Processes business date B at 00:10 Asia/Kolkata |
-| Safe authorize window for effective `E` | After last succeeded business date `< E`, and **before** 00:10 Asia/Kolkata on `E` (or after `E` has already succeeded) |
+| Safe authorize window for effective `E` | After last succeeded business date `< E`, and **before** 00:10 Asia/Kolkata on `E`. Do **not** authorize after `E` has started or succeeded. |
 | Pre-cutover capture | Freezes **current** eligibility for a future transition — **not** a future end-of-day reconstruction |
 | Open-day as-of on `E` | Freeze as of capture instant — **not** complete Kolkata end-of-day |
 
