@@ -36,7 +36,7 @@ class LevelIncomeRuleAdministrationTest extends TestCase
         $proposed = LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->first();
         $this->assertNotNull($proposed);
         $this->assertSame(LevelIncomeRuleVersion::STATUS_DRAFT, $proposed->status);
-        $this->assertSame('approved_package_directs', $proposed->direct_qualification_basis);
+        $this->assertSame('combined_joining_and_purchase', $proposed->direct_qualification_basis);
         $this->assertTrue($proposed->tour_only_qualifies_for_unlock);
 
         $resolver = app(LevelIncomeRuleResolver::class);
@@ -47,12 +47,14 @@ class LevelIncomeRuleAdministrationTest extends TestCase
             'requires_personal_activation' => (bool) $b->requires_personal_activation,
         ])->all();
 
+        // Option B: no activation-only bonus. Metric N → 4N levels (cap 20).
         $this->assertSame(0, $resolver->simulateUnlockedLevels($bands, 0, false));
-        $this->assertSame(4, $resolver->simulateUnlockedLevels($bands, 0, true));
-        $this->assertSame(8, $resolver->simulateUnlockedLevels($bands, 1, true));
-        $this->assertSame(12, $resolver->simulateUnlockedLevels($bands, 2, true));
-        $this->assertSame(16, $resolver->simulateUnlockedLevels($bands, 3, true));
-        $this->assertSame(20, $resolver->simulateUnlockedLevels($bands, 4, true));
+        $this->assertSame(0, $resolver->simulateUnlockedLevels($bands, 0, true));
+        $this->assertSame(4, $resolver->simulateUnlockedLevels($bands, 1, true));
+        $this->assertSame(8, $resolver->simulateUnlockedLevels($bands, 2, true));
+        $this->assertSame(12, $resolver->simulateUnlockedLevels($bands, 3, true));
+        $this->assertSame(16, $resolver->simulateUnlockedLevels($bands, 4, true));
+        $this->assertSame(20, $resolver->simulateUnlockedLevels($bands, 5, true));
 
         // Live eligibility still uses legacy until authorized.
         $this->assertSame(0, app(ReferralLevelEligibility::class)->levelsForCount(0));
@@ -128,12 +130,14 @@ class LevelIncomeRuleAdministrationTest extends TestCase
         $resolver->clearCache();
         $this->assertTrue($authorized->posting_authorized);
         $this->assertNotNull($resolver->authorizedVersion());
-        $this->assertSame(4, $resolver->unlockedLevels(0, true));
-        $this->assertSame(0, $resolver->unlockedLevels(0, false));
+        // Option B: metric 0 stays locked even when activated; metric 1 unlocks 4.
+        $this->assertSame(0, $resolver->unlockedLevels(0, true));
+        $this->assertSame(4, $resolver->unlockedLevels(1, true));
+        $this->assertSame(0, $resolver->unlockedLevels(1, false));
 
-        // Display ladder requires activation context under authorized bands.
-        $this->assertSame(4, app(ReferralLevelEligibility::class)->levelsForCount(0, true));
-        $this->assertSame(0, app(ReferralLevelEligibility::class)->levelsForCount(0, false));
+        $this->assertSame(0, app(ReferralLevelEligibility::class)->levelsForCount(0, true));
+        $this->assertSame(4, app(ReferralLevelEligibility::class)->levelsForCount(1, true));
+        $this->assertSame(0, app(ReferralLevelEligibility::class)->levelsForCount(1, false));
 
         $service->revokePostingAuthorization($authorized, $admin);
         $resolver->clearCache();
@@ -181,6 +185,9 @@ class LevelIncomeRuleAdministrationTest extends TestCase
         );
         $activeZero = collect($preview['scenarios'])->firstWhere('label', 'Active, 0 directs');
         $this->assertSame(0, $activeZero['legacy_unlocked']);
-        $this->assertSame(4, $activeZero['candidate_unlocked']);
+        // Option B removes the activation-only bonus at metric 0.
+        $this->assertSame(0, $activeZero['candidate_unlocked']);
+        $activeOne = collect($preview['scenarios'])->firstWhere('label', 'Active, 1 direct');
+        $this->assertSame(4, $activeOne['candidate_unlocked']);
     }
 }

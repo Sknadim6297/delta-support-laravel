@@ -29,8 +29,12 @@ class LevelIncomeQualificationSettingsTest extends TestCase
         $this->assertSame(LevelIncomeRuleVersion::STATUS_DRAFT, $proposed->status);
         $this->assertFalse($proposed->posting_authorized);
         $this->assertSame(
-            LevelIncomeDirectQualification::BASIS_APPROVED_PACKAGE_DIRECTS,
+            LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASE,
             $proposed->direct_qualification_basis
+        );
+        $this->assertSame(
+            LevelIncomeDirectQualification::BASIS_PERSONAL_APPROVED_PURCHASES,
+            $proposed->combined_purchase_scope
         );
         $this->assertTrue($proposed->tour_only_qualifies_for_unlock);
 
@@ -134,7 +138,7 @@ class LevelIncomeQualificationSettingsTest extends TestCase
             $admin
         );
         $this->assertSame(
-            LevelIncomeDirectQualification::BASIS_APPROVED_PACKAGE_DIRECTS,
+            LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASE,
             $draft->direct_qualification_basis
         );
         $this->assertTrue($draft->tour_only_qualifies_for_unlock);
@@ -153,7 +157,8 @@ class LevelIncomeQualificationSettingsTest extends TestCase
 
         $after = app(ReferralLevelEligibility::class)->forMember($sponsor->member_id);
         $this->assertSame(LevelIncomeRuleResolver::MODE_AUTHORIZED, $after['rule_mode']);
-        $this->assertSame(1, $after['qualifying_direct_count']);
+        // Option B: 1 registered direct + 1 personal purchase → metric 2 → 8 levels.
+        $this->assertSame(2, $after['qualifying_direct_count']);
         $this->assertSame(8, $after['unlocked_levels']);
 
         $service->revokePostingAuthorization($authorized, $admin);
@@ -212,6 +217,8 @@ class LevelIncomeQualificationSettingsTest extends TestCase
         $this->assertSame(1, $preview['registered_direct_count']);
         $this->assertSame(0, $preview['income_eligible_direct_count']);
         $this->assertSame(0, $preview['currently_unlocked_levels']);
+        $this->assertSame(0, $preview['legacy_unlocked_levels']);
+        $this->assertSame(1, $preview['personal_approved_purchase_count']);
         $this->assertArrayHasKey('registered_directs', $preview['expected_under_each_mode']);
         $this->assertArrayHasKey('approved_package_directs+tour', $preview['expected_under_each_mode']);
         $this->assertNotEmpty($preview['locked_reason']);

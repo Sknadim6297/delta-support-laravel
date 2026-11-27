@@ -47,11 +47,18 @@
         @if ($nextUnlock)
             <p>{{ $nextUnlock['message'] }}</p>
         @endif
-        <p class="mb-0">Live unlock uses income-eligible unique directs until Admin authorizes a new version. Tour Only Total Business remains separate from Level Income generation.</p>
+        <p class="mb-0">
+            @if (($ruleMode ?? 'legacy') === 'authorized')
+                Live unlock uses the Admin-authorized rule version (including combined joining + purchase when configured). Unlocked levels are not the same as commission payment eligibility.
+            @else
+                Live unlock uses income-eligible unique directs until Admin authorizes a new version.
+            @endif
+            Tour Only Total Business remains separate from Level Income generation.
+        </p>
     </x-ui.alert>
 
     @if (!empty($qualificationBreakdown) && is_array($qualificationBreakdown))
-        <x-ui.card title="Qualification breakdown" lead="Joining and purchase contributions under the preview/authorized version settings. Live legacy may still apply until posting is authorized.">
+        <x-ui.card title="Qualification breakdown" lead="{{ ($ruleMode ?? 'legacy') === 'authorized' ? 'Joining and purchase contributions under the live authorized version settings.' : 'Joining and purchase contributions under the preview/authorized version settings. Live legacy may still apply until posting is authorized.' }}">
             <div class="ds-stat-grid">
                 <x-ui.stat label="Mode" :value="(string) ($qualificationBreakdown['mode'] ?? 'single_basis')" />
                 <x-ui.stat label="Joining metric" :value="(string) ($qualificationBreakdown['joining_weighted'] ?? 0)" hint="{{ !empty($qualificationBreakdown['joining_enabled']) ? 'enabled' : 'off' }}" />
@@ -74,9 +81,11 @@
             <div class="ds-stat-grid">
                 <x-ui.stat label="Registered directs" :value="(string) ($qualificationPreview['registered_direct_count'] ?? 0)" />
                 <x-ui.stat label="Approved purchasing directs" :value="(string) ($qualificationPreview['approved_package_direct_count'] ?? 0)" />
-                <x-ui.stat label="Approved package purchases" :value="(string) ($qualificationPreview['approved_direct_package_purchase_count'] ?? 0)" />
+                <x-ui.stat label="Own approved purchases" :value="(string) ($qualificationPreview['personal_approved_purchase_count'] ?? 0)" hint="Personal package rows for Option B" />
+                <x-ui.stat label="Direct package purchases" :value="(string) ($qualificationPreview['approved_direct_package_purchase_count'] ?? 0)" />
                 <x-ui.stat label="Tour Only purchasing directs" :value="(string) ($qualificationPreview['tour_only_purchasing_direct_count'] ?? 0)" />
-                <x-ui.stat label="Currently unlocked" :value="(string) ($qualificationPreview['currently_unlocked_levels'] ?? 0).' of 20'" hint="{{ $qualificationPreview['applicable_version'] ?? 'legacy' }}" />
+                <x-ui.stat label="Currently unlocked" :value="(string) ($qualificationPreview['currently_unlocked_levels'] ?? 0).' of 20'" hint="{{ ($qualificationPreview['live_rule_mode'] ?? 'legacy').' / '.($qualificationPreview['applicable_version'] ?? 'legacy') }}" />
+                <x-ui.stat label="Legacy comparison" :value="(string) ($qualificationPreview['legacy_unlocked_levels'] ?? $qualificationPreview['currently_unlocked_levels'] ?? 0).' of 20'" hint="Hard-coded legacy ladder only" />
                 <x-ui.stat label="Candidate expected" :value="(string) (($qualificationPreview['candidate_expected']['expected_unlocked_levels'] ?? 0)).' of 20'" hint="{{ $qualificationPreview['candidate_expected']['version_code'] ?? 'n/a' }}" />
             </div>
             <p class="ds-muted" style="margin:.75rem 0;">{{ $qualificationPreview['locked_reason'] ?? '' }}</p>

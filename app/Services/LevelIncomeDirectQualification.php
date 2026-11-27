@@ -350,7 +350,7 @@ class LevelIncomeDirectQualification
         }
 
         return sprintf(
-            'Combined metric (draft/unauthorized until BD approves): joining=%s×%d, purchases=%s/%s×%d, double_credit=%s.',
+            'Combined metric: joining=%s×%d, purchases=%s/%s×%d, double_credit=%s.',
             $joiningEnabled ? 'on' : 'off',
             $joinUnit,
             $purchaseEnabled ? $scope : 'off',
@@ -391,10 +391,53 @@ class LevelIncomeDirectQualification
         $purchaseCountInclTour = $this->approvedPurchaseCountByDirects($memberId, true, false);
         $purchaseCountIncomeOnly = $this->approvedPurchaseCountByDirects($memberId, false, true);
         $activatedLegacy = $resolver->isPersonallyActivated($memberId);
+        $personalApprovedPurchases = $this->personalApprovedPurchaseCount(
+            $memberId,
+            (bool) ($candidate?->tour_only_qualifies_for_unlock ?? true),
+            false
+        );
 
-        // Canonical live entitlement while unauthorized: legacy ladder ignores personal activation.
-        $liveUnlocked = $resolver->legacyLevelsForCount($incomeEligibleDirects);
-        $displayUnlocked = $resolver->unlockedLevels($incomeEligibleDirects, $activatedLegacy);
+        // Legacy entitlement always uses income-eligible unique directs (activation ignored by ladder).
+        $legacyUnlocked = $resolver->legacyLevelsForCount($incomeEligibleDirects);
+
+        // Effective display unlock must use the same authoritative path as ReferralLevelEligibility::forMember.
+        // Bug fix: previously unlockedLevels(incomeEligibleDirects) after authorize applied authorized bands
+        // to the wrong metric (legacy directs) instead of the version's combined/personal metric.
+        if ($authorized !== null) {
+            $authorized->loadMissing('bands');
+            $authBreakdown = $this->breakdownForVersion($memberId, $authorized);
+            $authMetric = (int) ($authBreakdown['total_metric'] ?? 0);
+            $authActivated = $this->isPersonallyActivatedForVersion($memberId, $authorized);
+            $rawAuthorizedUnlock = $resolver->unlockedLevels($authMetric, $authActivated);
+            $effectiveUnlocked = app(LevelIncomeUnlockGrandfathering::class)
+                ->apply($memberId, $authorized, $rawAuthorizedUnlock);
+            $displayUnlocked = $effectiveUnlocked;
+            $currentlyUnlocked = $effectiveUnlocked;
+            $eligibilityContext = LevelIncomeUnlockImpactAnalyzer::CONTEXT_AUTHORIZED_DISPLAY;
+            $lockedReason = sprintf(
+                'Authorized version %s applies for display (basis=%s, metric=%d, activated=%s, grandfather=%s). Legacy ladder entitlement remains %d for comparison only.',
+                $authorized->version_code,
+                $this->normalizeBasis($authorized->direct_qualification_basis ?? null),
+                $authMetric,
+                $authActivated ? 'yes' : 'no',
+                ($authorized->grandfather_existing_unlock ?? false) ? 'yes' : 'no',
+                $legacyUnlocked
+            );
+        } else {
+            $displayUnlocked = $legacyUnlocked;
+            $currentlyUnlocked = $legacyUnlocked;
+            $eligibilityContext = LevelIncomeUnlockImpactAnalyzer::CONTEXT_LIVE_LEGACY;
+            $lockedReason = match (true) {
+                $legacyUnlocked > 0 => sprintf(
+                    'Live legacy entitlement: %d level(s) from %d income-eligible unique direct(s). Legacy ladder ignores personal activation.',
+                    $legacyUnlocked,
+                    $incomeEligibleDirects
+                ),
+                ! $activatedLegacy && $legacyUnlocked === 0 => 'No income-eligible personal activation under live legacy rules (activation is informational only for legacy unlock).',
+                $incomeEligibleDirects === 0 && $legacyUnlocked === 0 => 'Live legacy unlock needs ≥1 income-eligible qualifying direct (registration / Tour Only alone do not count).',
+                default => 'Locked under live legacy ladder.',
+            };
+        }
 
         $modeExpected = [];
         foreach (self::BASES as $basis) {
@@ -408,17 +451,19 @@ class LevelIncomeDirectQualification
                         : $this->approvedPurchaseCountByDirects($memberId, false, false),
                     self::BASIS_COMBINED_JOINING_AND_PURCHASE => (int) $this->combinedBreakdown(
                         $memberId,
-                        new LevelIncomeRuleVersion([
-                            'direct_qualification_basis' => self::BASIS_COMBINED_JOINING_AND_PURCHASE,
-                            'tour_only_qualifies_for_unlock' => $tourFlag,
-                            'combined_joining_enabled' => true,
-                            'combined_purchase_enabled' => true,
-                            'combined_purchase_scope' => self::BASIS_APPROVED_PACKAGE_DIRECTS,
-                            'combined_repeat_purchase_mode' => self::REPEAT_UNIQUE_DIRECTS,
-                            'combined_double_credit_policy' => self::DOUBLE_PREVENT_OVERLAP,
-                            'combined_joining_unit_value' => 1,
-                            'combined_purchase_unit_value' => 1,
-                        ]),
+                        ($candidate !== null && $this->normalizeBasis($candidate->direct_qualification_basis ?? null) === self::BASIS_COMBINED_JOINING_AND_PURCHASE)
+                            ? $candidate
+                            : new LevelIncomeRuleVersion([
+                                'direct_qualification_basis' => self::BASIS_COMBINED_JOINING_AND_PURCHASE,
+                                'tour_only_qualifies_for_unlock' => $tourFlag,
+                                'combined_joining_enabled' => true,
+                                'combined_purchase_enabled' => true,
+                                'combined_purchase_scope' => self::BASIS_PERSONAL_APPROVED_PURCHASES,
+                                'combined_repeat_purchase_mode' => self::REPEAT_EACH_PURCHASE,
+                                'combined_double_credit_policy' => self::DOUBLE_ALLOW_SUM,
+                                'combined_joining_unit_value' => 1,
+                                'combined_purchase_unit_value' => 1,
+                            ]),
                         $tourFlag
                     )['total_metric'],
                     default => $tourFlag
@@ -482,42 +527,46 @@ class LevelIncomeDirectQualification
             ];
         }
 
-        $reason = match (true) {
-            $liveUnlocked > 0 => sprintf(
-                'Live legacy entitlement: %d level(s) from %d income-eligible unique direct(s). Legacy ladder ignores personal activation.',
-                $liveUnlocked,
-                $incomeEligibleDirects
-            ),
-            ! $activatedLegacy && $liveUnlocked === 0 => 'No income-eligible personal activation under live legacy rules (activation is informational only for legacy unlock).',
-            $incomeEligibleDirects === 0 && $liveUnlocked === 0 => 'Live legacy unlock needs ≥1 income-eligible qualifying direct (registration / Tour Only alone do not count).',
-            default => 'Locked under live legacy ladder.',
-        };
-
         $deltaReason = null;
         if ($candidateExpected !== null) {
-            if ($liveUnlocked > 0 && $proposedUnlocked === 0 && ! ($candidateExpected['personally_activated'] ?? false)) {
+            $protectedCandidate = $proposedUnlocked;
+            if ($candidate !== null) {
+                $protectedCandidate = (int) app(LevelIncomeUnlockGrandfathering::class)
+                    ->previewMember($memberId, $candidate, $proposedUnlocked)['protected'];
+            }
+
+            if ($authorized !== null && $authorized->version_code === ($candidateExpected['version_code'] ?? null)) {
                 $deltaReason = sprintf(
-                    'ENTITLEMENT REDUCTION RISK: live %d via legacy directs; proposed bands require personal activation (basis=%s, tour_only_unlock=%s) and member is not activated under that filter → proposed 0. Live unchanged until authorize.',
-                    $liveUnlocked,
-                    $candidateExpected['direct_qualification_basis'],
-                    ($candidateExpected['tour_only_qualifies_for_unlock'] ?? false) ? 'yes' : 'no'
-                );
-            } elseif ($liveUnlocked !== $proposedUnlocked) {
-                $deltaReason = sprintf(
-                    'Proposed simulation %d vs live legacy %d (proposed_activated=%s, proposed_metric=%d). Not applied.',
+                    'Authorized version is live for display: effective %d (legacy comparison %d, raw proposed %d, protected %d).',
+                    $currentlyUnlocked,
+                    $legacyUnlocked,
                     $proposedUnlocked,
-                    $liveUnlocked,
+                    $protectedCandidate
+                );
+            } elseif ($legacyUnlocked > 0 && $proposedUnlocked === 0 && ! ($candidateExpected['personally_activated'] ?? false)) {
+                $deltaReason = sprintf(
+                    'ENTITLEMENT REDUCTION RISK: live legacy %d via income-eligible directs; proposed bands require personal activation (basis=%s, tour_only_unlock=%s) and member is not activated under that filter → proposed raw 0 / protected %d. Live display unchanged until authorize.',
+                    $legacyUnlocked,
+                    $candidateExpected['direct_qualification_basis'],
+                    ($candidateExpected['tour_only_qualifies_for_unlock'] ?? false) ? 'yes' : 'no',
+                    $protectedCandidate
+                );
+            } elseif ($legacyUnlocked !== $protectedCandidate) {
+                $deltaReason = sprintf(
+                    'Proposed protected simulation %d vs live legacy %d (proposed_activated=%s, proposed_metric=%d). Not applied until publish + authorize.',
+                    $protectedCandidate,
+                    $legacyUnlocked,
                     ($candidateExpected['personally_activated'] ?? false) ? 'yes' : 'no',
                     (int) ($candidateExpected['direct_metric'] ?? 0)
                 );
             } else {
-                $deltaReason = 'Proposed simulation matches live legacy entitlement.';
+                $deltaReason = 'Proposed protected simulation matches live legacy entitlement.';
             }
         }
 
         return [
             'member_id' => $memberId,
-            'eligibility_context' => LevelIncomeUnlockImpactAnalyzer::CONTEXT_LIVE_LEGACY,
+            'eligibility_context' => $eligibilityContext,
             'registered_direct_count' => $registered,
             'income_eligible_direct_count' => $incomeEligibleDirects,
             'approved_package_direct_count' => $approvedPackageDirects,
@@ -525,16 +574,18 @@ class LevelIncomeDirectQualification
             'tour_only_purchasing_direct_count' => $tourOnlyDirects,
             'approved_direct_package_purchase_count' => $purchaseCountInclTour,
             'income_eligible_direct_package_purchase_count' => $purchaseCountIncomeOnly,
-            'currently_unlocked_levels' => $liveUnlocked,
+            'personal_approved_purchase_count' => $personalApprovedPurchases,
+            'legacy_unlocked_levels' => $legacyUnlocked,
+            'currently_unlocked_levels' => $currentlyUnlocked,
             'display_unlocked_levels' => $displayUnlocked,
             'live_rule_mode' => $authorized ? LevelIncomeRuleResolver::MODE_AUTHORIZED : LevelIncomeRuleResolver::MODE_LEGACY,
             'applicable_version' => $authorized?->version_code ?? 'legacy_hardcoded',
-            'locked_reason' => $reason,
+            'locked_reason' => $lockedReason,
             'proposed_delta_reason' => $deltaReason,
-            'entitlement_reduction' => $liveUnlocked > $proposedUnlocked,
+            'entitlement_reduction' => $legacyUnlocked > ($candidateExpected['expected_unlocked_levels'] ?? $proposedUnlocked),
             'candidate_expected' => $candidateExpected,
             'expected_under_each_mode' => $modeExpected,
-            'note' => 'Previews do not authorize posting. currently_unlocked_levels is always live legacy entitlement. Accrual is purchase-scoped when authorized. Total Business (Tour Only BV) remains separate from unlock.',
+            'note' => 'currently_unlocked_levels is the effective member/admin display unlock (authorized + grandfathering when posting_authorized). legacy_unlocked_levels remains the hard-coded legacy ladder for comparison. Accrual remains purchase-scoped under applicability. Total Business (Tour Only BV) remains separate from unlock.',
         ];
     }
 

@@ -162,9 +162,9 @@ class CombinedLevelUnlockQualificationTest extends TestCase
         $live = app(ReferralLevelEligibility::class)->forMember($sponsor->member_id);
         $this->assertSame(LevelIncomeRuleResolver::MODE_AUTHORIZED, $live['rule_mode']);
         $this->assertSame('combined', $live['qualification_breakdown']['mode']);
-        // Activated + metric 1 (join-only direct) → proposed bands unlock 8; grandfather floor ok.
+        // Activated + metric 1 (join-only direct under prevent_overlap) → Option B bands unlock 4.
         $this->assertSame(1, $live['qualifying_direct_count']);
-        $this->assertSame(8, $live['unlocked_levels']);
+        $this->assertSame(4, $live['unlocked_levels']);
         $this->assertTrue($authorized->posting_authorized);
 
         // Cleanup authorization for isolation of later suite tests is handled by RefreshDatabase.
@@ -426,6 +426,159 @@ class CombinedLevelUnlockQualificationTest extends TestCase
         $this->assertSame(2, $row['counts']['combined_total_metric']);
         $this->assertNotEmpty($row['level_lock_reasons']);
         $this->assertSame(20, count($row['level_lock_reasons']));
+    }
+
+    public function test_option_b_personal_formula_matrix_and_automatic_unlock(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(LevelIncomeRuleAdministration::class);
+        $eligibility = app(ReferralLevelEligibility::class);
+        $qualification = app(LevelIncomeDirectQualification::class);
+
+        $member = $this->member('CMB200', 'ST666666');
+        $this->purchase($member, $this->roiPackage('CMB-B-ACT'), PackagePurchase::APPROVED, '100.0000');
+
+        $scenarios = [
+            // joins, extra personal purchases beyond the activation purchase, expected levels
+            [0, 0, 4],
+            [0, 1, 8],
+            [1, 0, 8],
+            [1, 1, 12],
+            [2, 0, 12],
+            [3, 0, 16],
+            [4, 0, 20],
+            [5, 4, 20],
+        ];
+
+        $draft = LevelIncomeRuleVersion::query()
+            ->where('version_code', 'proposed_activation_unlock_v1')
+            ->with('bands')
+            ->firstOrFail();
+        $draft->fill([
+            'direct_qualification_basis' => LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASE,
+            'combined_joining_enabled' => true,
+            'combined_purchase_enabled' => true,
+            'combined_purchase_scope' => LevelIncomeDirectQualification::BASIS_PERSONAL_APPROVED_PURCHASES,
+            'combined_repeat_purchase_mode' => LevelIncomeDirectQualification::REPEAT_EACH_PURCHASE,
+            'combined_double_credit_policy' => LevelIncomeDirectQualification::DOUBLE_ALLOW_SUM,
+            'combined_joining_unit_value' => 1,
+            'combined_purchase_unit_value' => 1,
+            'tour_only_qualifies_for_unlock' => true,
+            'grandfather_existing_unlock' => true,
+        ])->save();
+
+        foreach ($scenarios as [$joins, $extraPurchases, $expected]) {
+            Member::query()->where('sponsor_id', $member->member_id)->delete();
+            PackagePurchase::query()
+                ->where('member_id', $member->member_id)
+                ->where('package_code', '!=', 'CMB-B-ACT')
+                ->delete();
+
+            for ($i = 0; $i < $joins; $i++) {
+                $this->member('CMB200J'.$expected.'_'.$i, $member->member_id);
+            }
+            for ($i = 0; $i < $extraPurchases; $i++) {
+                $this->purchase(
+                    $member,
+                    $this->roiPackage('CMB-B-X'.$expected.'_'.$i),
+                    PackagePurchase::APPROVED,
+                    '50.0000'
+                );
+            }
+
+            $metric = $joins + 1 + $extraPurchases; // activation purchase always present
+            $unlocked = app(LevelIncomeRuleResolver::class)->simulateUnlockedLevels(
+                $draft->fresh('bands')->bands->map(fn ($b): array => [
+                    'start_level' => (int) $b->start_level,
+                    'end_level' => (int) $b->end_level,
+                    'min_qualifying_directs' => (int) $b->min_qualifying_directs,
+                    'requires_personal_activation' => (bool) $b->requires_personal_activation,
+                ])->all(),
+                $metric,
+                true
+            );
+            $this->assertSame($expected, $unlocked, "joins={$joins} extraPurchases={$extraPurchases} metric={$metric}");
+            $this->assertSame(
+                $metric,
+                $qualification->countForVersion($member->member_id, $draft->fresh())
+            );
+        }
+
+        // Authorize Option B and confirm display path + automatic unlock on new join / purchase.
+        Member::query()->where('sponsor_id', $member->member_id)->delete();
+        PackagePurchase::query()
+            ->where('member_id', $member->member_id)
+            ->where('package_code', '!=', 'CMB-B-ACT')
+            ->delete();
+
+        $published = $service->publish($draft->fresh(), $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            'effective_from' => '2026-11-27',
+            'change_note' => 'Option B personal formula test',
+        ]);
+        app(LevelIncomeUnlockGrandfathering::class)->captureBaseline($published->fresh(), $admin, '2026-11-27');
+        $service->authorizePosting($published->fresh(), $admin, true, null, true);
+        app(LevelIncomeRuleResolver::class)->clearCache();
+
+        $before = $eligibility->forMember($member->member_id);
+        $this->assertSame(LevelIncomeRuleResolver::MODE_AUTHORIZED, $before['rule_mode']);
+        $this->assertSame(4, $before['unlocked_levels']); // 0 joins + 1 personal purchase
+
+        $preview = $qualification->memberPreview($member->member_id, $published->fresh('bands'));
+        $this->assertSame(4, $preview['currently_unlocked_levels']);
+        $this->assertSame(4, $preview['display_unlocked_levels']);
+        $this->assertSame(0, $preview['legacy_unlocked_levels']);
+        $this->assertSame($before['unlocked_levels'], $preview['currently_unlocked_levels']);
+        $this->assertSame(LevelIncomeRuleResolver::MODE_AUTHORIZED, $preview['live_rule_mode']);
+
+        // New direct joining automatically raises unlock without cron.
+        $this->member('CMB200NEW', $member->member_id);
+        app(LevelIncomeRuleResolver::class)->clearCache();
+        $afterJoin = $eligibility->forMember($member->member_id);
+        $this->assertSame(8, $afterJoin['unlocked_levels']);
+
+        // Repeat personal purchase automatically raises unlock.
+        $this->purchase($member, $this->roiPackage('CMB-B-REPEAT'), PackagePurchase::APPROVED, '50.0000');
+        app(LevelIncomeRuleResolver::class)->clearCache();
+        $afterPurchase = $eligibility->forMember($member->member_id);
+        $this->assertSame(12, $afterPurchase['unlocked_levels']);
+
+        // Pending purchase must not raise unlock.
+        $this->purchase($member, $this->roiPackage('CMB-B-PEND'), PackagePurchase::PENDING, '50.0000');
+        $this->assertSame(12, $eligibility->forMember($member->member_id)['unlocked_levels']);
+    }
+
+    public function test_joining_only_without_personal_activation_stays_locked_under_option_b_bands(): void
+    {
+        $sponsor = $this->member('CMB210', 'ST666666');
+        $this->member('CMB210A', $sponsor->member_id);
+        $this->member('CMB210B', $sponsor->member_id);
+
+        $version = $this->combinedVersion([
+            'combined_purchase_scope' => LevelIncomeDirectQualification::BASIS_PERSONAL_APPROVED_PURCHASES,
+            'combined_repeat_purchase_mode' => LevelIncomeDirectQualification::REPEAT_EACH_PURCHASE,
+            'combined_double_credit_policy' => LevelIncomeDirectQualification::DOUBLE_ALLOW_SUM,
+        ]);
+
+        $q = app(LevelIncomeDirectQualification::class);
+        $this->assertSame(2, $q->countForVersion($sponsor->member_id, $version));
+        $this->assertFalse($q->isPersonallyActivatedForVersion($sponsor->member_id, $version));
+
+        $candidate = LevelIncomeRuleVersion::query()
+            ->where('version_code', 'proposed_activation_unlock_v1')
+            ->with('bands')
+            ->firstOrFail();
+        $unlocked = app(LevelIncomeRuleResolver::class)->simulateUnlockedLevels(
+            $candidate->bands->map(fn ($b): array => [
+                'start_level' => (int) $b->start_level,
+                'end_level' => (int) $b->end_level,
+                'min_qualifying_directs' => (int) $b->min_qualifying_directs,
+                'requires_personal_activation' => (bool) $b->requires_personal_activation,
+            ])->all(),
+            2,
+            false
+        );
+        $this->assertSame(0, $unlocked, 'Joining-only without personal activation must not unlock under Option B bands');
     }
 
     private function combinedVersion(array $overrides = []): LevelIncomeRuleVersion

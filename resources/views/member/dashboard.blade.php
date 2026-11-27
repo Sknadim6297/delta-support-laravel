@@ -216,7 +216,13 @@
 
     @if (!empty($metrics['levelUnlock']))
         <section id="level-unlock">
-            <x-ui.section title="Level Income unlock" lead="Commission levels (20). Live rules stay legacy until Admin authorizes a new version. Combined joining + purchase settings appear only as preview when configured." />
+            @if (($metrics['levelUnlock']['rule_mode'] ?? 'legacy') === 'authorized')
+                <x-ui.section title="Level Income unlock" lead="Commission levels (20). Live unlock uses the Admin-authorized rule version (including combined joining + purchase when configured). Unlocked levels are not the same as commission payment eligibility." />
+            @elseif (($metrics['levelUnlock']['rule_mode'] ?? 'legacy') === 'draft')
+                <x-ui.section title="Level Income unlock" lead="Commission levels (20). A draft rule exists; live unlock stays on the last authorized version (or legacy) until Admin authorizes. Combined joining + purchase may appear as preview only." />
+            @else
+                <x-ui.section title="Level Income unlock" lead="Commission levels (20). Live rules stay legacy until Admin authorizes a new version. Combined joining + purchase settings appear only as preview when configured." />
+            @endif
             <div class="ds-dash-kpis">
                 <x-ui.stat label="Unlocked levels" :value="(string) (($metrics['levelUnlock']['unlocked_levels'] ?? 0)).' / 20'" />
                 <x-ui.stat label="Registered directs" :value="(string) ($metrics['levelUnlock']['registered_direct_count'] ?? 0)" />

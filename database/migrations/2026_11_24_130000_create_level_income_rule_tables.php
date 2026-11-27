@@ -129,13 +129,13 @@ return new class extends Migration
 
         $proposedId = DB::table('level_income_rule_versions')->insertGetId([
             'version_code' => 'proposed_activation_unlock_v1',
-            'label' => 'Proposed: activation unlocks levels 1–4',
+            'label' => 'Option B: combined joining + personal purchases (4 levels each, max 20)',
             'status' => 'draft',
             'posting_authorized' => false,
             'applicability' => 'future_purchases_only',
             'effective_from' => null,
-            'notes' => 'PROPOSED defaults from business request. Recommended applicability: future_purchases_only. Not authorized for financial:daily. Active member with 0 directs → levels 1–4 under new rules only after publish+authorize and only for purchases approved on/after effective_from.',
-            'change_note' => 'Draft only — default applicability set to future_purchases_only; wait for written approval before publish/authorize.',
+            'notes' => 'Option B ladder: metric 1/2/3/4/5 → levels 4/8/12/16/20 for personally activated members. No activation-only bonus at metric 0. Not authorized for financial:daily until publish+authorize.',
+            'change_note' => 'Draft only — Option B bands without activation bonus; wait for written approval before publish/authorize.',
             'created_by' => null,
             'published_by' => null,
             'published_at' => null,
@@ -143,12 +143,13 @@ return new class extends Migration
             'updated_at' => $now,
         ]);
 
+        // Option B: no activation-only bonus. Metric N (joining+purchases) unlocks 4N levels, cap 20.
         $proposedBands = [
-            ['sort' => 1, 'start' => 1, 'end' => 4, 'directs' => 0, 'activation' => true],
-            ['sort' => 2, 'start' => 5, 'end' => 8, 'directs' => 1, 'activation' => true],
-            ['sort' => 3, 'start' => 9, 'end' => 12, 'directs' => 2, 'activation' => true],
-            ['sort' => 4, 'start' => 13, 'end' => 16, 'directs' => 3, 'activation' => true],
-            ['sort' => 5, 'start' => 17, 'end' => 20, 'directs' => 4, 'activation' => true],
+            ['sort' => 1, 'start' => 1, 'end' => 4, 'directs' => 1, 'activation' => true],
+            ['sort' => 2, 'start' => 5, 'end' => 8, 'directs' => 2, 'activation' => true],
+            ['sort' => 3, 'start' => 9, 'end' => 12, 'directs' => 3, 'activation' => true],
+            ['sort' => 4, 'start' => 13, 'end' => 16, 'directs' => 4, 'activation' => true],
+            ['sort' => 5, 'start' => 17, 'end' => 20, 'directs' => 5, 'activation' => true],
         ];
         foreach ($proposedBands as $band) {
             DB::table('level_income_unlock_bands')->insert([

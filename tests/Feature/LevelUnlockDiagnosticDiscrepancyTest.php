@@ -147,6 +147,9 @@ class LevelUnlockDiagnosticDiscrepancyTest extends TestCase
 
         $gain = $this->member('IMPGAIN', 'ST666666');
         $this->purchase($gain, $this->roiPackage('ROI-GAIN'), PackagePurchase::APPROVED, '100.0000');
+        // Option B needs personal activation + metric; one personal purchase alone → 4 vs legacy 0 (gain).
+        // Add a joining direct so metric is unambiguous under combined personal scope.
+        $this->member('IMPGAIND', $gain->member_id);
 
         $flat = $this->member('IMPFLAT', 'ST666666');
 
@@ -161,7 +164,9 @@ class LevelUnlockDiagnosticDiscrepancyTest extends TestCase
         $this->assertSame(LevelIncomeUnlockImpactAnalyzer::IMPACT_UNCHANGED, $byId['IMPLOSS']['impact']);
         $this->assertSame(4, $byId['IMPLOSS']['protected_unlocked_levels']);
         $this->assertTrue($byId['IMPLOSS']['raw_proposed_reduction']);
+        // Option B: 1 join + 1 personal purchase → metric 2 → protected 8 vs legacy 0.
         $this->assertSame(LevelIncomeUnlockImpactAnalyzer::IMPACT_GAIN, $byId['IMPGAIN']['impact']);
+        $this->assertSame(8, $byId['IMPGAIN']['protected_unlocked_levels']);
         $this->assertSame(LevelIncomeUnlockImpactAnalyzer::IMPACT_UNCHANGED, $byId['IMPFLAT']['impact']);
         $this->assertSame(0, $result['summary']['loss']);
         $this->assertSame(1, $result['summary']['gain']);
@@ -184,8 +189,12 @@ class LevelUnlockDiagnosticDiscrepancyTest extends TestCase
             ->where('version_code', 'proposed_activation_unlock_v1')
             ->firstOrFail();
         $this->assertSame(
-            LevelIncomeDirectQualification::BASIS_APPROVED_PACKAGE_DIRECTS,
+            LevelIncomeDirectQualification::BASIS_COMBINED_JOINING_AND_PURCHASE,
             $proposed->direct_qualification_basis
+        );
+        $this->assertSame(
+            LevelIncomeDirectQualification::BASIS_PERSONAL_APPROVED_PURCHASES,
+            $proposed->combined_purchase_scope
         );
     }
 

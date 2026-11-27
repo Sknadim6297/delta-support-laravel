@@ -60,7 +60,8 @@ class LevelIncomeUnlockGrandfatheringTest extends TestCase
         $version = $this->prepareAuthorizedVersionWithCapture('2026-11-24');
 
         $live = app(ReferralLevelEligibility::class)->forMember($sponsor->member_id);
-        // Proposed: activated + 1 approved-package direct → 8; legacy was 4; protected = max(8, min(4,4)) = 8.
+        // Option B: activated + 1 join + 1 personal purchase → metric 2 → 8; legacy was 4; protected = max(8, min(4,4)) = 8.
+        $this->assertSame(2, $live['qualifying_direct_count']);
         $this->assertSame(8, $live['raw_authorized_unlocked_levels']);
         $this->assertSame(8, $live['unlocked_levels']);
         $this->assertGreaterThanOrEqual(4, $live['unlocked_levels']);

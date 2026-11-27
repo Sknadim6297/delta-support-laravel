@@ -109,7 +109,7 @@ class LevelIncomeApplicabilityTest extends TestCase
         );
     }
 
-    public function test_active_zero_directs_unlocks_four_only_under_applicable_new_rules(): void
+    public function test_option_b_has_no_activation_bonus_at_metric_zero_under_applicable_new_rules(): void
     {
         $this->publishAndAuthorize(
             LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
@@ -128,9 +128,12 @@ class LevelIncomeApplicabilityTest extends TestCase
         );
 
         $resolver = app(LevelIncomeRuleResolver::class);
+        // Legacy purchase stays on hard-coded ladder (0 directs → 0).
         $this->assertSame(0, $resolver->unlockedLevelsForPurchase($legacyPurchase, '2026-11-20', 0, true));
-        $this->assertSame(4, $resolver->unlockedLevelsForPurchase($newPurchase, '2026-11-20', 0, true));
-        $this->assertSame(0, $resolver->unlockedLevelsForPurchase($newPurchase, '2026-11-20', 0, false));
+        // Option B: activation alone does not unlock; metric 0 → 0, metric 1 → 4.
+        $this->assertSame(0, $resolver->unlockedLevelsForPurchase($newPurchase, '2026-11-20', 0, true));
+        $this->assertSame(4, $resolver->unlockedLevelsForPurchase($newPurchase, '2026-11-20', 1, true));
+        $this->assertSame(0, $resolver->unlockedLevelsForPurchase($newPurchase, '2026-11-20', 1, false));
     }
 
     public function test_existing_prospective_uses_business_date_boundary_without_backfill_semantics(): void
