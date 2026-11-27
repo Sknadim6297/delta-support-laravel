@@ -234,6 +234,7 @@ class LevelIncomeRuleController extends Controller
             'version_id' => ['required', 'integer', 'exists:level_income_rule_versions,id'],
             'confirm_authorize' => ['accepted'],
             'confirm_existing_prospective' => ['sometimes', 'accepted'],
+            'confirm_pre_cutover_baseline' => ['sometimes', 'accepted'],
             'confirm_impact_preview' => ['accepted'],
         ]);
 
@@ -243,7 +244,8 @@ class LevelIncomeRuleController extends Controller
             $request->user(),
             true,
             $request->ip(),
-            $request->boolean('confirm_existing_prospective')
+            $request->boolean('confirm_existing_prospective'),
+            $request->boolean('confirm_pre_cutover_baseline')
         );
 
         return redirect()
@@ -307,11 +309,13 @@ class LevelIncomeRuleController extends Controller
             ->with(
                 'status',
                 sprintf(
-                    'Grandfather baseline captured for %s on %s (%d members, %d with legacy unlock). Posting remains unauthorized.',
+                    'Grandfather baseline captured for %s on %s (%d members, %d with legacy unlock, mode=%s). Posting remains unauthorized. %s',
                     $result['version_code'],
                     $result['transition_date'],
                     $result['captured'],
-                    $result['with_unlock']
+                    $result['with_unlock'],
+                    $result['capture_mode'],
+                    $result['capture_note']
                 )
             );
     }

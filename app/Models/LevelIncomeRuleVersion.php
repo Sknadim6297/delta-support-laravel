@@ -70,6 +70,8 @@ class LevelIncomeRuleVersion extends Model
         'grandfather_transition_date',
         'grandfather_captured_at',
         'grandfather_captured_by',
+        'grandfather_capture_mode',
+        'grandfather_capture_note',
         'effective_from',
         'notes',
         'change_note',
@@ -89,6 +91,7 @@ class LevelIncomeRuleVersion extends Model
         'grandfather_transition_date' => 'date',
         'grandfather_captured_at' => 'datetime',
         'effective_from' => 'date',
+        // grandfather_capture_mode / grandfather_capture_note remain strings
         'published_at' => 'datetime',
     ];
 

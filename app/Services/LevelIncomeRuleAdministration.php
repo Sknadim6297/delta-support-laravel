@@ -248,7 +248,8 @@ class LevelIncomeRuleAdministration
         User $admin,
         bool $confirm,
         ?string $ip = null,
-        bool $confirmExistingProspective = false
+        bool $confirmExistingProspective = false,
+        bool $confirmPreCutoverBaseline = false
     ): LevelIncomeRuleVersion {
         if (! $confirm) {
             throw ValidationException::withMessages([
@@ -262,7 +263,13 @@ class LevelIncomeRuleAdministration
             ]);
         }
 
-        return DB::transaction(function () use ($version, $admin, $ip, $confirmExistingProspective): LevelIncomeRuleVersion {
+        return DB::transaction(function () use (
+            $version,
+            $admin,
+            $ip,
+            $confirmExistingProspective,
+            $confirmPreCutoverBaseline
+        ): LevelIncomeRuleVersion {
             $locked = LevelIncomeRuleVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
             $locked->load(['bands', 'rates']);
 
@@ -300,7 +307,10 @@ class LevelIncomeRuleAdministration
                 ]);
             }
 
-            app(LevelIncomeUnlockGrandfathering::class)->assertReadyForAuthorization($locked);
+            app(LevelIncomeUnlockGrandfathering::class)->assertReadyForAuthorization(
+                $locked,
+                $confirmPreCutoverBaseline
+            );
 
             $before = $this->snapshot($locked);
 
@@ -586,7 +596,7 @@ class LevelIncomeRuleAdministration
             'grandfather_summary' => $grandfatherSummary,
             'grandfather_formula' => $grandfatherSummary['formula'] ?? null,
             'member_unlock_impact_sample' => $memberImpactSample,
-            'grandfather_note' => 'protected = max(proposed, min(snapshot_legacy, current_legacy)). Capture baseline at transition date before authorize when enabled. Does not backfill history or bypass payment controls.',
+            'grandfather_note' => 'protected = max(proposed, min(snapshot_legacy, current_legacy)). Capture baseline at transition date before authorize when enabled. After capture, members without snapshots use proposed rules only (preview matches runtime). existing_prospective requires transition_date = effective_from. Does not backfill history or bypass payment controls.',
         ];
     }
 
@@ -617,6 +627,8 @@ class LevelIncomeRuleAdministration
             'grandfather_existing_unlock' => (bool) ($version->grandfather_existing_unlock ?? false),
             'grandfather_transition_date' => optional($version->grandfather_transition_date)?->toDateString(),
             'grandfather_captured_at' => optional($version->grandfather_captured_at)?->toIso8601String(),
+            'grandfather_capture_mode' => $version->grandfather_capture_mode ?? null,
+            'grandfather_capture_note' => $version->grandfather_capture_note ?? null,
             'effective_from' => optional($version->effective_from)?->toDateString(),
             'bands' => $version->bands->map(fn ($b) => [
                 'start_level' => $b->start_level,

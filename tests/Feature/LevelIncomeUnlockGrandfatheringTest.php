@@ -6,6 +6,7 @@ use App\Models\LevelIncomeRuleVersion;
 use App\Models\LevelIncomeUnlockGrandfatherSnapshot;
 use App\Models\Member;
 use App\Models\Package;
+use App\Models\PackageIncomeRun;
 use App\Models\PackagePurchase;
 use App\Models\User;
 use App\Services\LevelIncomeRuleAdministration;
@@ -13,6 +14,7 @@ use App\Services\LevelIncomeRuleResolver;
 use App\Services\LevelIncomeUnlockGrandfathering;
 use App\Services\LevelIncomeUnlockImpactAnalyzer;
 use App\Services\ReferralLevelEligibility;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -145,6 +147,8 @@ class LevelIncomeUnlockGrandfatheringTest extends TestCase
         $version->refresh();
         $this->assertSame('2026-11-20', $version->grandfather_transition_date->toDateString());
         $this->assertNotNull($version->grandfather_captured_at);
+        $this->assertSame(LevelIncomeUnlockGrandfathering::CAPTURE_MODE_AS_OF_TRANSITION, $version->grandfather_capture_mode);
+        $this->assertSame(LevelIncomeUnlockGrandfathering::CAPTURE_MODE_AS_OF_TRANSITION, $result['capture_mode']);
         $this->assertSame($result['captured'], LevelIncomeUnlockGrandfatherSnapshot::query()
             ->where('level_income_rule_version_id', $version->id)
             ->count());
@@ -153,6 +157,287 @@ class LevelIncomeUnlockGrandfatheringTest extends TestCase
             'action' => 'grandfather_baseline_captured',
         ]);
         $this->assertFalse($version->posting_authorized);
+    }
+
+    public function test_preview_and_runtime_match_for_members_without_snapshot_after_capture(): void
+    {
+        Carbon::setTestNow('2026-11-27 10:00:00');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $existing = $this->member('GFNOSNAP1', 'ST666666');
+        $direct = $this->member('GFNOSNAP1D', $existing->member_id);
+        $this->purchase($direct, $this->roiPackage('ROI-NOSNAP'), PackagePurchase::APPROVED, '100.0000');
+
+        $service = app(LevelIncomeRuleAdministration::class);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+        $draft = $service->cloneAsDraft(
+            LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $draft->forceFill(['grandfather_existing_unlock' => true])->save();
+        $published = $service->publish($draft, $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            'effective_from' => '2026-11-28',
+        ]);
+
+        // Capture before the new member exists — future cutover freezes current members only.
+        $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-28');
+        $this->assertSame(
+            LevelIncomeUnlockGrandfathering::CAPTURE_MODE_PRE_CUTOVER_CURRENT,
+            $published->fresh()->grandfather_capture_mode
+        );
+
+        $newMember = $this->member('GFNOSNAP2', 'ST666666');
+        $newDirect = $this->member('GFNOSNAP2D', $newMember->member_id);
+        $this->purchase($newDirect, $this->roiPackage('ROI-NOSNAP2'), PackagePurchase::APPROVED, '100.0000');
+
+        // Proposed raw for joining-only without personal activation is 0.
+        $preview = $grandfathering->previewMember($newMember->member_id, $published->fresh(), 0);
+        $runtime = $grandfathering->apply($newMember->member_id, $published->fresh(), 0);
+        $this->assertFalse($preview['using_provisional_snapshot']);
+        $this->assertNull($preview['snapshot_levels']);
+        $this->assertSame(0, $preview['protected']);
+        $this->assertSame(0, $runtime);
+        $this->assertStringContainsString('No grandfather snapshot', $preview['reason']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_existing_prospective_requires_transition_match_effective_from(): void
+    {
+        Carbon::setTestNow('2026-11-27 10:00:00');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(LevelIncomeRuleAdministration::class);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+
+        $draft = $service->cloneAsDraft(
+            LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $draft->forceFill(['grandfather_existing_unlock' => true])->save();
+        $published = $service->publish($draft, $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            'effective_from' => '2026-11-28',
+        ]);
+
+        // Capture with a mismatched transition date.
+        $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-27');
+
+        try {
+            $service->authorizePosting($published->fresh(), $admin, true, null, true);
+            $this->fail('Expected ValidationException for mismatched transition/effective dates');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('grandfather_transition_date', $e->errors());
+        }
+
+        Carbon::setTestNow();
+    }
+
+    public function test_future_dated_capture_is_labeled_pre_cutover_not_exact_as_of(): void
+    {
+        Carbon::setTestNow('2026-11-27 10:00:00');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $sponsor = $this->member('GFFUTURE1', 'ST666666');
+        $direct = $this->member('GFFUTURE1D', $sponsor->member_id);
+        $this->purchase($direct, $this->roiPackage('ROI-FUTURE'), PackagePurchase::APPROVED, '100.0000');
+
+        $version = LevelIncomeRuleVersion::query()
+            ->where('version_code', 'proposed_activation_unlock_v1')
+            ->firstOrFail();
+
+        $result = app(LevelIncomeUnlockGrandfathering::class)
+            ->captureBaseline($version, $admin, '2026-11-28');
+
+        $version->refresh();
+        $this->assertSame(LevelIncomeUnlockGrandfathering::CAPTURE_MODE_PRE_CUTOVER_CURRENT, $result['capture_mode']);
+        $this->assertSame(LevelIncomeUnlockGrandfathering::CAPTURE_MODE_PRE_CUTOVER_CURRENT, $version->grandfather_capture_mode);
+        $this->assertStringContainsString('Not an exact future-date', $result['capture_note']);
+
+        $snap = LevelIncomeUnlockGrandfatherSnapshot::query()
+            ->where('level_income_rule_version_id', $version->id)
+            ->where('member_id', $sponsor->member_id)
+            ->first();
+        $this->assertNotNull($snap);
+        $this->assertSame(4, (int) $snap->legacy_unlocked_levels);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_as_of_capture_excludes_members_and_purchases_after_transition_date(): void
+    {
+        Carbon::setTestNow('2026-11-27 12:00:00');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $sponsor = $this->member('GFASOF1', 'ST666666');
+        $sponsor->forceFill(['created_at' => '2026-11-01 08:00:00'])->save();
+
+        $earlyDirect = $this->member('GFASOF1A', $sponsor->member_id);
+        $earlyDirect->forceFill(['created_at' => '2026-11-10 08:00:00'])->save();
+        $this->purchase($earlyDirect, $this->roiPackage('ROI-ASOF-A'), PackagePurchase::APPROVED, '100.0000', '2026-11-10 09:00:00');
+
+        $lateDirect = $this->member('GFASOF1B', $sponsor->member_id);
+        $lateDirect->forceFill(['created_at' => '2026-11-26 08:00:00'])->save();
+        $this->purchase($lateDirect, $this->roiPackage('ROI-ASOF-B'), PackagePurchase::APPROVED, '100.0000', '2026-11-26 09:00:00');
+
+        $version = LevelIncomeRuleVersion::query()
+            ->where('version_code', 'proposed_activation_unlock_v1')
+            ->firstOrFail();
+
+        app(LevelIncomeUnlockGrandfathering::class)->captureBaseline($version, $admin, '2026-11-20');
+        $version->refresh();
+        $this->assertSame(LevelIncomeUnlockGrandfathering::CAPTURE_MODE_AS_OF_TRANSITION, $version->grandfather_capture_mode);
+
+        $snap = LevelIncomeUnlockGrandfatherSnapshot::query()
+            ->where('level_income_rule_version_id', $version->id)
+            ->where('member_id', $sponsor->member_id)
+            ->firstOrFail();
+        // Only the early direct existed/qualified as of 2026-11-20 → legacy 4, not 8.
+        $this->assertSame(1, (int) $snap->income_eligible_direct_count);
+        $this->assertSame(4, (int) $snap->legacy_unlocked_levels);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_cannot_recapture_after_authorization_and_preserves_audit_history(): void
+    {
+        $version = $this->prepareAuthorizedVersionWithCapture('2026-11-24');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $auditCount = \App\Models\LevelIncomeRuleAudit::query()
+            ->where('level_income_rule_version_id', $version->id)
+            ->count();
+
+        try {
+            app(LevelIncomeUnlockGrandfathering::class)
+                ->captureBaseline($version->fresh(), $admin, '2026-11-24');
+            $this->fail('Expected ValidationException when recapturing after authorization');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('grandfather', $e->errors());
+        }
+
+        $this->assertSame(
+            $auditCount,
+            \App\Models\LevelIncomeRuleAudit::query()
+                ->where('level_income_rule_version_id', $version->id)
+                ->count()
+        );
+        $this->assertTrue($version->fresh()->posting_authorized);
+    }
+
+    public function test_authorization_rejects_effective_date_on_or_before_processed_business_date(): void
+    {
+        Carbon::setTestNow('2026-11-27 10:00:00');
+        PackageIncomeRun::query()->create([
+            'business_date' => '2026-11-26',
+            'status' => PackageIncomeRun::SUCCEEDED,
+            'credited_roi' => 0,
+            'credited_commissions' => 0,
+            'message' => 'test fixture',
+        ]);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(LevelIncomeRuleAdministration::class);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+
+        $draft = $service->cloneAsDraft(
+            LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $draft->forceFill(['grandfather_existing_unlock' => true])->save();
+        $published = $service->publish($draft, $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_FUTURE_PURCHASES_ONLY,
+            'effective_from' => '2026-11-26',
+        ]);
+        $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-26');
+
+        try {
+            $service->authorizePosting($published->fresh(), $admin, true);
+            $this->fail('Expected ValidationException for retroactive effective date');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('effective_from', $e->errors());
+            $this->assertStringContainsString('last succeeded financial business date', $e->errors()['effective_from'][0]);
+        }
+
+        Carbon::setTestNow();
+    }
+
+    public function test_new_members_after_capture_require_ack_or_recapture_before_authorize(): void
+    {
+        Carbon::setTestNow('2026-11-27 10:00:00');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(LevelIncomeRuleAdministration::class);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+
+        $this->member('GFDRIFT1', 'ST666666');
+
+        $draft = $service->cloneAsDraft(
+            LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $draft->forceFill(['grandfather_existing_unlock' => true])->save();
+        $published = $service->publish($draft, $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            'effective_from' => '2026-11-28',
+        ]);
+        $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-28');
+
+        // Ensure created_at is after captured_at for freshness detection.
+        Carbon::setTestNow('2026-11-27 11:00:00');
+        $this->member('GFDRIFT2', 'ST666666');
+
+        $freshness = $grandfathering->assessBaselineFreshness($published->fresh());
+        $this->assertGreaterThan(0, $freshness['new_members_since_capture']);
+        $this->assertTrue($freshness['requires_pre_cutover_ack']);
+        $this->assertFalse($freshness['requires_recapture']);
+
+        try {
+            $service->authorizePosting($published->fresh(), $admin, true, null, true, false);
+            $this->fail('Expected ValidationException requiring pre-cutover acknowledgment');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('confirm_pre_cutover_baseline', $e->errors());
+        }
+
+        $authorized = $service->authorizePosting($published->fresh(), $admin, true, null, true, true);
+        $this->assertTrue($authorized->posting_authorized);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_pre_cutover_baseline_requires_recapture_once_transition_date_arrives(): void
+    {
+        Carbon::setTestNow('2026-11-27 10:00:00');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $service = app(LevelIncomeRuleAdministration::class);
+        $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+
+        $draft = $service->cloneAsDraft(
+            LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),
+            $admin
+        );
+        $draft->forceFill(['grandfather_existing_unlock' => true])->save();
+        $published = $service->publish($draft, $admin, [
+            'applicability' => LevelIncomeRuleVersion::APPLICABILITY_EXISTING_PROSPECTIVE,
+            'effective_from' => '2026-11-28',
+        ]);
+        $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-28');
+
+        Carbon::setTestNow('2026-11-28 06:00:00');
+        $freshness = $grandfathering->assessBaselineFreshness($published->fresh());
+        $this->assertTrue($freshness['requires_recapture']);
+
+        try {
+            $service->authorizePosting($published->fresh(), $admin, true, null, true, true);
+            $this->fail('Expected ValidationException requiring as-of recapture on transition day');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('grandfather', $e->errors());
+        }
+
+        $grandfathering->captureBaseline($published->fresh(), $admin, '2026-11-28');
+        $this->assertSame(
+            LevelIncomeUnlockGrandfathering::CAPTURE_MODE_AS_OF_TRANSITION,
+            $published->fresh()->grandfather_capture_mode
+        );
+        $authorized = $service->authorizePosting($published->fresh(), $admin, true, null, true);
+        $this->assertTrue($authorized->posting_authorized);
+
+        Carbon::setTestNow();
     }
 
     public function test_impact_analyzer_marks_st100026_protected_not_loss_when_grandfathering_on(): void
@@ -200,6 +485,15 @@ class LevelIncomeUnlockGrandfatheringTest extends TestCase
         $admin = User::factory()->create(['is_admin' => true]);
         $service = app(LevelIncomeRuleAdministration::class);
         $grandfathering = app(LevelIncomeUnlockGrandfathering::class);
+
+        // As-of capture only includes members/purchases on or before the transition date.
+        Member::query()->update(['created_at' => $transitionDate.' 08:00:00', 'updated_at' => $transitionDate.' 08:00:00']);
+        PackagePurchase::query()->update([
+            'submitted_at' => $transitionDate.' 09:00:00',
+            'reviewed_at' => $transitionDate.' 09:00:00',
+            'created_at' => $transitionDate.' 09:00:00',
+            'updated_at' => $transitionDate.' 09:00:00',
+        ]);
 
         $draft = $service->cloneAsDraft(
             LevelIncomeRuleVersion::query()->where('version_code', 'proposed_activation_unlock_v1')->firstOrFail(),

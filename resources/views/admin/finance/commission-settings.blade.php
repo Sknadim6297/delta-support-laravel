@@ -193,8 +193,10 @@
                     <p class="ds-muted" style="margin:0 0 .75rem;">{{ $preview['grandfather_note'] ?? 'protected = max(proposed, min(snapshot, current legacy)). Capture does not authorize posting or backfill history.' }}</p>
                     <div class="ds-stat-grid" style="margin-bottom:1rem;">
                         <x-ui.stat label="Transition date" :value="$preview['grandfather_summary']['transition_date'] ?? (optional($editing->grandfather_transition_date)?->toDateString() ?? 'Not captured')" />
+                        <x-ui.stat label="Capture mode" :value="$preview['grandfather_summary']['capture_mode'] ?? '—'" hint="{{ $preview['grandfather_summary']['capture_note'] ?? '' }}" />
                         <x-ui.stat label="Snapshots" :value="(string) ($preview['grandfather_summary']['snapshot_count'] ?? 0)" hint="{{ (string) ($preview['grandfather_summary']['with_unlock_count'] ?? 0) }} with legacy unlock" />
                         <x-ui.stat label="Captured at" :value="$preview['grandfather_summary']['captured_at'] ?? '—'" />
+                        <x-ui.stat label="Baseline fresh" :value="!empty($preview['grandfather_summary']['freshness']['is_fresh']) ? 'Yes' : (($preview['grandfather_summary']['captured'] ?? false) ? 'Review' : 'N/A')" hint="{{ !empty($preview['grandfather_summary']['freshness']['requires_recapture']) ? 'Recapture required' : (!empty($preview['grandfather_summary']['freshness']['requires_pre_cutover_ack']) ? 'Ack or recapture' : '') }}" />
                     </div>
                     @if (!empty($preview['member_unlock_impact_sample']))
                         <x-ui.table>
@@ -365,18 +367,31 @@
             @endif
 
             @if ($editing && ($editing->grandfather_existing_unlock ?? false) && ! ($editing->posting_authorized ?? false))
-                <x-ui.card title="Capture grandfather baseline" subtitle="Records each member's live legacy unlock at the transition date. Does not authorize posting, backfill income, or change wallets." style="margin-top:1rem;">
+                <x-ui.card title="Capture grandfather baseline" subtitle="For existing_prospective, use the same date as effective_from. Dates on/before today reconstruct eligibility as-of that day. Future dates freeze current eligibility as a pre-cutover baseline (not an exact future snapshot) — recapture on/after the transition date before authorize when possible. Blocked after authorization. Does not backfill income or change wallets." style="margin-top:1rem;">
+                    @if (!empty($preview['grandfather_summary']['freshness']['reasons']))
+                        <x-ui.alert type="warning" style="margin-bottom:.75rem;">
+                            <p><strong>Baseline freshness:</strong></p>
+                            <ul style="margin:0;padding-left:1.2rem;">
+                                @foreach ($preview['grandfather_summary']['freshness']['reasons'] as $reason)
+                                    <li>{{ $reason }}</li>
+                                @endforeach
+                            </ul>
+                        </x-ui.alert>
+                    @endif
                     <form method="POST" action="{{ route('admin.finance.level-income-rules.grandfather-capture') }}">
                         @csrf
                         <input type="hidden" name="version_id" value="{{ $editing->id }}">
                         <div class="ds-form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-bottom:.75rem;">
                             <label>Transition date
-                                <input type="date" name="transition_date" value="{{ old('transition_date', optional($editing->grandfather_transition_date)?->toDateString() ?? now()->toDateString()) }}" required>
+                                <input type="date" name="transition_date" value="{{ old('transition_date', optional($editing->effective_from)?->toDateString() ?? optional($editing->grandfather_transition_date)?->toDateString() ?? now()->toDateString()) }}" required>
                             </label>
                         </div>
+                        @if (($preview['grandfather_summary']['capture_mode'] ?? null))
+                            <p class="ds-muted" style="margin:0 0 .75rem;">Last capture mode: {{ $preview['grandfather_summary']['capture_mode'] }}. {{ $preview['grandfather_summary']['capture_note'] ?? '' }}</p>
+                        @endif
                         <label style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.75rem;">
                             <input type="checkbox" name="confirm_capture" value="1" required>
-                            <span>I confirm this captures legacy unlock levels only and does not authorize financial posting or recalculate history.</span>
+                            <span>I confirm this captures legacy unlock levels only, replaces any prior unauthorized baseline for this version, and does not authorize financial posting or recalculate history.</span>
                         </label>
                         <button type="submit" class="ds-btn ds-btn-secondary">Capture baseline</button>
                     </form>
@@ -509,9 +524,12 @@
                             <p class="ds-muted">{{ $preview['future_purchase_impact'] ?? '' }}</p>
                             <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_impact_preview" value="1" required> I reviewed the applicability impact preview above (existing vs future purchases).</label>
                             @if ($editing->applicability === 'existing_prospective')
-                                <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_existing_prospective" value="1" required> I confirm existing_prospective: new rules apply from the effective business date for all source purchases with no historical backfill.</label>
+                                <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_existing_prospective" value="1" required> I confirm existing_prospective: new rules apply from the effective business date for all source purchases with no historical backfill. Grandfather transition date must match effective_from.</label>
                             @endif
-                            <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_authorize" value="1" required> I authorize this version for financial:daily Level Income posting.</label>
+                            @if (!empty($preview['grandfather_summary']['freshness']['requires_pre_cutover_ack']))
+                                <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_pre_cutover_baseline" value="1" required> I acknowledge post-capture membership/eligibility drift: new members use proposed rules only; protection remains max(proposed, min(snapshot, current_legacy)). Prefer recapture for a clean cutover.</label>
+                            @endif
+                            <label style="display:block;margin:0.75rem 0;"><input type="checkbox" name="confirm_authorize" value="1" required> I authorize this version for financial:daily Level Income posting (no historical backfill).</label>
                             <button type="submit" class="ds-btn ds-btn-primary">Authorize posting</button>
                         </form>
                     @else

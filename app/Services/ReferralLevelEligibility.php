@@ -187,6 +187,47 @@ class ReferralLevelEligibility
     }
 
     /**
+     * Income-eligible unique directs as of end-of-day $asOfDate (inclusive).
+     * Directs must exist by that date; qualifying purchases must be approved by that date.
+     */
+    public function qualifyingDirectCountAsOf(string $memberId, string $asOfDate): int
+    {
+        $asOfEnd = \Carbon\CarbonImmutable::parse($asOfDate)->endOfDay();
+
+        return Member::query()
+            ->where('sponsor_id', $memberId)
+            ->where('member_id', '!=', $memberId)
+            ->where('created_at', '<=', $asOfEnd)
+            ->whereExists(function ($query) use ($asOfEnd): void {
+                $this->qualifyingPurchaseConstraintAsOf($query, $asOfEnd);
+            })
+            ->count();
+    }
+
+    public function directCountAsOf(string $memberId, string $asOfDate): int
+    {
+        $asOfEnd = \Carbon\CarbonImmutable::parse($asOfDate)->endOfDay();
+
+        return Member::query()
+            ->where('sponsor_id', $memberId)
+            ->where('member_id', '!=', $memberId)
+            ->where('created_at', '<=', $asOfEnd)
+            ->count();
+    }
+
+    public function isPersonallyActivatedAsOf(string $memberId, string $asOfDate): bool
+    {
+        $asOfEnd = \Carbon\CarbonImmutable::parse($asOfDate)->endOfDay();
+
+        return Member::query()
+            ->where('member_id', $memberId)
+            ->whereExists(function ($query) use ($asOfEnd): void {
+                $this->qualifyingPurchaseConstraintAsOf($query, $asOfEnd);
+            })
+            ->exists();
+    }
+
+    /**
      * @param  list<string>  $memberIds
      * @return list<string>
      */
@@ -316,6 +357,37 @@ class ReferralLevelEligibility
             ->from('package_purchases')
             ->whereColumn('package_purchases.member_id', 'members.member_id')
             ->where('package_purchases.status', PackagePurchase::APPROVED)
+            ->where(function ($purchase) use ($codes): void {
+                $purchase->whereIn('package_purchases.package_type', self::QUALIFYING_PACKAGE_TYPES);
+                if ($codes !== []) {
+                    $purchase->orWhere(function ($named) use ($codes): void {
+                        $named->whereIn('package_purchases.package_code', $codes)
+                            ->whereExists(function ($package): void {
+                                $package->selectRaw('1')
+                                    ->from('packages')
+                                    ->whereColumn('packages.id', 'package_purchases.package_id')
+                                    ->where('packages.level_commission_eligible', true);
+                            });
+                    });
+                }
+            });
+    }
+
+    /**
+     * Same income-eligibility filter as qualifyingPurchaseConstraint, limited to approvals
+     * completed on/before $asOfEnd (reviewed_at, else submitted_at).
+     */
+    public function qualifyingPurchaseConstraintAsOf($query, \Carbon\CarbonImmutable|\Carbon\CarbonInterface $asOfEnd): void
+    {
+        $codes = array_keys(config('deltasupport.package_income.packages', []));
+        $query->selectRaw('1')
+            ->from('package_purchases')
+            ->whereColumn('package_purchases.member_id', 'members.member_id')
+            ->where('package_purchases.status', PackagePurchase::APPROVED)
+            ->whereRaw(
+                'COALESCE(package_purchases.reviewed_at, package_purchases.submitted_at, package_purchases.created_at) <= ?',
+                [$asOfEnd->toDateTimeString()]
+            )
             ->where(function ($purchase) use ($codes): void {
                 $purchase->whereIn('package_purchases.package_type', self::QUALIFYING_PACKAGE_TYPES);
                 if ($codes !== []) {
